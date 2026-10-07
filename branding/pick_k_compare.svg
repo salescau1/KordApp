@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="440" viewBox="0 0 240 146">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="62%">
+      <stop offset="0%" stop-color="#16233A"/>
+      <stop offset="100%" stop-color="#0B1220"/>
+    </radialGradient>
+    <clipPath id="sq1"><path d="M60,20 C86,20 104,38 104,64 C104,90 86,108 60,108 C34,108 16,90 16,64 C16,38 34,20 60,20 Z"/></clipPath>
+    <clipPath id="sq2"><path d="M180,20 C206,20 224,38 224,64 C224,90 206,108 180,108 C154,108 136,90 136,64 C136,38 154,20 180,20 Z"/></clipPath>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F0C25E"/>
+      <stop offset="100%" stop-color="#D89F36"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ===== V1: K CUTOUT TEGAS ===== -->
+  <g clip-path="url(#sq1)">
+    <rect x="16" y="20" width="88" height="88" fill="url(#bg)"/>
+    <!-- pick (gold), centered ~ (60,62) -->
+    <path d="M60,34 C46,34 38,38 36,48 C34,60 46,80 60,91 C74,80 86,60 84,48 C82,38 74,34 60,34 Z" fill="url(#gold)"/>
+    <!-- K cutout = dark shows through (bold, crisp) -->
+    <g stroke="#0B1220" stroke-width="6.5" stroke-linecap="round">
+      <line x1="53" y1="49" x2="53" y2="77"/>
+      <line x1="53" y1="63" x2="68" y2="49"/>
+      <line x1="53" y1="63" x2="69" y2="77"/>
+    </g>
+  </g>
+  <text x="60" y="124" font-family="Arial" font-size="8" fill="#C9CFDA" text-anchor="middle">V1 — K cutout tegas</text>
+  <text x="60" y="136" font-family="Arial" font-size="6.5" fill="#8E9AA8" text-anchor="middle">kebaca di semua ukuran</text>
+
+  <!-- ===== V2: K SAMAR (dua-shade emas) ===== -->
+  <g clip-path="url(#sq2)">
+    <rect x="136" y="20" width="88" height="88" fill="url(#bg)"/>
+    <path d="M180,34 C166,34 158,38 156,48 C154,60 166,80 180,91 C194,80 206,60 204,48 C202,38 194,34 180,34 Z" fill="url(#gold)"/>
+    <!-- K samar = beda shade emas -->
+    <g stroke="#B07E22" stroke-width="6.5" stroke-linecap="round" opacity="0.85">
+      <line x1="173" y1="49" x2="173" y2="77"/>
+      <line x1="173" y1="63" x2="188" y2="49"/>
+      <line x1="173" y1="63" x2="189" y2="77"/>
+    </g>
+  </g>
+  <text x="180" y="124" font-family="Arial" font-size="8" fill="#C9CFDA" text-anchor="middle">V2 — K samar (dua-shade)</text>
+  <text x="180" y="136" font-family="Arial" font-size="6.5" fill="#8E9AA8" text-anchor="middle">estetik di layar besar</text>
+</svg>

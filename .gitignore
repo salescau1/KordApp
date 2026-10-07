@@ -18,7 +18,16 @@ tools/catalog/*.db
 tools/catalog/*.db-shm
 tools/catalog/*.db-wal
 tools/catalog/db_batches/
+tools/catalog/generated/
 tools/catalog/new_catalog.db.xz
 tools/crawler/cache/
+# Python & Temp Backups
+__pycache__/
+*.pyc
+.data_backups/
+/sample/
+/Catalog/
+/gradle_bin/
 *.tmp
 *.png
+

@@ -19,3 +19,14 @@ val GtText = Color(0xFF22C55E)
 val GtBg = Color(0xFF0D281E)
 val CtText = Color(0xFF38BDF8)
 val CtBg = Color(0xFF0C2340)
+
+// Region Badges
+val RegionIdText = Color(0xFF22C55E) // Hijau Emerald
+val RegionIdBg = Color(0xFF0D281E)
+val RegionEnText = Color(0xFFA78BFA) // Lavender / Slate Purple
+val RegionEnBg = Color(0xFF231F3D)
+val RegionKrText = Color(0xFF38BDF8) // Sky Blue / Cyan
+val RegionKrBg = Color(0xFF0C2340)
+val RegionJpText = Color(0xFFFB7185) // Rose / Coral
+val RegionJpBg = Color(0xFF37121E)
+

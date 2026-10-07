@@ -20,6 +20,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.chordapp.localization.LocalAppStrings
 import com.chordapp.ui.components.AppBackButton
 import com.chordapp.ui.theme.*
 import com.chordapp.viewmodels.SetlistTrackUi
@@ -34,6 +35,7 @@ fun SetlistTracklistScreen(
     onBackClick: () -> Unit,
     onSongClick: (sourceUrl: String, transpose: Int, capo: Int) -> Unit
 ) {
+    val strings = LocalAppStrings.current
     val items by viewModel.items.collectAsState()
     val setlist by viewModel.setlist.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -51,7 +53,7 @@ fun SetlistTracklistScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TracklistTopBar(
-                title = setlist?.name ?: "Setlist",
+                title = setlist?.name ?: strings.navSetlists,
                 menuExpanded = menuExpanded,
                 onMenuChange = { menuExpanded = it },
                 onBackClick = onBackClick,
@@ -70,7 +72,7 @@ fun SetlistTracklistScreen(
             onDelete = { item ->
                 viewModel.deleteItem(item.stored)
                 scope.launch {
-                    val result = snackbar.showSnackbar("Lagu dihapus", "Urungkan")
+                    val result = snackbar.showSnackbar(strings.songRemoved, strings.undo)
                     if (result == SnackbarResult.ActionPerformed) viewModel.restoreItem(item.stored)
                 }
             }
@@ -78,7 +80,7 @@ fun SetlistTracklistScreen(
     }
     if (showRename) {
         NameDialog(
-            title = "Ganti nama setlist",
+            title = strings.renameSetlist,
             initial = setlist?.name.orEmpty(),
             onDismiss = { showRename = false },
             onConfirm = {
@@ -90,15 +92,15 @@ fun SetlistTracklistScreen(
     if (showDelete) {
         AlertDialog(
             onDismissRequest = { showDelete = false },
-            title = { Text("Hapus setlist?") },
-            text = { Text("Semua lagu dalam setlist ini akan dihapus. Tindakan ini tidak dapat diurungkan.") },
+            title = { Text(strings.deleteSetlistConfirmTitle) },
+            text = { Text(strings.deleteSetlistConfirmMessage) },
             confirmButton = {
                 TextButton(onClick = {
                     showDelete = false
                     viewModel.deleteSetlist(onBackClick)
-                }) { Text("Hapus", color = ActiveHeart) }
+                }) { Text(strings.delete, color = ActiveHeart) }
             },
-            dismissButton = { TextButton(onClick = { showDelete = false }) { Text("Batal") } }
+            dismissButton = { TextButton(onClick = { showDelete = false }) { Text(strings.cancel) } }
         )
     }
 }
@@ -110,15 +112,16 @@ private fun NameDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
+    val strings = LocalAppStrings.current
     var value by remember(initial) { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = { TextField(value, { value = it }, singleLine = true) },
         confirmButton = {
-            TextButton(enabled = value.isNotBlank(), onClick = { onConfirm(value) }) { Text("Simpan") }
+            TextButton(enabled = value.isNotBlank(), onClick = { onConfirm(value) }) { Text(strings.save) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel) } }
     )
 }
 
@@ -132,19 +135,20 @@ private fun TracklistTopBar(
     onRename: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
     TopAppBar(
         title = { Text(title, color = PrimaryText) },
         navigationIcon = { AppBackButton(onBackClick) },
         actions = {
             IconButton(onClick = { onMenuChange(true) }) {
-                Icon(Icons.Filled.MoreVert, "Opsi setlist", tint = PrimaryText)
+                Icon(Icons.Filled.MoreVert, strings.setlistOptions, tint = PrimaryText)
             }
             DropdownMenu(menuExpanded, { onMenuChange(false) }) {
-                DropdownMenuItem(text = { Text("Ganti nama") }, onClick = {
+                DropdownMenuItem(text = { Text(strings.renameSetlist) }, onClick = {
                     onMenuChange(false)
                     onRename()
                 })
-                DropdownMenuItem(text = { Text("Hapus setlist", color = ActiveHeart) }, onClick = {
+                DropdownMenuItem(text = { Text(strings.delete, color = ActiveHeart) }, onClick = {
                     onMenuChange(false)
                     onDelete()
                 })
@@ -164,12 +168,13 @@ private fun TracklistBody(
     onMove: (Int, Int) -> Unit,
     onDelete: (SetlistTrackUi) -> Unit
 ) {
+    val strings = LocalAppStrings.current
     when {
         isLoading -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = AccentGold)
         }
         items.isEmpty() -> Box(modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-            Text("Belum ada lagu dalam setlist ini.", color = MutedText)
+            Text(strings.noSongsInSetlist, color = MutedText)
         }
         else -> LazyColumn(modifier.fillMaxSize(), state = listState) {
             itemsIndexed(items, key = { _, item -> item.stored.id }) { index, item ->
@@ -189,6 +194,7 @@ private fun TracklistRow(
     onMove: (Int, Int) -> Unit,
     onDelete: (SetlistTrackUi) -> Unit
 ) {
+    val strings = LocalAppStrings.current
     var dragTotal by remember { mutableStateOf(0f) }
     Row(
         modifier = Modifier
@@ -214,8 +220,8 @@ private fun TracklistRow(
             Text(
                 buildString {
                     append(item.artist)
-                    append(if (item.available) " • ${item.source}" else " • Tidak tersedia")
-                    if (item.substituted) append(" • Versi pengganti")
+                    append(if (item.available) " • ${item.source}" else " • ${strings.unavailable}")
+                    if (item.substituted) append(" ${strings.alternateVersion}")
                     if (item.stored.transpose != 0) append(" • Transpose ${item.stored.transpose}")
                     if (item.stored.capo != 0) append(" • Capo ${item.stored.capo}")
                 },
@@ -226,11 +232,11 @@ private fun TracklistRow(
             )
         }
         IconButton(onClick = { onDelete(item) }) {
-            Icon(Icons.Filled.Delete, "Hapus lagu", tint = ActiveHeart)
+            Icon(Icons.Filled.Delete, strings.deleteSong, tint = ActiveHeart)
         }
         Icon(
             Icons.Filled.DragHandle,
-            "Tahan lalu geser untuk mengurutkan",
+            strings.dragToReorder,
             tint = MutedText,
             modifier = Modifier
                 .size(48.dp)

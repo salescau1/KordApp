@@ -80,7 +80,12 @@ def merge_all_batches():
         print(f"No batch databases found in {DB_BATCHES_DIR}")
         return
 
-    # Put batch_ost.db first so curated soundtracks with category='Soundtrack' take precedence
+    # Put batch_ost.db and batch_22.db first so curated soundtracks with category='Soundtrack' take precedence
+    b22_db = str(DB_BATCHES_DIR / "batch_22.db")
+    if b22_db in batch_dbs:
+        batch_dbs.remove(b22_db)
+        batch_dbs.insert(0, b22_db)
+
     ost_db = str(DB_BATCHES_DIR / "batch_ost.db")
     if ost_db in batch_dbs:
         batch_dbs.remove(ost_db)
@@ -155,16 +160,55 @@ def merge_all_batches():
         finally:
             conn_in.close()
 
+    print("\nPost-processing: Applying Seventeen split & region standardizations...")
+    cur = conn_out.cursor()
+    # 1. Seventeen Indonesia
+    cur.execute("""
+        UPDATE songs 
+        SET artist = 'Seventeen', artist_slug = 'seventeen-id', region = 'INDO'
+        WHERE (artist_slug = 'seventeen-indonesia')
+           OR (artist_slug = 'seventeen' AND source = 'GT' AND lower(title) NOT LIKE '%darl%ing%')
+    """)
+    # 2. SEVENTEEN Korea
+    cur.execute("""
+        UPDATE songs 
+        SET artist = 'SEVENTEEN', artist_slug = 'seventeen-kr', region = 'KOREA'
+        WHERE (artist_slug = 'seventeen-세븐틴')
+           OR (artist_slug = 'seventeen' AND source = 'GT' AND (lower(title) LIKE '%darl+ing%' OR lower(title) LIKE '%darling%'))
+    """)
+    # 3. Ifan Seventeen
+    cur.execute("UPDATE songs SET region = 'INDO' WHERE lower(artist) LIKE '%ifan seventeen%'")
+    # 4. Standardize region INDONESIA -> INDO
+    cur.execute("UPDATE songs SET region = 'INDO' WHERE region = 'INDONESIA'")
+    # 5. Ensure PRAGMA user_version = 5
+    cur.execute("PRAGMA user_version = 5")
+    conn_out.commit()
     conn_out.close()
+
     print(f"\nMerging complete! Total unique songs in merged DB: {total_merged}")
 
-    # Compress to app asset
-    print(f"Compressing to {ASSET_XZ}...")
-    with open(MERGED_DB, "rb") as f_in:
-        raw_bytes = f_in.read()
-    with lzma.open(ASSET_XZ, "wb") as f_out:
-        f_out.write(raw_bytes)
-    print(f"Compressed catalog successfully updated at {ASSET_XZ} ({os.path.getsize(ASSET_XZ)} bytes)!")
+    # Compress to app asset with KordApp XOR masking
+    print(f"Compressing to {ASSET_XZ} with XOR mask...")
+    temp_xz = TOOLS_DIR / "catalog" / "temp_catalog.db.xz"
+    with open(MERGED_DB, "rb") as fin, lzma.open(temp_xz, "wb", preset=5, check=lzma.CHECK_CRC64) as f_xz:
+        while chunk := fin.read(256 * 1024):
+            f_xz.write(chunk)
+
+    key = b"KORD_KEKALCLIP_2"
+    key_len = len(key)
+    with open(temp_xz, "rb") as fin, open(ASSET_XZ, "wb") as fout:
+        idx = 0
+        while chunk := fin.read(65536):
+            masked = bytearray(chunk)
+            for i in range(len(masked)):
+                masked[i] ^= key[(idx + i) % key_len]
+            idx += len(chunk)
+            fout.write(masked)
+
+    if temp_xz.exists():
+        temp_xz.unlink()
+
+    print(f"Compressed and masked catalog successfully updated at {ASSET_XZ} ({os.path.getsize(ASSET_XZ)} bytes)!")
 
 if __name__ == "__main__":
     merge_all_batches()

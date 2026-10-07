@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="380" viewBox="0 0 260 154">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="62%">
+      <stop offset="0%" stop-color="#16233A"/>
+      <stop offset="100%" stop-color="#0B1220"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F2C763"/>
+      <stop offset="100%" stop-color="#D89F36"/>
+    </linearGradient>
+    <clipPath id="squA"><path d="M64,20 C90,20 108,38 108,64 C108,90 90,108 64,108 C38,108 20,90 20,64 C20,38 38,20 64,20 Z"/></clipPath>
+    <clipPath id="squB"><path d="M196,20 C222,20 240,38 240,64 C240,90 222,108 196,108 C170,108 152,90 152,64 C152,38 170,20 196,20 Z"/></clipPath>
+    <clipPath id="pickA"><path d="M64,32 C50,32 41,37 39,49 C37,64 51,88 64,99 C77,88 91,64 89,49 C87,37 78,32 64,32 Z"/></clipPath>
+    <clipPath id="pickB"><path d="M196,32 C182,32 173,37 171,49 C169,64 183,88 196,99 C209,88 223,64 221,49 C219,37 210,32 196,32 Z"/></clipPath>
+  </defs>
+
+  <!-- ===================== TIPE 1: HARD OFFSET SHADOW (1 bayangan tegas) ===================== -->
+  <g clip-path="url(#squA)">
+    <rect x="20" y="20" width="88" height="88" fill="url(#bg)"/>
+    <path d="M64,32 C50,32 41,37 39,49 C37,64 51,88 64,99 C77,88 91,64 89,49 C87,37 78,32 64,32 Z" fill="url(#gold)"/>
+    <g clip-path="url(#pickA)">
+      <!-- bayangan tegas: duplikat K digeser ke kanan-atas, warna coklat lebih gelap, opacity dikurangi, TANPA blur -->
+      <text x="66.5" y="76.5" text-anchor="middle" font-family="'Arial Rounded MT Bold','Arial Black',sans-serif"
+            font-size="52" font-weight="900" fill="#3E2410" opacity="0.55" style="letter-spacing:-1px">K</text>
+      <!-- K utama coklat KitKat -->
+      <text x="64" y="79" text-anchor="middle" font-family="'Arial Rounded MT Bold','Arial Black',sans-serif"
+            font-size="52" font-weight="900" fill="#6B3A17" style="letter-spacing:-1px">K</text>
+    </g>
+  </g>
+  <text x="64" y="126" font-family="Arial" font-size="8" fill="#C9CFDA" text-anchor="middle">TIPE 1 — offset shadow</text>
+  <text x="64" y="138" font-family="Arial" font-size="6.5" fill="#8E9AA8" text-anchor="middle">1 bayangan tegas ke kanan-atas</text>
+
+  <!-- ===================== TIPE 2: LONG SHADOW (jejak solid ke pojok) ===================== -->
+  <g clip-path="url(#squB)">
+    <rect x="152" y="20" width="88" height="88" fill="url(#bg)"/>
+    <path d="M196,32 C182,32 173,37 171,49 C169,64 183,88 196,99 C209,88 223,64 221,49 C219,37 210,32 196,32 Z" fill="url(#gold)"/>
+    <g clip-path="url(#pickB)">
+      <!-- long shadow: banyak duplikat rapat ke kanan-atas = jejak solid tegas, satu opacity (bukan pudar) -->
+      <g font-family="'Arial Rounded MT Bold','Arial Black',sans-serif" font-size="52" font-weight="900" fill="#3E2410" opacity="0.5" text-anchor="middle" style="letter-spacing:-1px">
+        <text x="196.8" y="78.2">K</text><text x="197.6" y="77.4">K</text><text x="198.4" y="76.6">K</text>
+        <text x="199.2" y="75.8">K</text><text x="200.0" y="75.0">K</text><text x="200.8" y="74.2">K</text>
+        <text x="201.6" y="73.4">K</text><text x="202.4" y="72.6">K</text><text x="203.2" y="71.8">K</text>
+        <text x="204.0" y="71.0">K</text><text x="204.8" y="70.2">K</text><text x="205.6" y="69.4">K</text>
+      </g>
+      <!-- K utama coklat KitKat -->
+      <text x="196" y="79" text-anchor="middle" font-family="'Arial Rounded MT Bold','Arial Black',sans-serif"
+            font-size="52" font-weight="900" fill="#6B3A17" style="letter-spacing:-1px">K</text>
+    </g>
+  </g>
+  <text x="196" y="126" font-family="Arial" font-size="8" fill="#C9CFDA" text-anchor="middle">TIPE 2 — long shadow</text>
+  <text x="196" y="138" font-family="Arial" font-size="6.5" fill="#8E9AA8" text-anchor="middle">jejak solid tegas ke pojok</text>
+</svg>

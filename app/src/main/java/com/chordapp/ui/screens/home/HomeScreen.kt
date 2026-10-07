@@ -278,8 +278,9 @@ private fun ExpandedHome(
 
 @Composable
 private fun CatalogInfoSection(stats: HomeCatalogStats?) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     Text(
-        text = "Database Offline",
+        text = strings.offlineDatabase,
         color = PrimaryText,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold
@@ -295,9 +296,9 @@ private fun CatalogInfoSection(stats: HomeCatalogStats?) {
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        CatalogInfoRow("Artis", stats?.artists?.toString() ?: "Menghitung…")
-        CatalogInfoRow("Lagu", stats?.songs?.toString() ?: "Menghitung…")
-        CatalogInfoRow("Ukuran", stats?.catalogBytes?.let(::formatBytes) ?: "Menghitung…")
+        CatalogInfoRow(strings.artists, stats?.artists?.toString() ?: strings.calculating)
+        CatalogInfoRow(strings.songs, stats?.songs?.toString() ?: strings.calculating)
+        CatalogInfoRow(strings.size, stats?.catalogBytes?.let { formatBytes(it, strings.calculating) } ?: strings.calculating)
     }
 }
 
@@ -312,8 +313,8 @@ private fun CatalogInfoRow(label: String, value: String) {
     }
 }
 
-private fun formatBytes(bytes: Long): String = when {
-    bytes <= 0L -> "Menghitung…"
+private fun formatBytes(bytes: Long, calculatingText: String): String = when {
+    bytes <= 0L -> calculatingText
     bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
     bytes >= 1024L -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)
     else -> "$bytes B"
@@ -366,14 +367,15 @@ private fun HomeHeader(onSearchClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            val strings = com.chordapp.localization.LocalAppStrings.current
             Text(
-                text = "Search songs, artists, or lyrics...",
+                text = strings.searchPlaceholderHome,
                 color = MutedText,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = "Search",
+                text = strings.searchButton,
                 color = AccentGold,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold
@@ -384,6 +386,7 @@ private fun HomeHeader(onSearchClick: () -> Unit) {
 
 @Composable
 private fun FloatingSearchBar(onSearchClick: () -> Unit) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     val searchShape = RoundedCornerShape(24.dp)
     Row(
         modifier = Modifier
@@ -403,13 +406,13 @@ private fun FloatingSearchBar(onSearchClick: () -> Unit) {
             modifier = Modifier.size(20.dp)
         )
         Text(
-            text = "Search songs, artists, or lyrics...",
+            text = strings.searchPlaceholderHome,
             color = MutedText,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f)
         )
         Text(
-            text = "Search",
+            text = strings.searchButton,
             color = AccentGold,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold
@@ -435,6 +438,7 @@ private fun FloatingRecentPill(
         baseModifier
     }
 
+    val strings = com.chordapp.localization.LocalAppStrings.current
     Row(
         modifier = clickableModifier,
         verticalAlignment = Alignment.CenterVertically
@@ -444,14 +448,14 @@ private fun FloatingRecentPill(
             horizontalAlignment = Alignment.Start
         ) {
             Text(
-                text = "RECENTLY",
+                text = strings.recentlyHeader1,
                 color = MutedText,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 10.sp
             )
             Text(
-                text = "PLAYED",
+                text = strings.recentlyHeader2,
                 color = AccentGold,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
@@ -479,7 +483,7 @@ private fun FloatingRecentPill(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = if (recent.available) "${recent.artist} • ${recent.source}" else "${recent.artist} • Unavailable",
+                    text = if (recent.available) "${recent.artist} • ${recent.source}" else "${recent.artist} • ${strings.unavailable}",
                     color = MutedText,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
@@ -497,12 +501,12 @@ private fun FloatingRecentPill(
         } else {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Nothing played yet",
+                    text = strings.nothingPlayedYet,
                     color = MutedText,
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    text = "Songs you play will appear here",
+                    text = strings.songsPlayedAppearHere,
                     color = MutedText.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -516,8 +520,9 @@ private fun RecentlyPlayedSection(
     recent: List<RecentSongUi>,
     onSongClick: (artistSlug: String, titleSlug: String) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     Text(
-        text = "Recently Played",
+        text = strings.recentlyPlayedHeader,
         color = PrimaryText,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold
@@ -528,8 +533,8 @@ private fun RecentlyPlayedSection(
         // Real history is empty until the user actually plays something.
         InfoCard(
             leading = "♪",
-            title = "Nothing here yet",
-            message = "Songs you play will appear here."
+            title = strings.nothingPlayedYet,
+            message = strings.songsPlayedAppearHere
         )
     } else {
         recent.forEach { song ->
@@ -548,6 +553,7 @@ private fun RecentSongRow(
     song: RecentSongUi,
     onSongClick: (artistSlug: String, titleSlug: String) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     val shape = RoundedCornerShape(8.dp)
     val rowModifier = Modifier
         .fillMaxWidth()
@@ -589,7 +595,7 @@ private fun RecentSongRow(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = if (song.available) "${song.artist} • ${song.source}" else "${song.artist} • Unavailable",
+                text = if (song.available) "${song.artist} • ${song.source}" else "${song.artist} • ${strings.unavailable}",
                 color = MutedText,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
@@ -699,14 +705,15 @@ private fun ChartBody(
         }
 
         ChartState.NoData -> {
+            val strings = com.chordapp.localization.LocalAppStrings.current
             Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                 InfoCard(
                     leading = "—",
-                    title = "Charts need an internet connection",
-                    message = "The Top 50 appears once you're online. Until then, use Search to find songs and artists in the offline catalog."
+                    title = strings.chartsNeedInternetTitle,
+                    message = strings.chartsNeedInternetDesc
                 )
                 Text(
-                    text = "Coba lagi",
+                    text = strings.retry,
                     color = AccentGold,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
@@ -782,6 +789,7 @@ private fun ChartRow(
     onSongClick: (artistSlug: String, titleSlug: String) -> Unit,
     onToggleFavorite: (ChartRowUi) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     val shape = RoundedCornerShape(12.dp)
 
     val canOpen = row.available && row.artistSlug != null && row.titleSlug != null
@@ -845,7 +853,7 @@ private fun ChartRow(
                         }
                     } else {
                         Text(
-                            text = "Not available",
+                            text = strings.notAvailable,
                             color = MutedText,
                             style = MaterialTheme.typography.labelSmall,
                             maxLines = 1
@@ -862,7 +870,7 @@ private fun ChartRow(
             ) {
                 Icon(
                     imageVector = if (row.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    contentDescription = if (row.isFavorite) "Hapus favorit" else "Tambah favorit",
+                    contentDescription = if (row.isFavorite) strings.removeFromFavorites else strings.addToFavorites,
                     tint = when {
                         row.isFavorite -> ActiveHeart
                         row.favoriteSourceUrl != null -> PrimaryText

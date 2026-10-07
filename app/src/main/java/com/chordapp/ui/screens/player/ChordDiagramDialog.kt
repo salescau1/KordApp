@@ -94,6 +94,7 @@ fun ChordDiagramCard(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     val positions = db?.findPositions(symbol)
     val count = positions?.size ?: 0
     var index by remember(symbol) { mutableIntStateOf(0) }
@@ -123,7 +124,7 @@ fun ChordDiagramCard(
                 IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
                     Icon(
                         Icons.Filled.Close,
-                        contentDescription = "Tutup",
+                        contentDescription = strings.close,
                         tint = MutedText,
                         modifier = Modifier.size(16.dp)
                     )
@@ -140,7 +141,7 @@ fun ChordDiagramCard(
                     CircularProgressIndicator(color = AccentGold, modifier = Modifier.size(24.dp))
                 }
                 pos == null -> Text(
-                    "Diagram belum tersedia untuk $symbol di data fingering.",
+                    strings.diagramNotAvailable(symbol),
                     color = MutedText,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -164,7 +165,7 @@ fun ChordDiagramCard(
                             ) {
                                 Icon(
                                     Icons.Filled.ArrowBack,
-                                    contentDescription = "Bentuk sebelumnya",
+                                    contentDescription = strings.previousShape,
                                     tint = MutedText,
                                     modifier = Modifier.size(14.dp)
                                 )
@@ -180,7 +181,7 @@ fun ChordDiagramCard(
                             ) {
                                 Icon(
                                     Icons.Filled.ArrowForward,
-                                    contentDescription = "Bentuk berikutnya",
+                                    contentDescription = strings.nextShape,
                                     tint = MutedText,
                                     modifier = Modifier.size(14.dp)
                                 )

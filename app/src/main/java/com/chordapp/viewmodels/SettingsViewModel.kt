@@ -30,6 +30,13 @@ class SettingsViewModel(
         .getPackageInfo(appContext.packageName, 0)
         .versionName ?: "Unknown"
 
+    val currentLanguage: StateFlow<com.chordapp.localization.AppLanguage> =
+        com.chordapp.localization.AppLanguageManager.currentLanguage
+
+    fun setLanguage(language: com.chordapp.localization.AppLanguage) {
+        com.chordapp.localization.AppLanguageManager.setLanguage(appContext, language)
+    }
+
     init {
         viewModelScope.launch {
             _catalogStats.value = CatalogStats(

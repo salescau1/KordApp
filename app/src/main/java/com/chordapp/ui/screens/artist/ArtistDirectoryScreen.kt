@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.chordapp.catalog.CatalogSongEntity
 import com.chordapp.catalog.CatalogSongGroup
 import com.chordapp.ui.components.AppBackButton
+import com.chordapp.ui.components.RegionBadge
 import com.chordapp.ui.components.SourceBadge
 import com.chordapp.ui.theme.*
 import com.chordapp.viewmodels.ArtistDirectoryViewModel
@@ -28,7 +29,9 @@ fun ArtistDirectoryScreen(
     onBackClick: () -> Unit,
     onSongClick: (artistSlug: String, titleSlug: String) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     val artistName by viewModel.artistName.collectAsState()
+    val region by viewModel.region.collectAsState()
     val songs by viewModel.songs.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -43,7 +46,15 @@ fun ArtistDirectoryScreen(
             .background(Background)
     ) {
         TopAppBar(
-            title = { Text(artistName, color = PrimaryText) },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(artistName, color = PrimaryText)
+                    region?.let { reg ->
+                        Spacer(modifier = Modifier.width(8.dp))
+                        RegionBadge(region = reg)
+                    }
+                }
+            },
             navigationIcon = { AppBackButton(onBackClick) },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Background)
         )
@@ -73,7 +84,7 @@ fun ArtistDirectoryScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "${shownSongs.size} songs", color = MutedText)
+                Text(text = strings.songsCount(shownSongs.size), color = MutedText)
                 Text(
                     text = "A-Z",
                     color = MutedText,
@@ -88,7 +99,7 @@ fun ArtistDirectoryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-                placeholder = { Text(text = "Filter songs", color = MutedText) },
+                placeholder = { Text(text = strings.filterSongs, color = MutedText) },
                 singleLine = true,
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -116,9 +127,9 @@ fun ArtistDirectoryScreen(
             if (shownSongs.isEmpty()) {
                 Text(
                     text = if (filter.isBlank()) {
-                        "No songs for this artist."
+                        strings.noSongsForArtist
                     } else {
-                        "No songs match \"${filter.trim()}\"."
+                        strings.noSongsMatch(filter.trim())
                     },
                     color = MutedText,
                     modifier = Modifier.padding(16.dp)

@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="380" viewBox="0 0 260 154">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="62%">
+      <stop offset="0%" stop-color="#16233A"/>
+      <stop offset="100%" stop-color="#0B1220"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F2C763"/>
+      <stop offset="100%" stop-color="#D89F36"/>
+    </linearGradient>
+    <clipPath id="squA"><path d="M64,20 C90,20 108,38 108,64 C108,90 90,108 64,108 C38,108 20,90 20,64 C20,38 38,20 64,20 Z"/></clipPath>
+    <clipPath id="squB"><path d="M196,20 C222,20 240,38 240,64 C240,90 222,108 196,108 C170,108 152,90 152,64 C152,38 170,20 196,20 Z"/></clipPath>
+    <!-- pick shapes used both as art and as clip for the K -->
+    <clipPath id="pickA"><path d="M64,32 C50,32 41,37 39,49 C37,64 51,88 64,99 C77,88 91,64 89,49 C87,37 78,32 64,32 Z"/></clipPath>
+    <clipPath id="pickB"><path d="M196,32 C182,32 173,37 171,49 C169,64 183,88 196,99 C209,88 223,64 221,49 C219,37 210,32 196,32 Z"/></clipPath>
+  </defs>
+
+  <!-- =========================== TIPE 1: pixel-stretch = blok pixel =========================== -->
+  <g clip-path="url(#squA)">
+    <rect x="20" y="20" width="88" height="88" fill="url(#bg)"/>
+    <!-- pick -->
+    <path d="M64,32 C50,32 41,37 39,49 C37,64 51,88 64,99 C77,88 91,64 89,49 C87,37 78,32 64,32 Z" fill="url(#gold)"/>
+    <!-- K besar (KitKat-ish bold rounded), coklat, di-clip ke pick, posisi agak ke bawah -->
+    <g clip-path="url(#pickA)">
+      <text x="64" y="96" text-anchor="middle" font-family="'Arial Rounded MT Bold','Arial Black',sans-serif"
+            font-size="72" font-weight="900" fill="#6B3A17" style="letter-spacing:-2px">K</text>
+    </g>
+    <!-- pixel-stretch: blok kotak coklat, miring ke pojok kanan atas, opacity turun -->
+    <g fill="#6B3A17">
+      <rect x="74" y="46" width="6" height="6" opacity="0.55"/>
+      <rect x="80" y="41" width="5.5" height="5.5" opacity="0.42"/>
+      <rect x="86" y="36" width="5" height="5" opacity="0.30"/>
+      <rect x="91" y="31" width="4.5" height="4.5" opacity="0.20"/>
+      <rect x="96" y="27" width="4" height="4" opacity="0.12"/>
+    </g>
+  </g>
+  <text x="64" y="126" font-family="Arial" font-size="8" fill="#C9CFDA" text-anchor="middle">TIPE 1 — pixel blok</text>
+  <text x="64" y="138" font-family="Arial" font-size="6.5" fill="#8E9AA8" text-anchor="middle">stretch = kotak-kotak</text>
+
+  <!-- =========================== TIPE 2: pixel-stretch = smear/motion =========================== -->
+  <g clip-path="url(#squB)">
+    <rect x="152" y="20" width="88" height="88" fill="url(#bg)"/>
+    <path d="M196,32 C182,32 173,37 171,49 C169,64 183,88 196,99 C209,88 223,64 221,49 C219,37 210,32 196,32 Z" fill="url(#gold)"/>
+    <!-- smear ghosts K ke pojok kanan atas (di belakang K utama), opacity turun -->
+    <g font-family="'Arial Rounded MT Bold','Arial Black',sans-serif" font-size="72" font-weight="900" fill="#6B3A17" text-anchor="middle" style="letter-spacing:-2px">
+      <text x="205" y="86" opacity="0.10">K</text>
+      <text x="202" y="88" opacity="0.16">K</text>
+      <text x="199" y="90" opacity="0.24">K</text>
+    </g>
+    <!-- K utama, di-clip ke pick, posisi agak ke bawah -->
+    <g clip-path="url(#pickB)">
+      <text x="196" y="96" text-anchor="middle" font-family="'Arial Rounded MT Bold','Arial Black',sans-serif"
+            font-size="72" font-weight="900" fill="#6B3A17" style="letter-spacing:-2px">K</text>
+    </g>
+    <!-- garis smear halus lanjut ke pojok -->
+    <g stroke="#6B3A17" stroke-linecap="round">
+      <line x1="210" y1="44" x2="226" y2="28" stroke-width="3" opacity="0.22"/>
+      <line x1="214" y1="48" x2="230" y2="32" stroke-width="2" opacity="0.14"/>
+    </g>
+  </g>
+  <text x="196" y="126" font-family="Arial" font-size="8" fill="#C9CFDA" text-anchor="middle">TIPE 2 — smear/motion</text>
+  <text x="196" y="138" font-family="Arial" font-size="6.5" fill="#8E9AA8" text-anchor="middle">stretch = jejak halus</text>
+</svg>

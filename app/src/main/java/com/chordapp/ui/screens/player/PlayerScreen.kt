@@ -636,26 +636,27 @@ fun PlayerScreen(
     val isFavorite by viewModel.isFavorite.collectAsState()
     val isUpdatingFavorite by viewModel.isUpdatingFavorite.collectAsState()
 
+    val strings = com.chordapp.localization.LocalAppStrings.current
     var showSetlistPicker by remember { mutableStateOf(false) }
     var showCreateSetlist by remember { mutableStateOf(false) }
     var newSetlistName by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(viewModel) {
+    LaunchedEffect(viewModel, strings) {
         viewModel.setlistEvents.collect { event ->
             val message = when (event) {
-                is PlayerSetlistEvent.Added -> "Ditambahkan ke ${event.setlistName}"
-                is PlayerSetlistEvent.AlreadyPresent -> "Sudah ada di ${event.setlistName}"
-                PlayerSetlistEvent.Error -> "Gagal menambahkan ke setlist"
+                is PlayerSetlistEvent.Added -> strings.addedToSetlist(event.setlistName)
+                is PlayerSetlistEvent.AlreadyPresent -> strings.alreadyInSetlist(event.setlistName)
+                PlayerSetlistEvent.Error -> strings.failedToAddToSetlist
             }
             snackbarHostState.showSnackbar(message)
         }
     }
-    LaunchedEffect(viewModel) {
+    LaunchedEffect(viewModel, strings) {
         viewModel.favoriteEvents.collect { event ->
             val message = when (event) {
-                is PlayerFavoriteEvent.Changed -> if (event.isFavorite) "Ditambahkan ke favorit" else "Dihapus dari favorit"
-                PlayerFavoriteEvent.Error -> "Gagal mengubah favorit"
+                is PlayerFavoriteEvent.Changed -> if (event.isFavorite) strings.addedToFavorites else strings.removedFromFavorites
+                PlayerFavoriteEvent.Error -> strings.failedToUpdateFavorites
             }
             snackbarHostState.showSnackbar(message)
         }
@@ -729,17 +730,25 @@ fun PlayerScreen(
     LaunchedEffect(autoScrollSpeed > 0f, isPageFlip, currentSheet?.lines?.size, lineHeightPx) {
         if (autoScrollSpeed <= 0f || isPageFlip) return@LaunchedEffect
         var previousFrame = withFrameNanos { it }
+        var remainder = 0f
         while (currentAutoScrollSpeed > 0f && !currentPageFlip) {
             val frame = withFrameNanos { it }
-            val delta = autoScrollDeltaPx(
+            val rawDelta = autoScrollDeltaPx(
                 elapsedNanos = frame - previousFrame,
                 linesPerSecond = currentAutoScrollSpeed,
                 lineHeightPx = lineHeightPx
-            )
+            ) + remainder
             previousFrame = frame
-            if (delta <= 0f) continue
-            val consumed = listState.scrollBy(delta)
-            if (consumed < delta * 0.5f && !listState.canScrollForward) {
+            if (rawDelta <= 0f) continue
+            val toScroll = if (rawDelta < 0.5f) {
+                remainder = rawDelta
+                continue
+            } else {
+                remainder = 0f
+                rawDelta
+            }
+            val consumed = listState.scrollBy(toScroll)
+            if (consumed < toScroll * 0.5f && !listState.canScrollForward) {
                 viewModel.pauseAutoScroll()
                 break
             }
@@ -780,7 +789,7 @@ fun PlayerScreen(
                 ) {
                     Icon(
                         imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = if (isFavorite) "Hapus dari favorit" else "Tambahkan ke favorit",
+                        contentDescription = if (isFavorite) strings.removeFromFavorites else strings.addToFavorites,
                         tint = if (isFavorite) ActiveHeart else PrimaryText,
                         modifier = Modifier.size(24.dp)
                     )
@@ -795,7 +804,7 @@ fun PlayerScreen(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.PlaylistAdd,
-                        contentDescription = "Tambahkan lagu ke setlist",
+                        contentDescription = strings.addSongToSetlist,
                         tint = Background,
                         modifier = Modifier.size(20.dp)
                     )
@@ -867,7 +876,7 @@ fun PlayerScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "Tidak ada isi lembaran untuk versi ini.",
+                        strings.noSheetContent,
                         color = MutedText,
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center
@@ -890,7 +899,18 @@ fun PlayerScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        itemsIndexed(lines) { idx, line ->
+                        itemsIndexed(
+                            items = lines,
+                            key = { idx, _ -> idx },
+                            contentType = { _, line ->
+                                when (line) {
+                                    is SheetLine.Blank -> 0
+                                    is SheetLine.Section -> 1
+                                    is SheetLine.Lyric -> 2
+                                    is SheetLine.Chords -> if (line.isBarLine) 3 else 4
+                                }
+                            }
+                        ) { idx, line ->
                             // Chord+lyric wrap sebagai satu blok: chord tetap di atas
                             // katanya dan turun bersama katanya ketika baris tidak muat.
                             // Index tetap 1:1 dengan `lines` supaya anchor scroll saat
@@ -1012,10 +1032,10 @@ fun PlayerScreen(
     if (showSetlistPicker) {
         AlertDialog(
             onDismissRequest = { if (!isAddingToSetlist) showSetlistPicker = false },
-            title = { Text("Tambahkan ke setlist") },
+            title = { Text(strings.addToSetlistDialogTitle) },
             text = {
                 if (setlists.isEmpty()) {
-                    Text("Belum ada setlist. Buat setlist baru untuk menyimpan lagu ini.")
+                    Text(strings.noSetlistsPrompt)
                 } else {
                     LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
                         items(setlists, key = { it.id }) { setlist ->
@@ -1041,13 +1061,13 @@ fun PlayerScreen(
                         showSetlistPicker = false
                         showCreateSetlist = true
                     }
-                ) { Text("Buat setlist") }
+                ) { Text(strings.createSetlist) }
             },
             dismissButton = {
                 TextButton(
                     enabled = !isAddingToSetlist,
                     onClick = { showSetlistPicker = false }
-                ) { Text("Batal") }
+                ) { Text(strings.cancel) }
             }
         )
     }
@@ -1055,14 +1075,14 @@ fun PlayerScreen(
     if (showCreateSetlist) {
         AlertDialog(
             onDismissRequest = { if (!isAddingToSetlist) showCreateSetlist = false },
-            title = { Text("Setlist baru") },
+            title = { Text(strings.newSetlist) },
             text = {
                 TextField(
                     value = newSetlistName,
                     onValueChange = { newSetlistName = it },
                     enabled = !isAddingToSetlist,
                     singleLine = true,
-                    placeholder = { Text("Nama setlist") }
+                    placeholder = { Text(strings.setlistName) }
                 )
             },
             confirmButton = {
@@ -1073,7 +1093,7 @@ fun PlayerScreen(
                         newSetlistName = ""
                         showCreateSetlist = false
                     }
-                ) { Text("Buat & tambahkan") }
+                ) { Text(strings.createAndAdd) }
             },
             dismissButton = {
                 TextButton(
@@ -1082,7 +1102,7 @@ fun PlayerScreen(
                         newSetlistName = ""
                         showCreateSetlist = false
                     }
-                ) { Text("Batal") }
+                ) { Text(strings.cancel) }
             }
         )
     }

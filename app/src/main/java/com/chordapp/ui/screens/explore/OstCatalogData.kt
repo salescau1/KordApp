@@ -33,18 +33,32 @@ object OstCatalogData {
             id = "naruto",
             title = "Naruto & Naruto Shippuden",
             category = "Anime & Jepang",
-            subtitle = "Akeboshi, Ikimono-Gakari, Flow, KANA-BOON, AKFG",
+            subtitle = "Akeboshi, Ikimono-Gakari, Flow, KANA-BOON, Sambomaster, nobodyknows+",
             songs = listOf(
                 OstSongItem("Wind", "Akeboshi", "akeboshi", "wind", "Ending 1"),
-                OstSongItem("Yellow Moon", "Akeboshi", "akeboshi", "yellow-moon", "Ending 13"),
-                OstSongItem("Blue Bird", "Ikimono-Gakari", "ikimono-gakari", "blue-bird", "Shippuden OP 3"),
-                OstSongItem("Silhouette", "KANA-BOON", "kana-boon", "silhouette", "Shippuden OP 16"),
-                OstSongItem("GO!!!", "Flow", "flow", "go", "Naruto OP 4"),
-                OstSongItem("Sign", "Flow", "flow", "sign", "Shippuden OP 6"),
                 OstSongItem("Haruka Kanata", "Asian Kung-Fu Generation", "asian-kung-fu-generation", "haruka-kanata", "Naruto OP 2"),
+                OstSongItem("Kanashimi wo Yasashisa ni", "little by little", "little-by-little", "kanashimi-wo-yasashisa-ni", "Naruto OP 3"),
+                OstSongItem("GO!!!", "Flow", "flow", "go", "Naruto OP 4"),
+                OstSongItem("Seishun Kyousoukyoku", "Sambomaster", "sambomaster", "seishun-kyousoukyoku", "Naruto OP 5"),
+                OstSongItem("Namikaze Satellite", "Snowkel", "snowkel", "namikaze-satellite", "Naruto OP 7"),
+                OstSongItem("Yura Yura", "Hearts Grow", "hearts-grow", "yura-yura", "Naruto OP 9"),
+                OstSongItem("Harmonia", "RYTHEM", "rythem", "harmonia", "Naruto ED 2"),
+                OstSongItem("Yellow Moon", "Akeboshi", "akeboshi", "yellow-moon", "Ending 13"),
+                OstSongItem("Hero's Come Back!!", "nobodyknows+", "nobodyknows", "hero-s-come-back", "Shippuden OP 1"),
+                OstSongItem("Blue Bird", "Ikimono-Gakari", "ikimono-gakari", "blue-bird", "Shippuden OP 3"),
                 OstSongItem("Hotaru no Hikari", "Ikimono-Gakari", "ikimono-gakari", "hotaru-no-hikari", "Shippuden OP 5"),
+                OstSongItem("Sign", "Flow", "flow", "sign", "Shippuden OP 6"),
+                OstSongItem("Toumei Datta Sekai", "Motohiro Hata", "motohiro-hata", "toumei-datta-sekai", "Shippuden OP 7"),
                 OstSongItem("Lovers", "7!!", "7", "lovers", "Shippuden OP 9"),
-                OstSongItem("Toumei Datta Sekai", "Motohiro Hata", "motohiro-hata", "toumei-datta-sekai", "Shippuden OP 7")
+                OstSongItem("Totsugeki Rock", "The Cro-Magnons", "the-cro-magnons", "totsugeki-rock", "Shippuden OP 11"),
+                OstSongItem("Tsuki no Ookisa", "Nogizaka46", "nogizaka46", "tsuki-no-ookisa", "Shippuden OP 14"),
+                OstSongItem("Silhouette", "KANA-BOON", "kana-boon", "silhouette", "Shippuden OP 16"),
+                OstSongItem("Kara no Kokoro", "Anly", "anly", "kara-no-kokoro", "Shippuden OP 20"),
+                OstSongItem("Utakata Hanabi", "supercell", "supercell", "utakata-hanabi", "Shippuden ED 14"),
+                OstSongItem("Kotoba no Iranai Yakusoku", "HoneyWorks", "honeyworks", "kotoba-no-iranai-yakusoku", "Shippuden ED 33"),
+                OstSongItem("Pino to Amelie", "Huwie Ishizaki", "huwie-ishizaki", "pino-to-amelie", "Shippuden ED 38"),
+                OstSongItem("Hoshi no Utsuwa", "Sukima Switch", "sukima-switch", "hoshi-no-utsuwa", "The Last: Movie Theme"),
+                OstSongItem("Baton Road", "KANA-BOON", "kana-boon", "baton-road", "Boruto OP 1")
             )
         ),
 
@@ -63,10 +77,11 @@ object OstCatalogData {
             id = "demon_slayer",
             title = "Demon Slayer (Kimetsu no Yaiba)",
             category = "Anime & Jepang",
-            subtitle = "LiSA",
+            subtitle = "LiSA, MAN WITH A MISSION x milet",
             songs = listOf(
                 OstSongItem("Gurenge", "LiSA", "lisa", "gurenge", "Opening 1"),
-                OstSongItem("Homura", "LiSA", "lisa", "homura", "Mugen Train Theme")
+                OstSongItem("Homura", "LiSA", "lisa", "homura", "Mugen Train Theme"),
+                OstSongItem("Kizuna no Kiseki", "MAN WITH A MISSION x milet", "man-with-a-mission-x-milet", "kizuna-no-kiseki", "Swordsmith Village OP")
             )
         ),
         OstFranchise(
@@ -84,12 +99,14 @@ object OstCatalogData {
             id = "one_piece",
             title = "One Piece",
             category = "Anime & Jepang",
-            subtitle = "Hiroshi Kitadani, Ado, BOYSTYLE",
+            subtitle = "Hiroshi Kitadani, Ado, BOYSTYLE, The Babystars",
             songs = listOf(
                 OstSongItem("We Are!", "Hiroshi Kitadani", "hiroshi-kitadani", "we-are", "Opening 1"),
+                OstSongItem("Hikari E", "The Babystars", "the-babystars", "hikari-e", "Opening 3"),
                 OstSongItem("Kokoro no Chizu", "BOYSTYLE", "boystyle", "kokoro-no-chizu", "Opening 5"),
                 OstSongItem("Memories", "Maki Otsuki", "maki-otsuki", "memories", "Ending 1"),
-                OstSongItem("New Genesis (Shinjidai)", "Ado", "ado", "new-genesis-shinjidai", "Film Red Theme")
+                OstSongItem("New Genesis (Shinjidai)", "Ado", "ado", "new-genesis-shinjidai", "Film Red Theme"),
+                OstSongItem("Watashi wa Saikyou", "Ado", "ado", "watashi-wa-saikyou", "Film Red Insert")
             )
         ),
 
@@ -470,6 +487,25 @@ object OstCatalogData {
                 OstSongItem("I Think I", "Byul", "byul", "i-think-i", "Theme Song")
             )
         ),
+        OstFranchise(
+            id = "cloy",
+            title = "Crash Landing on You",
+            category = "K-Drama",
+            subtitle = "IU, Yerin Baek",
+            songs = listOf(
+                OstSongItem("Give You My Heart", "IU", "iu", "give-you-my-heart", "OST Part 11"),
+                OstSongItem("Here I Am Again", "Yerin Baek", "yerin-baek", "here-i-am-again", "OST Part 4")
+            )
+        ),
+        OstFranchise(
+            id = "queen_of_tears",
+            title = "Queen of Tears",
+            category = "K-Drama",
+            subtitle = "BSS (SEVENTEEN)",
+            songs = listOf(
+                OstSongItem("The Reasons of My Smiles", "BSS (SEVENTEEN)", "bss-seventeen", "the-reasons-of-my-smiles", "OST Part 1")
+            )
+        ),
 
         // ==========================================
         // 4. HOLLYWOOD & DISNEY
@@ -490,10 +526,16 @@ object OstCatalogData {
             id = "frozen",
             title = "Disney's Frozen (1 & 2)",
             category = "Hollywood & Disney",
-            subtitle = "Idina Menzel",
+            subtitle = "Idina Menzel, Kristen Bell, Josh Gad",
             songs = listOf(
-                OstSongItem("Let It Go", "Idina Menzel", "idina-menzel", "let-it-go", "Main Theme"),
-                OstSongItem("Into the Unknown", "Idina Menzel", "idina-menzel", "into-the-unknown", "Frozen 2 Theme")
+                OstSongItem("Do You Want to Build a Snowman?", "Kristen Bell", "kristen-bell", "do-you-want-to-build-a-snowman", "Anna Solo"),
+                OstSongItem("For the First Time in Forever", "Kristen Bell & Idina Menzel", "kristen-bell-idina-menzel", "for-the-first-time-in-forever", "Anna & Elsa Duet"),
+                OstSongItem("Love Is an Open Door", "Kristen Bell & Santino Fontana", "kristen-bell-santino-fontana", "love-is-an-open-door", "Anna & Hans Duet"),
+                OstSongItem("Let It Go", "Idina Menzel", "idina-menzel", "let-it-go", "Main Anthem - Oscar Winner"),
+                OstSongItem("In Summer", "Josh Gad", "josh-gad", "in-summer", "Olaf Song"),
+                OstSongItem("Fixer Upper", "Frozen Cast", "frozen-cast", "fixer-upper", "Trolls Song"),
+                OstSongItem("Into the Unknown", "Idina Menzel", "idina-menzel", "into-the-unknown", "Frozen 2 Theme"),
+                OstSongItem("Lost in the Woods", "Jonathan Groff", "jonathan-groff", "lost-in-the-woods", "Kristoff (Frozen 2)")
             )
         ),
         OstFranchise(
@@ -526,29 +568,33 @@ object OstCatalogData {
             id = "lion_king",
             title = "Disney's The Lion King",
             category = "Hollywood & Disney",
-            subtitle = "Elton John, Nathan Lane",
+            subtitle = "Elton John, Nathan Lane, Jason Weaver",
             songs = listOf(
                 OstSongItem("Circle Of Life", "Elton John", "elton-john", "circle-of-life", "Opening Anthem"),
-                OstSongItem("Hakuna Matata", "Nathan Lane", "nathan-lane", "hakuna-matata", "Timon & Pumbaa")
+                OstSongItem("Hakuna Matata", "Nathan Lane", "nathan-lane", "hakuna-matata", "Timon & Pumbaa"),
+                OstSongItem("I Just Can't Wait to Be King", "Jason Weaver", "jason-weaver", "i-just-can-t-wait-to-be-king", "Young Simba")
             )
         ),
         OstFranchise(
             id = "beauty_and_the_beast",
             title = "Disney's Beauty and the Beast",
             category = "Hollywood & Disney",
-            subtitle = "Celine Dion & Peabo Bryson",
+            subtitle = "Celine Dion, Peabo Bryson, Cast",
             songs = listOf(
-                OstSongItem("Beauty And The Beast", "Celine Dion", "celine-dion", "beauty-and-the-beast", "Oscar Winner")
+                OstSongItem("Beauty And The Beast", "Celine Dion", "celine-dion", "beauty-and-the-beast", "Oscar Winner"),
+                OstSongItem("Be Our Guest", "Beauty and the Beast Cast", "beauty-and-the-beast-cast", "be-our-guest", "Lumiere & Castle")
             )
         ),
         OstFranchise(
             id = "tangled",
             title = "Disney's Tangled (Rapunzel)",
             category = "Hollywood & Disney",
-            subtitle = "Mandy Moore",
+            subtitle = "Mandy Moore, Donna Murphy, Cast",
             songs = listOf(
-                OstSongItem("I See The Light", "Mandy Moore", "mandy-moore", "i-see-the-light", "Main Theme"),
-                OstSongItem("When Will My Life Begin", "Mandy Moore", "mandy-moore", "when-will-my-life-begin", "Soundtrack")
+                OstSongItem("When Will My Life Begin", "Mandy Moore", "mandy-moore", "when-will-my-life-begin", "Opening Song"),
+                OstSongItem("Mother Knows Best", "Donna Murphy", "donna-murphy", "mother-knows-best", "Mother Gothel"),
+                OstSongItem("I've Got a Dream", "Tangled Cast", "tangled-cast", "i-ve-got-a-dream", "Snuggly Duckling"),
+                OstSongItem("I See The Light", "Mandy Moore", "mandy-moore", "i-see-the-light", "Lantern Scene Duet")
             )
         ),
         OstFranchise(
@@ -564,36 +610,47 @@ object OstCatalogData {
             id = "moana",
             title = "Disney's Moana",
             category = "Hollywood & Disney",
-            subtitle = "Auli'i Cravalho, Lin-Manuel Miranda",
+            subtitle = "Auli'i Cravalho, Dwayne Johnson, Lin-Manuel Miranda",
             songs = listOf(
-                OstSongItem("How Far I'll Go", "Auli'i Cravalho", "auli-i-cravalho", "how-far-i-ll-go", "Main Theme")
+                OstSongItem("How Far I'll Go", "Auli'i Cravalho", "auli-i-cravalho", "how-far-i-ll-go", "Main Anthem - Oscar Nom"),
+                OstSongItem("You're Welcome", "Dwayne Johnson", "dwayne-johnson", "you-re-welcome", "Maui Anthem"),
+                OstSongItem("We Know the Way", "Lin-Manuel Miranda & Opetaia Foa'i", "lin-manuel-miranda-opetaia-foa-i", "we-know-the-way", "Voyagers Anthem"),
+                OstSongItem("I Am Moana", "Rachel House & Aulii Cravalho", "rachel-house-aulii-cravalho", "i-am-moana", "Song of the Ancestors")
             )
         ),
         OstFranchise(
             id = "encanto",
             title = "Disney's Encanto",
             category = "Hollywood & Disney",
-            subtitle = "Lin-Manuel Miranda",
+            subtitle = "Lin-Manuel Miranda, Stephanie Beatriz, Jessica Darrow",
             songs = listOf(
-                OstSongItem("We Don't Talk About Bruno", "Lin-Manuel Miranda", "lin-manuel-miranda", "we-don-t-talk-about-bruno", "Billboard #1")
+                OstSongItem("The Family Madrigal", "Stephanie Beatriz & Encanto Cast", "stephanie-beatriz-encanto-cast", "the-family-madrigal", "Opening"),
+                OstSongItem("Waiting On A Miracle", "Stephanie Beatriz", "stephanie-beatriz", "waiting-on-a-miracle", "Mirabel Solo"),
+                OstSongItem("Surface Pressure", "Jessica Darrow", "jessica-darrow", "surface-pressure", "Luisa Solo"),
+                OstSongItem("We Don't Talk About Bruno", "Lin-Manuel Miranda", "lin-manuel-miranda", "we-don-t-talk-about-bruno", "Billboard #1 Hit"),
+                OstSongItem("What Else Can I Do?", "Diane Guerrero & Stephanie Beatriz", "diane-guerrero-stephanie-beatriz", "what-else-can-i-do", "Isabela & Mirabel"),
+                OstSongItem("Dos Oruguitas", "Sebastian Yatra", "sebastian-yatra", "dos-oruguitas", "Oscar Nominee")
             )
         ),
         OstFranchise(
             id = "mulan",
             title = "Disney's Mulan",
             category = "Hollywood & Disney",
-            subtitle = "Christina Aguilera, Lea Salonga",
+            subtitle = "Christina Aguilera, Donny Osmond",
             songs = listOf(
-                OstSongItem("Reflection", "Christina Aguilera", "christina-aguilera", "reflection", "Main Theme")
+                OstSongItem("Reflection", "Christina Aguilera", "christina-aguilera", "reflection", "Main Theme"),
+                OstSongItem("I'll Make a Man Out of You", "Donny Osmond", "donny-osmond", "i-ll-make-a-man-out-of-you", "Training Anthem")
             )
         ),
         OstFranchise(
             id = "hercules_pocahontas",
             title = "Disney's Hercules & Pocahontas",
             category = "Hollywood & Disney",
-            subtitle = "Michael Bolton, Vanessa Williams",
+            subtitle = "Michael Bolton, Susan Egan, Vanessa Williams",
             songs = listOf(
                 OstSongItem("Go The Distance", "Michael Bolton", "michael-bolton", "go-the-distance", "Hercules Theme"),
+                OstSongItem("I Won't Say (I'm in Love)", "Susan Egan", "susan-egan", "i-won-t-say-i-m-in-love", "Megara Solo"),
+                OstSongItem("Zero to Hero", "Hercules Cast", "hercules-cast", "zero-to-hero", "Muses Anthem"),
                 OstSongItem("Colors Of The Wind", "Vanessa Williams", "vanessa-williams", "colors-of-the-wind", "Pocahontas Theme")
             )
         ),
@@ -603,7 +660,34 @@ object OstCatalogData {
             category = "Hollywood & Disney",
             subtitle = "Anthony Gonzalez, Gael García Bernal",
             songs = listOf(
-                OstSongItem("Remember Me", "Anthony Gonzalez", "anthony-gonzalez", "remember-me", "Oscar Winner")
+                OstSongItem("Remember Me", "Anthony Gonzalez", "anthony-gonzalez", "remember-me", "Oscar Winner"),
+                OstSongItem("Un Poco Loco", "Anthony Gonzalez & Gael Garcia Bernal", "anthony-gonzalez-gael-garcia-bernal", "un-poco-loco", "Talent Show Duet"),
+                OstSongItem("Proud Corazon", "Anthony Gonzalez", "anthony-gonzalez", "proud-corazon", "Finale")
+            )
+        ),
+        OstFranchise(
+            id = "shrek",
+            title = "Shrek (1 & 2)",
+            category = "Hollywood & Disney",
+            subtitle = "Smash Mouth, Counting Crows, Rufus Wainwright, Bonnie Tyler",
+            songs = listOf(
+                OstSongItem("All Star", "Smash Mouth", "smash-mouth", "all-star", "Opening Anthem"),
+                OstSongItem("Im A Believer", "Smash Mouth", "smash-mouth", "im-a-believer", "Ending Celebration"),
+                OstSongItem("Accidentally In Love", "Counting Crows", "counting-crows", "accidentally-in-love", "Shrek 2 Honeymoon"),
+                OstSongItem("Holding Out For A Hero", "Bonnie Tyler", "bonnie-tyler", "holding-out-for-a-hero", "Fairy Godmother Climax"),
+                OstSongItem("Hallelujah", "Rufus Wainwright", "rufus-wainwright", "hallelujah", "Emotional Montage")
+            )
+        ),
+        OstFranchise(
+            id = "lotr_hobbit",
+            title = "The Lord of the Rings & The Hobbit",
+            category = "Hollywood & Disney",
+            subtitle = "Enya, Ed Sheeran, Annie Lennox, Howard Shore",
+            songs = listOf(
+                OstSongItem("May It Be", "Enya", "enya", "may-it-be", "Fellowship of the Ring"),
+                OstSongItem("Into the West", "Annie Lennox", "annie-lennox", "into-the-west", "Return of the King (Oscar Winner)"),
+                OstSongItem("Misty Mountains", "Richard Armitage", "richard-armitage", "misty-mountains", "The Hobbit: An Unexpected Journey"),
+                OstSongItem("I See Fire", "Ed Sheeran", "ed-sheeran", "i-see-fire", "The Desolation of Smaug")
             )
         ),
         OstFranchise(
@@ -761,10 +845,11 @@ object OstCatalogData {
             id = "top_gun",
             title = "Top Gun & Maverick",
             category = "Hollywood & Disney",
-            subtitle = "Kenny Loggins, Berlin",
+            subtitle = "Kenny Loggins, Berlin, OneRepublic",
             songs = listOf(
                 OstSongItem("Danger Zone", "Kenny Loggins", "kenny-loggins", "danger-zone", "Top Gun Theme"),
-                OstSongItem("Take My Breath Away", "Berlin", "berlin", "take-my-breath-away", "Love Theme")
+                OstSongItem("Take My Breath Away", "Berlin", "berlin", "take-my-breath-away", "Love Theme"),
+                OstSongItem("I Ain't Worried", "OneRepublic", "onerepublic", "i-ain-t-worried", "Maverick Beach Scene")
             )
         ),
         OstFranchise(
@@ -801,9 +886,11 @@ object OstCatalogData {
             id = "barbie",
             title = "Barbie (2023)",
             category = "Hollywood & Disney",
-            subtitle = "Billie Eilish",
+            subtitle = "Billie Eilish, Ryan Gosling, Dua Lipa",
             songs = listOf(
-                OstSongItem("What Was I Made For?", "Billie Eilish", "billie-eilish", "what-was-i-made-for", "Oscar Winner")
+                OstSongItem("What Was I Made For?", "Billie Eilish", "billie-eilish", "what-was-i-made-for", "Oscar Winner"),
+                OstSongItem("I'm Just Ken", "Ryan Gosling", "ryan-gosling", "i-m-just-ken", "Ken Anthem - Oscar Nominee"),
+                OstSongItem("Dance the Night", "Dua Lipa", "dua-lipa", "dance-the-night", "Party Theme")
             )
         ),
 

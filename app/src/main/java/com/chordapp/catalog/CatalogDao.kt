@@ -36,7 +36,7 @@ interface CatalogDao {
     """)
     suspend fun getArtistSongs(artistSlug: String): List<CatalogSongGroup>
 
-    @Query("SELECT artist, artist_slug, COUNT(DISTINCT title_slug) as song_count FROM songs GROUP BY artist_slug ORDER BY artist COLLATE NOCASE ASC")
+    @Query("SELECT artist, artist_slug, MAX(region) as region, COUNT(DISTINCT title_slug) as song_count FROM songs GROUP BY artist_slug ORDER BY artist COLLATE NOCASE ASC")
     suspend fun getAllArtists(): List<CatalogArtistInfo>
 
     @Query("SELECT COUNT(DISTINCT artist_slug) FROM songs")
@@ -45,11 +45,11 @@ interface CatalogDao {
     @Query("SELECT COUNT(*) FROM (SELECT 1 FROM songs GROUP BY artist_slug, title_slug)")
     suspend fun getUniqueSongCount(): Int
 
-    @Query("SELECT artist, artist_slug, COUNT(DISTINCT title_slug) as song_count FROM songs GROUP BY artist_slug ORDER BY artist ASC LIMIT :limit OFFSET :offset")
+    @Query("SELECT artist, artist_slug, MAX(region) as region, COUNT(DISTINCT title_slug) as song_count FROM songs GROUP BY artist_slug ORDER BY artist ASC LIMIT :limit OFFSET :offset")
     suspend fun getArtists(limit: Int = 100, offset: Int = 0): List<CatalogArtistInfo>
 
     @Query("""
-        SELECT artist, artist_slug, COUNT(DISTINCT title_slug) as song_count
+        SELECT artist, artist_slug, MAX(region) as region, COUNT(DISTINCT title_slug) as song_count
         FROM songs
         WHERE artist LIKE '%' || :query || '%'
         GROUP BY artist_slug

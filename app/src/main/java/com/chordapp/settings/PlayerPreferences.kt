@@ -13,8 +13,13 @@ class PlayerPreferences(context: Context) {
         get() = prefs.getFloat(KEY_SCROLL_SPEED, 1f).coerceIn(0.5f, 4f)
         set(value) { prefs.edit().putFloat(KEY_SCROLL_SPEED, value.coerceIn(0.5f, 4f)).apply() }
 
+    var appLanguage: String
+        get() = prefs.getString(KEY_APP_LANGUAGE, "en") ?: "en"
+        set(value) { prefs.edit().putString(KEY_APP_LANGUAGE, value).apply() }
+
     companion object {
         private const val KEY_KEEP_AWAKE = "keep_screen_awake"
         private const val KEY_SCROLL_SPEED = "default_scroll_speed"
+        const val KEY_APP_LANGUAGE = "app_language"
     }
 }

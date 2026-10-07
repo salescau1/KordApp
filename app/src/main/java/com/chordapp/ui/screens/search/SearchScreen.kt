@@ -37,6 +37,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chordapp.ui.components.AppBackButton
+import com.chordapp.ui.components.RegionBadge
 import com.chordapp.ui.theme.*
 import com.chordapp.viewmodels.SearchViewModel
 
@@ -48,6 +49,7 @@ fun SearchScreen(
     onArtistClick: (String) -> Unit,
     onSongClick: (String, String) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     val query by viewModel.query.collectAsState()
     val artistResults by viewModel.artistResults.collectAsState()
     val songResults by viewModel.songResults.collectAsState()
@@ -90,7 +92,7 @@ fun SearchScreen(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Kembali",
+                        contentDescription = strings.back,
                         tint = PrimaryText,
                         modifier = Modifier.size(22.dp)
                     )
@@ -135,7 +137,7 @@ fun SearchScreen(
                             ) {
                                 if (query.isEmpty()) {
                                     Text(
-                                        text = "Cari lagu atau artis...",
+                                        text = strings.searchPlaceholder,
                                         color = MutedText,
                                         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp)
                                     )
@@ -151,7 +153,7 @@ fun SearchScreen(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Filled.Clear,
-                                        contentDescription = "Hapus pencarian",
+                                        contentDescription = strings.clearSearch,
                                         tint = MutedText,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -185,7 +187,7 @@ fun SearchScreen(
                 if (artistResults.isNotEmpty()) {
                     item {
                         Text(
-                            text = "ARTIS",
+                            text = strings.artistsHeader,
                             color = AccentGold,
                             style = MaterialTheme.typography.labelMedium,
                             modifier = Modifier.padding(bottom = 8.dp)
@@ -217,13 +219,20 @@ fun SearchScreen(
                                 }
                                 Spacer(modifier = Modifier.width(14.dp))
                                 Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = artist.artistName,
+                                            color = PrimaryText,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            modifier = Modifier.weight(1f, fill = false)
+                                        )
+                                        artist.region?.let { reg ->
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            RegionBadge(region = reg, compact = true)
+                                        }
+                                    }
                                     Text(
-                                        text = artist.artistName,
-                                        color = PrimaryText,
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                    Text(
-                                        text = "${artist.songCount} lagu • Artis",
+                                        text = strings.artistSongsBadge(artist.songCount),
                                         color = MutedText,
                                         style = MaterialTheme.typography.bodySmall
                                     )
@@ -240,7 +249,7 @@ fun SearchScreen(
                 if (songResults.isNotEmpty()) {
                     item {
                         Text(
-                            text = "LAGU",
+                            text = strings.songsHeader,
                             color = MutedText,
                             style = MaterialTheme.typography.labelMedium,
                             modifier = Modifier.padding(bottom = 8.dp)
@@ -272,7 +281,7 @@ fun SearchScreen(
                                 .padding(vertical = 48.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("Tidak ada hasil untuk \"${query.trim()}\"", color = MutedText)
+                            Text(strings.noResultsFor(query.trim()), color = MutedText)
                         }
                     }
                 }

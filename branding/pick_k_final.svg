@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 108 108">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F2C763"/>
+      <stop offset="100%" stop-color="#D89F36"/>
+    </linearGradient>
+    <!-- pick gitar simetris (sumbu x=54): pundak lebar di atas, ujung bawah MEMBULAT (bukan lancip) -->
+    <clipPath id="pick">
+      <path d="M54,28 C68,28 80,34 80,48 C80,63 67,80 54,84 C41,80 28,63 28,48 C28,34 40,28 54,28 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- pick (emas), simetris, ujung bulat — tanpa background -->
+  <path d="M54,28 C68,28 80,34 80,48 C80,63 67,80 54,84 C41,80 28,63 28,48 C28,34 40,28 54,28 Z" fill="url(#gold)"/>
+
+  <!-- K + shadow, di-clip ke dalam pick -->
+  <g clip-path="url(#pick)">
+    <!-- LONG SHADOW SOLID: tiap garis K di-extrusi jadi 1 bidang penuh ke pojok kanan-atas.
+         Bukan tumpukan kopi -> tepinya tegas, tanpa gerigi. -->
+    <g fill="#3E2410" stroke="#3E2410" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" opacity="0.5">
+      <path d="M45,50 L45,78 L79,42 L79,14 Z"/>
+      <path d="M45,64 L61,50 L95,14 L79,28 Z"/>
+      <path d="M45,64 L62,78 L96,42 L79,28 Z"/>
+    </g>
+    <!-- K utama brown, tegas -->
+    <g fill="none" stroke="#6B3A17" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M45,50 L45,78 M45,64 L61,50 M45,64 L62,78"/>
+    </g>
+  </g>
+</svg>

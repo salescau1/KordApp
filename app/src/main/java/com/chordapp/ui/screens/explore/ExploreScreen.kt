@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chordapp.catalog.CatalogArtistInfo
 import com.chordapp.catalog.CatalogSongGroup
+import com.chordapp.ui.components.RegionBadge
 import com.chordapp.ui.components.SourceBadge
 import com.chordapp.ui.theme.*
 import com.chordapp.viewmodels.ExploreViewModel
@@ -109,6 +110,7 @@ fun ExploreScreen(
             .background(Background)
     ) {
         // Header
+        val strings = com.chordapp.localization.LocalAppStrings.current
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -118,13 +120,13 @@ fun ExploreScreen(
         ) {
             Column {
                 Text(
-                    text = "EXPLORE",
+                    text = strings.exploreTitle,
                     color = PrimaryText,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Katalog Artis & Genre Musik",
+                    text = strings.exploreSubtitle,
                     color = MutedText,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -136,7 +138,7 @@ fun ExploreScreen(
                     border = BorderStroke(1.dp, Border)
                 ) {
                     Text(
-                        text = "${artists.size} Artis",
+                        text = strings.artistsCount(artists.size),
                         color = AccentGold,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
@@ -154,14 +156,14 @@ fun ExploreScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             singleLine = true,
-            placeholder = { Text("Cari nama artis atau band...", color = MutedText) },
+            placeholder = { Text(strings.searchArtistPlaceholder, color = MutedText) },
             leadingIcon = {
                 Icon(Icons.Filled.Search, contentDescription = null, tint = AccentGold)
             },
             trailingIcon = if (query.isNotEmpty()) {
                 {
                     IconButton(onClick = { viewModel.setQuery("") }) {
-                        Icon(Icons.Filled.Clear, contentDescription = "Hapus pencarian", tint = MutedText)
+                        Icon(Icons.Filled.Clear, contentDescription = strings.clearSearch, tint = MutedText)
                     }
                 }
             } else null,
@@ -254,6 +256,7 @@ private fun ExploreMainOverview(
     onGenreClick: (ExploreGenre) -> Unit,
     onLetterClick: (Char) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -262,7 +265,7 @@ private fun ExploreMainOverview(
     ) {
         // Section 1: Genre & Kategori
         Text(
-            text = "JELAJAH GENRE & KATEGORI",
+            text = strings.genresAndCategoriesSection,
             color = AccentGold,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
@@ -308,14 +311,14 @@ private fun ExploreMainOverview(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "KATALOG ABJAD (# — Z)",
+                text = strings.alphabeticalCatalogSection,
                 color = AccentGold,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
             Text(
-                text = "Pilih karakter",
+                text = strings.selectCharacter,
                 color = MutedText,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -364,7 +367,7 @@ private fun ExploreMainOverview(
                                         fontSize = 15.sp
                                     )
                                     Text(
-                                        text = if (item == '★') "Semua" else count.toString(),
+                                        text = if (item == '★') strings.all else count.toString(),
                                         color = if (isEnabled) MutedText else MutedText.copy(alpha = 0.3f),
                                         style = MaterialTheme.typography.labelSmall,
                                         fontSize = 9.sp
@@ -436,8 +439,9 @@ private fun GenreCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                val strings = com.chordapp.localization.LocalAppStrings.current
                 Text(
-                    text = if (genre.isSongs) "${OstCatalogData.FRANCHISES.size} Franchise • Film & Anime" else "${genre.artistSlugs.size} Artis",
+                    text = if (genre.isSongs) "${OstCatalogData.FRANCHISES.size} Franchises" else strings.artistsCount(genre.artistSlugs.size),
                     color = MutedText,
                     style = MaterialTheme.typography.bodySmall,
                     fontSize = 11.sp,
@@ -456,6 +460,7 @@ private fun GenreDetailView(
     onBack: () -> Unit,
     onArtistClick: (String) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     Column(modifier = Modifier.fillMaxSize()) {
         // Back Bar
         Row(
@@ -476,13 +481,13 @@ private fun GenreDetailView(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Kembali",
+                        contentDescription = strings.back,
                         tint = AccentGold,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Kembali ke Jelajah",
+                        text = strings.backToExplore,
                         color = PrimaryText,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold
@@ -498,7 +503,7 @@ private fun GenreDetailView(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "${artists.size} artis ditemukan",
+                    text = strings.artistsFound(artists.size),
                     color = MutedText,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -563,6 +568,7 @@ private fun OstFranchiseDetailView(
     onBack: () -> Unit,
     onSongClick: (String, String) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     Column(modifier = Modifier.fillMaxSize()) {
         // Back Bar
         Row(
@@ -583,13 +589,13 @@ private fun OstFranchiseDetailView(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Kembali ke Franchise",
+                        contentDescription = strings.backToFranchises,
                         tint = AccentGold,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Kembali ke Franchise",
+                        text = strings.backToFranchises,
                         color = PrimaryText,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold
@@ -607,7 +613,7 @@ private fun OstFranchiseDetailView(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${franchise.category} • ${franchise.songs.size} Soundtrack",
+                    text = "${franchise.category} • ${strings.songsCount(franchise.songs.size)}",
                     color = MutedText,
                     style = MaterialTheme.typography.bodySmall,
                     fontSize = 11.sp
@@ -646,9 +652,10 @@ private fun OstFranchisesOverview(
     onBack: () -> Unit,
     onSongClick: (String, String) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     val filteredFranchises = remember(franchises, selectedCategory, searchQuery) {
         franchises.filter { f ->
-            val matchCategory = selectedCategory == "Semua" || f.category == selectedCategory
+            val matchCategory = selectedCategory == "Semua" || selectedCategory == strings.all || f.category == selectedCategory
             val matchSearch = searchQuery.isBlank() ||
                 f.title.contains(searchQuery, ignoreCase = true) ||
                 f.subtitle.contains(searchQuery, ignoreCase = true) ||
@@ -677,13 +684,13 @@ private fun OstFranchisesOverview(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Kembali ke Jelajah",
+                        contentDescription = strings.backToExplore,
                         tint = AccentGold,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Kembali ke Jelajah",
+                        text = strings.backToExplore,
                         color = PrimaryText,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold
@@ -699,7 +706,7 @@ private fun OstFranchisesOverview(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "${filteredFranchises.size} franchise ditemukan",
+                    text = "${filteredFranchises.size} franchises",
                     color = MutedText,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -716,14 +723,14 @@ private fun OstFranchisesOverview(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             singleLine = true,
-            placeholder = { Text("Cari franchise atau lagu soundtrack...", color = MutedText, fontSize = 13.sp) },
+            placeholder = { Text(strings.searchOstPlaceholder, color = MutedText, fontSize = 13.sp) },
             leadingIcon = {
                 Icon(Icons.Filled.Search, contentDescription = null, tint = AccentGold, modifier = Modifier.size(18.dp))
             },
             trailingIcon = if (searchQuery.isNotEmpty()) {
                 {
                     IconButton(onClick = { onSearchQueryChange("") }) {
-                        Icon(Icons.Filled.Clear, contentDescription = "Hapus pencarian", tint = MutedText)
+                        Icon(Icons.Filled.Clear, contentDescription = strings.clearSearch, tint = MutedText)
                     }
                 }
             } else null,
@@ -781,11 +788,11 @@ private fun OstFranchisesOverview(
                     onClick = { onFranchiseSelect(franchise) }
                 )
             }
-            if (otherOstSongs.isNotEmpty() && searchQuery.isBlank() && selectedCategory == "Semua") {
+            if (otherOstSongs.isNotEmpty() && searchQuery.isBlank() && (selectedCategory == "Semua" || selectedCategory == strings.all)) {
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "LAGU SOUNDTRACK LAINNYA",
+                        text = strings.otherSoundtracksSection,
                         color = AccentGold,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
@@ -808,6 +815,7 @@ private fun OstFranchiseCard(
     franchise: OstFranchise,
     onClick: () -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     val shape = RoundedCornerShape(12.dp)
     Surface(
         modifier = Modifier
@@ -859,7 +867,7 @@ private fun OstFranchiseCard(
                         border = BorderStroke(1.dp, Border)
                     ) {
                         Text(
-                            text = "${franchise.songs.size} Lagu",
+                            text = strings.songsCount(franchise.songs.size),
                             color = AccentGold,
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 10.sp,
@@ -988,6 +996,7 @@ private fun OstSongCard(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val strings = com.chordapp.localization.LocalAppStrings.current
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -1012,7 +1021,7 @@ private fun OstSongCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${song.artistName} • ${song.versionCount} versi chord",
+                    text = "${song.artistName} • ${strings.chordVersionsCount(song.versionCount)}",
                     color = MutedText,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
@@ -1039,6 +1048,7 @@ private fun LetterDetailView(
     onBack: () -> Unit,
     onArtistClick: (String) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     Column(modifier = Modifier.fillMaxSize()) {
         // Quick Alphabet Scroller
         LazyRow(
@@ -1055,7 +1065,7 @@ private fun LetterDetailView(
                     border = BorderStroke(1.dp, Border)
                 ) {
                     Text(
-                        text = "‹ Semua",
+                        text = strings.allBack,
                         color = AccentGold,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
@@ -1098,14 +1108,14 @@ private fun LetterDetailView(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "ARTIS ${if (selectedLetter == '#') "NON-ALFABET (#)" else selectedLetter.toString()}",
+                text = "${strings.navArtist.uppercase()} ${if (selectedLetter == '#') "#" else selectedLetter.toString()}",
                 color = AccentGold,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
             Text(
-                text = "${artists.size} artis ditemukan",
+                text = strings.artistsFound(artists.size),
                 color = MutedText,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -1133,6 +1143,7 @@ private fun SearchResultsView(
     results: List<CatalogArtistInfo>,
     onArtistClick: (String) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -1142,14 +1153,14 @@ private fun SearchResultsView(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "HASIL PENCARIAN",
+                text = strings.searchResults,
                 color = AccentGold,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
             Text(
-                text = "${results.size} artis",
+                text = strings.artistsCount(results.size),
                 color = MutedText,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -1173,14 +1184,14 @@ private fun SearchResultsView(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Tidak ada artis \"$query\"",
+                        text = strings.noArtistsFound(query),
                         color = PrimaryText,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Coba gunakan kata kunci nama artis lainnya.",
+                        text = strings.tryDifferentArtistKeyword,
                         color = MutedText,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -1207,6 +1218,7 @@ private fun ArtistCard(
     artist: CatalogArtistInfo,
     onClick: () -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     val shape = RoundedCornerShape(14.dp)
     Surface(
         modifier = Modifier
@@ -1241,14 +1253,21 @@ private fun ArtistCard(
             Spacer(modifier = Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = artist.artistName,
-                    color = PrimaryText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = artist.artistName,
+                        color = PrimaryText,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    artist.region?.let { reg ->
+                        Spacer(modifier = Modifier.width(6.dp))
+                        RegionBadge(region = reg, compact = true)
+                    }
+                }
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -1259,7 +1278,7 @@ private fun ArtistCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${artist.songCount} lagu",
+                        text = strings.songsCount(artist.songCount),
                         color = MutedText,
                         style = MaterialTheme.typography.bodySmall
                     )

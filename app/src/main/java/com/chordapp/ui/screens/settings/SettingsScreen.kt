@@ -6,18 +6,30 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
+import com.chordapp.localization.AppLanguage
+import com.chordapp.localization.LocalAppStrings
+import com.chordapp.repositories.LicenseRepository
 import com.chordapp.ui.theme.AccentGold
 import com.chordapp.ui.theme.Background
 import com.chordapp.ui.theme.Border
@@ -25,6 +37,7 @@ import com.chordapp.ui.theme.CardSurface
 import com.chordapp.ui.theme.MutedText
 import com.chordapp.ui.theme.PrimaryText
 import com.chordapp.viewmodels.SettingsViewModel
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
@@ -33,12 +46,15 @@ fun SettingsScreen(
     onAboutClick: () -> Unit,
     onLicenseTransferred: () -> Unit = {}
 ) {
+    val strings = LocalAppStrings.current
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
     val stats by viewModel.catalogStats.collectAsState()
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    var showTransferDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var isTransferring by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    var showTransferDialog by remember { mutableStateOf(false) }
+    var isTransferring by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -48,26 +64,51 @@ fun SettingsScreen(
             .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("SETTINGS", color = PrimaryText, fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.headlineSmall)
+        Text(
+            text = strings.settingsTitle,
+            color = PrimaryText,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineSmall
+        )
 
-        SettingsSection("KATALOG OFFLINE") {
-            InfoRow("Artis", stats.artists.toString())
-            HorizontalDivider(color = Border)
-            InfoRow("Lagu", stats.songs.toString())
-            HorizontalDivider(color = Border)
-            InfoRow("Ukuran katalog", formatBytes(stats.catalogBytes))
+        // Language Section
+        SettingsSection(strings.languageSection) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showLanguageDialog = true }
+                    .padding(vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(strings.appLanguageLabel, color = PrimaryText)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(currentLanguage.displayName, color = AccentGold, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.width(8.dp))
+                    Text("›", color = AccentGold)
+                }
+            }
         }
 
-        val isLicensed = androidx.compose.runtime.remember { com.chordapp.repositories.LicenseRepository.isLicensed(context) }
-        val savedKey = androidx.compose.runtime.remember { com.chordapp.repositories.LicenseRepository.getSavedLicenseKey(context) }
-        val deviceId = androidx.compose.runtime.remember { com.chordapp.repositories.LicenseRepository.getDeviceId(context) }
+        // Offline Catalog Section
+        SettingsSection(strings.offlineCatalogSection) {
+            InfoRow(strings.artists, stats.artists.toString())
+            HorizontalDivider(color = Border)
+            InfoRow(strings.songs, stats.songs.toString())
+            HorizontalDivider(color = Border)
+            InfoRow(strings.catalogSize, formatBytes(stats.catalogBytes, strings.calculating))
+        }
 
-        SettingsSection("LISENSI & PERANGKAT") {
-            InfoRow("Status Lisensi", if (isLicensed) "Aktif (PRO)" else "Belum Aktif")
+        val isLicensed = remember { LicenseRepository.isLicensed(context) }
+        val savedKey = remember { LicenseRepository.getSavedLicenseKey(context) }
+        val deviceId = remember { LicenseRepository.getDeviceId(context) }
+
+        // License & Device Section
+        SettingsSection(strings.licenseAndDeviceSection) {
+            InfoRow(strings.licenseStatus, if (isLicensed) strings.licenseActivePro else strings.licenseInactive)
             if (isLicensed && savedKey != null) {
                 HorizontalDivider(color = Border)
-                InfoRow("Kode Lisensi", savedKey)
+                InfoRow(strings.licenseKey, savedKey)
                 HorizontalDivider(color = Border)
                 Row(
                     modifier = Modifier
@@ -75,33 +116,33 @@ fun SettingsScreen(
                         .clickable { showTransferDialog = true }
                         .padding(vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Pindahkan Lisensi ke HP Lain", color = AccentGold, fontWeight = FontWeight.Medium)
+                    Text(strings.transferLicenseToOtherPhone, color = AccentGold, fontWeight = FontWeight.Medium)
                     Text("›", color = AccentGold)
                 }
             }
             HorizontalDivider(color = Border)
-            InfoRow("Device ID", deviceId)
+            InfoRow(strings.deviceId, deviceId)
         }
 
         if (showTransferDialog && savedKey != null) {
-            androidx.compose.material3.AlertDialog(
+            AlertDialog(
                 onDismissRequest = { if (!isTransferring) showTransferDialog = false },
-                title = { Text("Pindahkan Lisensi?", color = PrimaryText, fontWeight = FontWeight.Bold) },
+                title = { Text(strings.transferLicenseTitle, color = PrimaryText, fontWeight = FontWeight.Bold) },
                 text = {
                     Text(
-                        "Kode lisensi Anda: $savedKey\n\nPastikan Anda sudah menyalin kode di atas. Setelah dilepas, aplikasi di HP ini akan terkunci kembali dan kode bisa langsung digunakan di HP baru Anda.",
+                        text = strings.transferLicenseMessage(savedKey),
                         color = MutedText,
                         fontSize = 13.sp
                     )
                 },
                 confirmButton = {
-                    androidx.compose.material3.Button(
+                    Button(
                         onClick = {
                             isTransferring = true
                             scope.launch {
-                                val (ok, msg) = com.chordapp.repositories.LicenseRepository.transferLicenseSelfService(context)
+                                val (ok, msg) = LicenseRepository.transferLicenseSelfService(context)
                                 isTransferring = false
                                 showTransferDialog = false
                                 android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
@@ -111,27 +152,74 @@ fun SettingsScreen(
                             }
                         },
                         enabled = !isTransferring,
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = AccentGold)
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold)
                     ) {
-                        Text(if (isTransferring) "Melepas..." else "Ya, Lepas Lisensi", color = androidx.compose.ui.graphics.Color.Black, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (isTransferring) strings.releasingLicense else strings.releaseLicenseAction,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 },
                 dismissButton = {
-                    androidx.compose.material3.TextButton(
+                    TextButton(
                         onClick = { showTransferDialog = false },
                         enabled = !isTransferring
                     ) {
-                        Text("Batal", color = MutedText)
+                        Text(strings.cancel, color = MutedText)
                     }
                 },
                 containerColor = CardSurface
             )
         }
 
-        SettingsSection("APLIKASI") {
-            InfoRow("Versi", viewModel.versionName)
+        // Language Picker Dialog
+        if (showLanguageDialog) {
+            AlertDialog(
+                onDismissRequest = { showLanguageDialog = false },
+                title = { Text(strings.selectLanguage, color = PrimaryText, fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AppLanguage.entries.forEach { lang ->
+                            val isSelected = currentLanguage == lang
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.setLanguage(lang)
+                                        showLanguageDialog = false
+                                    }
+                                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = lang.displayName,
+                                    color = if (isSelected) AccentGold else PrimaryText,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                if (isSelected) {
+                                    Text("✓", color = AccentGold, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showLanguageDialog = false }) {
+                        Text(strings.cancel, color = MutedText)
+                    }
+                },
+                containerColor = CardSurface
+            )
+        }
+
+        // Application Section
+        SettingsSection(strings.applicationSection) {
+            InfoRow(strings.version, viewModel.versionName)
             HorizontalDivider(color = Border)
-            InfoRow("Ukuran APK", formatBytes(stats.appBytes))
+            InfoRow(strings.apkSize, formatBytes(stats.appBytes, strings.calculating))
             HorizontalDivider(color = Border)
             Row(
                 modifier = Modifier
@@ -140,13 +228,13 @@ fun SettingsScreen(
                     .padding(vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("About Application", color = PrimaryText)
+                Text(strings.aboutApp, color = PrimaryText)
                 Text("›", color = AccentGold)
             }
         }
 
         Text(
-            "Katalog, favorit, setlist, dan pengaturan Player tersedia secara offline.",
+            text = strings.offlineDisclaimer,
             color = MutedText,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(bottom = 12.dp)
@@ -175,8 +263,8 @@ private fun InfoRow(label: String, value: String) {
     }
 }
 
-private fun formatBytes(bytes: Long): String = when {
-    bytes <= 0L -> "Menghitung…"
+private fun formatBytes(bytes: Long, calculatingText: String): String = when {
+    bytes <= 0L -> calculatingText
     bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
     bytes >= 1024L -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)
     else -> "$bytes B"

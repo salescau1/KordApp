@@ -8,5 +8,7 @@ data class CatalogArtistInfo(
     @ColumnInfo(name = "artist_slug")
     val artistSlug: String,
     @ColumnInfo(name = "song_count")
-    val songCount: Int
+    val songCount: Int,
+    @ColumnInfo(name = "region")
+    val region: String? = null
 )

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 108 108">
+  <!-- Preview identik dengan adaptive icon KordApp. Skala 4x (432px). -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="61%">
+      <stop offset="0%" stop-color="#16233A"/>
+      <stop offset="100%" stop-color="#0B1220"/>
+    </radialGradient>
+    <clipPath id="squircle">
+      <path d="M54,2 C86,2 106,22 106,54 C106,86 86,106 54,106 C22,106 2,86 2,54 C2,22 22,2 54,2 Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#squircle)">
+    <rect width="108" height="108" fill="#0B1220"/>
+    <rect width="108" height="108" fill="url(#bg)"/>
+    <!-- body -->
+    <path d="M54,31 C39,31 29,44 29,59 C29,74 38,91 54,91 C70,91 79,74 79,59 C79,44 69,31 54,31 Z" fill="#E8B44A"/>
+    <!-- rosette ring -->
+    <path d="M54,47 A13,13 0 1,0 54.01,47 Z M54,51 A9,9 0 1,1 53.99,51 Z" fill="#C9922E" fill-rule="evenodd"/>
+    <!-- soundhole -->
+    <circle cx="54" cy="60" r="9" fill="#0B1220"/>
+    <!-- (rosette top uses the 47 arc; keep visual close) -->
+    <!-- strings -->
+    <line x1="46.4" y1="33" x2="44.4" y2="89" stroke="#F5F8FF" stroke-width="1.5"/>
+    <line x1="50.2" y1="33" x2="49.2" y2="89" stroke="#F5F8FF" stroke-width="1.6"/>
+    <line x1="54" y1="33" x2="54" y2="89" stroke="#F5F8FF" stroke-width="1.7"/>
+    <line x1="57.8" y1="33" x2="58.8" y2="89" stroke="#F5F8FF" stroke-width="1.6"/>
+    <line x1="61.6" y1="33" x2="63.6" y2="89" stroke="#F5F8FF" stroke-width="1.5"/>
+  </g>
+</svg>

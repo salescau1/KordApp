@@ -29,6 +29,7 @@ fun SongVersionsScreen(
     onBackClick: () -> Unit,
     onNavigateToPlayer: (String) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     val versions by viewModel.versions.collectAsState()
     val filteredVersions by viewModel.filteredVersions.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -57,7 +58,7 @@ fun SongVersionsScreen(
     // If versions is empty, might be an error. If 1, it navigated away.
     if (versions.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize().background(Background), contentAlignment = Alignment.Center) {
-            Text("No versions found", color = PrimaryText)
+            Text(strings.noVersionsFound, color = PrimaryText)
         }
         return
     }
@@ -83,39 +84,45 @@ fun SongVersionsScreen(
 
             // Top level stats based on first/best version
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(text = "${versions.size} Versions", color = AccentGold, style = MaterialTheme.typography.bodySmall)
+                Text(text = strings.versionsCount(versions.size), color = AccentGold, style = MaterialTheme.typography.bodySmall)
                 firstVersion.keyBase?.let {
-                    Text(text = "Key: $it", color = MutedText, style = MaterialTheme.typography.bodySmall)
+                    Text(text = strings.keyLabel(it), color = MutedText, style = MaterialTheme.typography.bodySmall)
                 }
-                Text(text = "${firstVersion.chordCount} Chords", color = MutedText, style = MaterialTheme.typography.bodySmall)
+                Text(text = strings.chordsCount(firstVersion.chordCount), color = MutedText, style = MaterialTheme.typography.bodySmall)
             }
         }
 
         // Filters
-        val filterOptions = listOf("All Sources", "Ultimate Guitar", "GuitarTuna", "ChordTela")
-        val counts = filterOptions.associateWith { name ->
-            if (name == "All Sources") versions.size
-            else versions.count { it.source == (if (name == "Ultimate Guitar") "UG" else if (name == "GuitarTuna") "GT" else "ChordTela") }
+        val filterOptions = listOf(
+            "All Sources" to strings.allSources,
+            "Ultimate Guitar" to "Ultimate Guitar",
+            "GuitarTuna" to "GuitarTuna",
+            "ChordTela" to "ChordTela"
+        )
+        val counts = filterOptions.associate { (id, _) ->
+            val count = if (id == "All Sources") versions.size
+            else versions.count { it.source == (if (id == "Ultimate Guitar") "UG" else if (id == "GuitarTuna") "GT" else "ChordTela") }
+            id to count
         }
 
         ScrollableTabRow(
-            selectedTabIndex = filterOptions.indexOf(sourceFilter).coerceAtLeast(0),
+            selectedTabIndex = filterOptions.indexOfFirst { it.first == sourceFilter }.coerceAtLeast(0),
             containerColor = CardSurface,
             contentColor = PrimaryText,
             edgePadding = 16.dp,
             indicator = { /* No default indicator */ },
             divider = { }
         ) {
-            filterOptions.forEach { option ->
-                val count = counts[option] ?: 0
-                val isSelected = sourceFilter == option
+            filterOptions.forEach { (id, label) ->
+                val count = counts[id] ?: 0
+                val isSelected = sourceFilter == id
 
                 val bg = if (isSelected) AccentGold else Color.Transparent
                 val tc = if (isSelected) Background else (if (count > 0) PrimaryText else MutedText)
 
                 Tab(
                     selected = isSelected,
-                    onClick = { viewModel.setSourceFilter(option) },
+                    onClick = { viewModel.setSourceFilter(id) },
                     modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp)
                 ) {
                     Box(
@@ -124,7 +131,7 @@ fun SongVersionsScreen(
                             .border(1.dp, if (isSelected) AccentGold else Border, RoundedCornerShape(16.dp))
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        Text(text = "$option ($count)", color = tc, style = MaterialTheme.typography.labelMedium)
+                        Text(text = "$label ($count)", color = tc, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -155,6 +162,7 @@ fun VersionCard(
     rankInSong: Int,
     onClick: () -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     val bg = CardSurface
     val borderColor = Border
 
@@ -238,9 +246,9 @@ fun VersionCard(
             // Metadata row
             val meta = mutableListOf<String>()
             version.difficulty?.let { meta.add(it) }
-            version.keyBase?.let { meta.add("Key: $it") }
-            meta.add("${version.chordCount} Chords")
-            meta.add("${version.lineCount} Lines")
+            version.keyBase?.let { meta.add(strings.keyLabel(it)) }
+            meta.add(strings.chordsCount(version.chordCount))
+            meta.add(strings.linesCount(version.lineCount))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 meta.forEach { text ->

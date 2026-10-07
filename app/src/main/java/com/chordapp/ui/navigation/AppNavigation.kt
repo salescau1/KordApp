@@ -158,6 +158,7 @@ private fun PrimaryBottomBar(
     currentDestination: NavDestination?,
     onSelect: (Screen) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(32.dp),
@@ -172,8 +173,8 @@ private fun PrimaryBottomBar(
         ) {
             primaryScreens.forEach { screen ->
                 NavigationBarItem(
-                    icon = { Icon(screen.primaryNavIcon(), contentDescription = screen.title) },
-                    label = { Text(screen.title) },
+                    icon = { Icon(screen.primaryNavIcon(), contentDescription = screen.title(strings)) },
+                    label = { Text(screen.title(strings)) },
                     selected = currentDestination.isSelected(screen),
                     onClick = { onSelect(screen) },
                     colors = NavigationBarItemDefaults.colors(
@@ -194,13 +195,14 @@ private fun PrimaryNavigationRail(
     currentDestination: NavDestination?,
     onSelect: (Screen) -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     NavigationRail(containerColor = CardSurface) {
         primaryScreens.forEach { screen ->
             NavigationRailItem(
                 selected = currentDestination.isSelected(screen),
                 onClick = { onSelect(screen) },
-                icon = { Icon(screen.primaryNavIcon(), contentDescription = screen.title) },
-                label = { Text(screen.title) },
+                icon = { Icon(screen.primaryNavIcon(), contentDescription = screen.title(strings)) },
+                label = { Text(screen.title(strings)) },
                 alwaysShowLabel = true,
                 colors = NavigationRailItemDefaults.colors(
                     selectedIconColor = AccentGold,

@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 fun ActivationScreen(
     onActivationSuccess: () -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -100,7 +101,7 @@ fun ActivationScreen(
             }
 
             Text(
-                text = "Aktivasi Lisensi Pengguna",
+                text = strings.activationHeader,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = MutedText,
@@ -119,14 +120,14 @@ fun ActivationScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Masukkan Kode Lisensi",
+                        text = strings.enterLicenseKey,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = PrimaryText
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "Masukkan kode yang Anda dapatkan setelah melakukan pembelian untuk membuka 69.000+ chord offline.",
+                        text = strings.activationDesc,
                         fontSize = 12.sp,
                         color = MutedText,
                         textAlign = TextAlign.Center
@@ -138,7 +139,7 @@ fun ActivationScreen(
                         value = licenseInput,
                         onValueChange = { licenseInput = it.uppercase() },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Contoh: KORD-TEST-1234", color = MutedText.copy(alpha = 0.5f), fontSize = 14.sp) },
+                        placeholder = { Text(strings.licenseKeyPlaceholder, color = MutedText.copy(alpha = 0.5f), fontSize = 14.sp) },
                         leadingIcon = {
                             Icon(Icons.Default.Key, contentDescription = null, tint = AccentGold)
                         },
@@ -162,7 +163,7 @@ fun ActivationScreen(
                             .clickable {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 clipboard.setPrimaryClip(ClipData.newPlainText("Device ID", deviceId))
-                                Toast.makeText(context, "Device ID disalin!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, strings.deviceIdCopied, Toast.LENGTH_SHORT).show()
                             },
                         shape = RoundedCornerShape(8.dp),
                         color = RaisedSurface,
@@ -216,7 +217,7 @@ fun ActivationScreen(
                     Button(
                         onClick = {
                             if (licenseInput.isBlank()) {
-                                errorMessage = "Silakan masukkan kode lisensi."
+                                errorMessage = strings.pleaseEnterLicenseKey
                                 return@Button
                             }
                             isLoading = true
@@ -252,7 +253,7 @@ fun ActivationScreen(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("Aktivasi Sekarang", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text(strings.activateNow, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         }
                     }
                 }
@@ -262,7 +263,7 @@ fun ActivationScreen(
 
             // Section Bantuan / Beli
             Text(
-                text = "Belum memiliki kode lisensi?",
+                text = strings.noLicenseKeyYet,
                 color = MutedText,
                 fontSize = 13.sp
             )
@@ -270,18 +271,18 @@ fun ActivationScreen(
             OutlinedButton(
                 onClick = {
                     runCatching {
-                        val message = "Halo Admin KordApp, saya ingin beli lisensi KordApp. Device ID saya: $deviceId"
+                        val message = strings.waOrderMessage(deviceId)
                         val url = "https://wa.me/?text=${Uri.encode(message)}"
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     }.onFailure {
-                        Toast.makeText(context, "Tidak dapat membuka browser/WhatsApp", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, strings.unableToOpenBrowserOrWa, Toast.LENGTH_SHORT).show()
                     }
                 },
                 shape = RoundedCornerShape(12.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, AccentGold.copy(alpha = 0.5f)),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentGold)
             ) {
-                Text("Beli Lisensi / Hubungi Admin", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(strings.contactAdmin, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }

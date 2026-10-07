@@ -15,6 +15,9 @@ class ArtistDirectoryViewModel(private val repository: CatalogRepository) : View
     private val _artistName = MutableStateFlow("")
     val artistName: StateFlow<String> = _artistName.asStateFlow()
 
+    private val _region = MutableStateFlow<String?>(null)
+    val region: StateFlow<String?> = _region.asStateFlow()
+
     private val _songs = MutableStateFlow<Map<CatalogSongGroup, List<CatalogSongEntity>>>(emptyMap())
     val songs: StateFlow<Map<CatalogSongGroup, List<CatalogSongEntity>>> = _songs.asStateFlow()
 
@@ -33,6 +36,7 @@ class ArtistDirectoryViewModel(private val repository: CatalogRepository) : View
             val info = repository.getArtistInfo(artistSlug)
             if (info != null) {
                 _artistName.value = info.artist
+                _region.value = info.region
             }
             _songs.value = repository.getArtistSongs(artistSlug)
             _isLoading.value = false

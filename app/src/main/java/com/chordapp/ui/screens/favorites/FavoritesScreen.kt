@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.chordapp.localization.LocalAppStrings
 import com.chordapp.ui.theme.*
 import com.chordapp.viewmodels.FavoriteSort
 import com.chordapp.viewmodels.FavoritesViewModel
@@ -28,6 +29,7 @@ fun FavoritesScreen(
     viewModel: FavoritesViewModel,
     onSongClick: (sourceUrl: String, transpose: Int, capo: Int) -> Unit
 ) {
+    val strings = LocalAppStrings.current
     val stored by viewModel.favorites.collectAsState()
     val items by viewModel.items.collectAsState()
     val query by viewModel.query.collectAsState()
@@ -43,8 +45,8 @@ fun FavoritesScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("FAVORITES", color = PrimaryText, fontWeight = FontWeight.Bold)
-                        Text("${stored.size} lagu tersimpan", color = MutedText, style = MaterialTheme.typography.bodySmall)
+                        Text(strings.favoritesTitle, color = PrimaryText, fontWeight = FontWeight.Bold)
+                        Text(strings.savedSongsCount(stored.size), color = MutedText, style = MaterialTheme.typography.bodySmall)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Background)
@@ -57,10 +59,10 @@ fun FavoritesScreen(
                 onValueChange = viewModel::setQuery,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 singleLine = true,
-                placeholder = { Text("Cari judul atau artis") },
+                placeholder = { Text(strings.searchFavoritesPlaceholder) },
                 trailingIcon = if (query.isNotEmpty()) {{
                     IconButton(onClick = { viewModel.setQuery("") }) {
-                        Icon(Icons.Filled.Clear, contentDescription = "Hapus pencarian")
+                        Icon(Icons.Filled.Clear, contentDescription = strings.clearSearch)
                     }
                 }} else null,
                 shape = RoundedCornerShape(18.dp),
@@ -82,9 +84,9 @@ fun FavoritesScreen(
                         selected = sort == option,
                         onClick = { viewModel.setSort(option) },
                         label = { Text(when (option) {
-                            FavoriteSort.DATE -> "Terbaru"
-                            FavoriteSort.TITLE -> "Judul"
-                            FavoriteSort.ARTIST -> "Artis"
+                            FavoriteSort.DATE -> strings.sortLatest
+                            FavoriteSort.TITLE -> strings.sortTitle
+                            FavoriteSort.ARTIST -> strings.sortArtist
                         }) }
                     )
                 }
@@ -95,10 +97,10 @@ fun FavoritesScreen(
                     CircularProgressIndicator(color = AccentGold)
                 }
                 stored.isEmpty() -> Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("Belum ada lagu favorit. Tambahkan dari Player dengan tombol hati.", color = MutedText)
+                    Text(strings.noFavoritesYet, color = MutedText)
                 }
                 items.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Tidak ada favorit yang cocok.", color = MutedText)
+                    Text(strings.noMatchingFavorites, color = MutedText)
                 }
                 else -> LazyColumn(contentPadding = PaddingValues(bottom = 96.dp)) {
                     itemsIndexed(items, key = { _, item -> item.favorite.id }) { index, item ->
@@ -120,8 +122,8 @@ fun FavoritesScreen(
                                 Text(
                                     buildString {
                                         append(item.artist)
-                                        if (item.available) append(" • ${item.source}") else append(" • Tidak tersedia")
-                                        if (item.substituted) append(" • Versi pengganti")
+                                        if (item.available) append(" • ${item.source}") else append(" • ${strings.unavailable}")
+                                        if (item.substituted) append(" ${strings.alternateVersion}")
                                     },
                                     color = MutedText,
                                     style = MaterialTheme.typography.bodySmall,
@@ -133,13 +135,13 @@ fun FavoritesScreen(
                                 val removed = item.favorite
                                 viewModel.remove(removed)
                                 scope.launch {
-                                    val result = snackbar.showSnackbar("Dihapus dari favorit", "Urungkan")
+                                    val result = snackbar.showSnackbar(strings.removedFromFavorites, strings.undo)
                                     if (result == SnackbarResult.ActionPerformed) viewModel.restore(removed)
                                 }
                             }) {
-                                Icon(Icons.Filled.Favorite, "Hapus favorit", tint = ActiveHeart)
+                                Icon(Icons.Filled.Favorite, strings.removeFromFavorites, tint = ActiveHeart)
                             }
-                            Icon(Icons.Filled.PlayArrow, contentDescription = if (item.available) "Putar" else null,
+                            Icon(Icons.Filled.PlayArrow, contentDescription = if (item.available) strings.play else null,
                                 tint = if (item.available) AccentGold else MutedText)
                         }
                         HorizontalDivider(color = Border)

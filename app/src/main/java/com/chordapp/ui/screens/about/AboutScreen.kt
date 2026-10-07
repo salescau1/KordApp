@@ -33,6 +33,7 @@ fun AboutScreen(
     viewModel: AboutViewModel,
     onBackClick: () -> Unit
 ) {
+    val strings = com.chordapp.localization.LocalAppStrings.current
     val content by viewModel.content.collectAsState()
     val refreshing by viewModel.isRefreshing.collectAsState()
 
@@ -51,7 +52,7 @@ fun AboutScreen(
         ) {
             AppBackButton(onBackClick)
             Text(
-                "ABOUT APPLICATION",
+                strings.aboutApp.uppercase(),
                 color = PrimaryText,
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleLarge
@@ -68,7 +69,7 @@ fun AboutScreen(
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(viewModel.metadata.name, color = PrimaryText, style = MaterialTheme.typography.headlineSmall)
             Text(
-                "Versi ${viewModel.metadata.versionName} (${viewModel.metadata.versionCode})",
+                strings.versionWithCode(viewModel.metadata.versionName, viewModel.metadata.versionCode),
                 color = MutedText,
                 style = MaterialTheme.typography.bodyMedium
             )
