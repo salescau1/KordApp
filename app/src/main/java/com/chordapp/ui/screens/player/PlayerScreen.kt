@@ -22,14 +22,20 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
@@ -39,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -458,12 +465,15 @@ private fun BoxScope.AutoScrollRail(
         ) {
             val frac = ((speed - minSpeed) / (maxSpeed - minSpeed)).coerceIn(0f, 1f)
             val clampedThumbY = ((1f - frac) * trackPx).coerceIn(0f, trackPx)
+            val trackBorder = Border
+            val trackAccent = AccentGold
+            val thumbSurface = CardSurface
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val stroke = 6.dp.toPx()
                 val left = (size.width - stroke) / 2f
                 // Background inactive track (Border gray)
                 drawRoundRect(
-                    color = Border,
+                    color = trackBorder,
                     topLeft = Offset(left, 0f),
                     size = Size(stroke, size.height),
                     cornerRadius = CornerRadius(stroke / 2f)
@@ -472,7 +482,7 @@ private fun BoxScope.AutoScrollRail(
                 val filledHeight = size.height - clampedThumbY
                 if (filledHeight > 0f) {
                     drawRoundRect(
-                        color = AccentGold,
+                        color = trackAccent,
                         topLeft = Offset(left, clampedThumbY),
                         size = Size(stroke, filledHeight),
                         cornerRadius = CornerRadius(stroke / 2f)
@@ -480,8 +490,8 @@ private fun BoxScope.AutoScrollRail(
                 }
                 // Thumb circle with contrasting center dot
                 val cy = clampedThumbY.coerceIn(stroke, size.height - stroke)
-                drawCircle(AccentGold, radius = stroke * 1.25f, center = Offset(size.width / 2f, cy))
-                drawCircle(CardSurface, radius = stroke * 0.45f, center = Offset(size.width / 2f, cy))
+                drawCircle(trackAccent, radius = stroke * 1.25f, center = Offset(size.width / 2f, cy))
+                drawCircle(thumbSurface, radius = stroke * 0.45f, center = Offset(size.width / 2f, cy))
             }
         }
         Text(
@@ -516,99 +526,200 @@ private fun SegmentButton(label: String, active: Boolean = false, enabled: Boole
     }
 }
 
+/** Floating circular action button (used for Back, Favorite, Add to Setlist). */
 @Composable
-private fun SegmentDividerV() {
-    Box(modifier = Modifier.width(1.dp).height(24.dp).background(Border))
-}
-
-/**
- * Transpose group at the 1× reference size (the smallest group in the control
- * band): the word "transpose" sits above an explicit `− reset +` row. The
- * reset cell is always visible and tapping it restores +0 — an explicit
- * button, not a merged tap-the-value reset (QA-2).
- */
-@Composable
-private fun TransposeGroup(
-    delta: Int,
-    onDown: () -> Unit,
-    onUp: () -> Unit,
-    onReset: () -> Unit
+private fun CircularActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    tint: Color = PrimaryText,
+    enabled: Boolean = true,
+    size: Dp = 42.dp,
+    iconSize: Dp = 20.dp,
+    onClick: () -> Unit
 ) {
-    val active = delta != 0
-    val shape = RoundedCornerShape(8.dp)
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            "transpose",
-            color = MutedText,
-            style = MaterialTheme.typography.labelSmall
-        )
-        Row(
-            modifier = Modifier
-                .padding(top = 2.dp)
-                .border(1.dp, if (active) AccentGold else Border, shape)
-                .background(if (active) AccentGold.copy(alpha = 0.10f) else RaisedSurface, shape)
-        ) {
-            SegmentButton("−", onClick = onDown)
-            SegmentDividerV()
-            SegmentButton("reset", active = active, onClick = onReset)
-            SegmentDividerV()
-            SegmentButton("+", onClick = onUp)
+    Surface(
+        shape = CircleShape,
+        color = CardSurface.copy(alpha = 0.88f),
+        border = BorderStroke(1.dp, Border),
+        shadowElevation = 4.dp,
+        modifier = modifier
+            .size(size)
+            .clickable(enabled = enabled, onClick = onClick)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = tint,
+                modifier = Modifier.size(iconSize)
+            )
         }
     }
 }
 
-/** Small bordered tap target used across the Player control bars. */
+/** Symbolic icon button for floating dock controls (Auto-Scroll, Page Flip, Keep Screen). */
 @Composable
-private fun PillButton(
-    label: String,
+private fun SymbolicIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String?,
     active: Boolean = false,
-    large: Boolean = false,
-    modifier: Modifier = Modifier,
-    contentColor: Color = PrimaryText,
     onClick: () -> Unit
 ) {
-    val bg = if (active) AccentGold else RaisedSurface
-    val tc = if (active) Background else contentColor
+    val bg = if (active) AccentGold.copy(alpha = 0.18f) else Color.Transparent
+    val tint = if (active) AccentGold else PrimaryText
     Box(
-        modifier = modifier
-            .background(bg, RoundedCornerShape(8.dp))
-            .border(1.dp, if (active) AccentGold else Border, RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(
-                horizontal = if (large) 12.dp else 10.dp,
-                vertical = if (large) 10.dp else 6.dp
-            ),
+        modifier = Modifier
+            .size(38.dp)
+            .background(bg, CircleShape)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            label,
-            color = tc,
-            style = if (large) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = Modifier.size(20.dp)
         )
     }
 }
 
+/**
+ * Transpose segment: [ − | delta | + ].
+ * Tapping the middle value restores default (+0).
+ */
 @Composable
-private fun KeepScreenButton(enabled: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(8.dp)
-    val background = if (enabled) AccentGold else CardSurface
-    val foreground = if (enabled) Background else MutedText
-    Column(
+private fun TransposeSegment(
+    delta: Int,
+    onDown: () -> Unit,
+    onReset: () -> Unit,
+    onUp: () -> Unit
+) {
+    val active = delta != 0
+    val shape = RoundedCornerShape(16.dp)
+    Row(
         modifier = Modifier
-            .background(background, shape)
-            .border(1.dp, if (enabled) AccentGold else Border, shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .border(1.dp, if (active) AccentGold.copy(alpha = 0.7f) else Border, shape)
+            .background(if (active) AccentGold.copy(alpha = 0.12f) else RaisedSurface.copy(alpha = 0.6f), shape)
+            .height(34.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("Keep Screen", color = foreground, style = MaterialTheme.typography.labelSmall)
-        Text(
-            if (enabled) "ON" else "OFF",
-            color = foreground,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.labelMedium
-        )
+        Box(
+            modifier = Modifier
+                .size(width = 28.dp, height = 34.dp)
+                .clickable(onClick = onDown),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "−",
+                color = PrimaryText,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp
+            )
+        }
+
+        Box(modifier = Modifier.width(1.dp).height(18.dp).background(Border))
+
+        Box(
+            modifier = Modifier
+                .widthIn(min = 28.dp)
+                .height(34.dp)
+                .padding(horizontal = 4.dp)
+                .clickable(onClick = onReset),
+            contentAlignment = Alignment.Center
+        ) {
+            val label = if (delta > 0) "+$delta" else "$delta"
+            Text(
+                text = label,
+                color = if (active) AccentGold else MutedText,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp
+            )
+        }
+
+        Box(modifier = Modifier.width(1.dp).height(18.dp).background(Border))
+
+        Box(
+            modifier = Modifier
+                .size(width = 28.dp, height = 34.dp)
+                .clickable(onClick = onUp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "+",
+                color = PrimaryText,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp
+            )
+        }
+    }
+}
+
+/**
+ * Font size segment: [ a | 0 | A ].
+ * a kecil decreases, A besar increases, tapping 0 resets to default 14sp.
+ */
+@Composable
+private fun FontSizeSegment(
+    fontSize: Float,
+    onDecrease: () -> Unit,
+    onReset: () -> Unit,
+    onIncrease: () -> Unit
+) {
+    val isModified = fontSize != 14f
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        modifier = Modifier
+            .border(1.dp, if (isModified) AccentGold.copy(alpha = 0.7f) else Border, shape)
+            .background(if (isModified) AccentGold.copy(alpha = 0.12f) else RaisedSurface.copy(alpha = 0.6f), shape)
+            .height(34.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 28.dp, height = 34.dp)
+                .clickable(onClick = onDecrease),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "a",
+                color = PrimaryText,
+                fontWeight = FontWeight.Medium,
+                fontSize = 12.sp
+            )
+        }
+
+        Box(modifier = Modifier.width(1.dp).height(18.dp).background(Border))
+
+        Box(
+            modifier = Modifier
+                .size(width = 28.dp, height = 34.dp)
+                .clickable(onClick = onReset),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "0",
+                color = if (isModified) AccentGold else MutedText,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp
+            )
+        }
+
+        Box(modifier = Modifier.width(1.dp).height(18.dp).background(Border))
+
+        Box(
+            modifier = Modifier
+                .size(width = 28.dp, height = 34.dp)
+                .clickable(onClick = onIncrease),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "A",
+                color = PrimaryText,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+        }
     }
 }
 
@@ -625,7 +736,6 @@ fun PlayerScreen(
     val sheet by viewModel.sheet.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val transposeDelta by viewModel.transposeDelta.collectAsState()
-    val capo by viewModel.capo.collectAsState()
     val fontSize by viewModel.fontSize.collectAsState()
     val isPageFlip by viewModel.isPageFlip.collectAsState()
     val autoScrollSpeed by viewModel.autoScrollSpeed.collectAsState()
@@ -757,134 +867,30 @@ fun PlayerScreen(
 
     val effectiveKey = viewModel.effectiveKey()
     val versionIndex = availableVersions.indexOfFirst { it.sourceUrl == currentSong.sourceUrl }
-    val versionLabel = if (versionIndex >= 0) "v${versionIndex + 1}/${availableVersions.size} ▾" else null
+    val sourceTag = if (currentSong.source.contains("Ultimate Guitar", ignoreCase = true)) "UG" else currentSong.source
+    val versionLabel = if (versionIndex >= 0) "$sourceTag v${versionIndex + 1} ▾" else "$sourceTag ▾"
 
-    Column(modifier = Modifier.fillMaxSize().background(Background)) {
-        // Top bar - Centered Title between Back and (Favorite + Setlist)
-        CenterAlignedTopAppBar(
-            title = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        currentSong.title,
-                        color = PrimaryText,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        currentSong.artist,
-                        color = MutedText,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            },
-            navigationIcon = { AppBackButton(onBackClick) },
-            actions = {
-                IconButton(
-                    enabled = !isUpdatingFavorite,
-                    onClick = { viewModel.toggleFavorite() }
-                ) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = if (isFavorite) strings.removeFromFavorites else strings.addToFavorites,
-                        tint = if (isFavorite) ActiveHeart else PrimaryText,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+    Box(modifier = Modifier.fillMaxSize().background(Background)) {
+        // Sheet reading area
+        val lines = if (hasContent) currentSheet!!.lines else emptyList()
+        when {
+            !hasContent -> Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    strings.noSheetContent,
+                    color = MutedText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
+            }
+            isPageFlip -> {
                 Box(
                     modifier = Modifier
-                        .padding(end = 12.dp)
-                        .size(36.dp)
-                        .background(AccentGold, CircleShape)
-                        .clickable(enabled = !isAddingToSetlist) { showSetlistPicker = true },
-                    contentAlignment = Alignment.Center
+                        .fillMaxSize()
+                        .padding(top = 80.dp, bottom = 85.dp)
                 ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.PlaylistAdd,
-                        contentDescription = strings.addSongToSetlist,
-                        tint = Background,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = CardSurface)
-        )
-
-        // Meta strip: real metadata only (never a placeholder dash); version chip right.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 12.dp, top = 2.dp, bottom = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            effectiveKey?.takeIf { it.isNotBlank() }?.let { Text("Key: $it", color = AccentGold, style = MaterialTheme.typography.bodySmall) }
-            if (capo > 0) Text("Capo: $capo", color = AccentGold, style = MaterialTheme.typography.bodySmall)
-            currentSong.difficulty?.let { Text(it, color = MutedText, style = MaterialTheme.typography.bodySmall) }
-            Spacer(modifier = Modifier.weight(1f))
-            if (versionLabel != null) {
-                Box {
-                    Box(
-                        modifier = Modifier
-                            .border(1.dp, Border, RoundedCornerShape(8.dp))
-                            .clickable { showVersionMenu = true }
-                            .padding(horizontal = 10.dp, vertical = 3.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            versionLabel,
-                            color = PrimaryText,
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                    DropdownMenu(expanded = showVersionMenu, onDismissRequest = { showVersionMenu = false }) {
-                        availableVersions.forEach { v ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        v.versionName ?: v.source,
-                                        color = if (v.sourceUrl == currentSong.sourceUrl) AccentGold else PrimaryText
-                                    )
-                                },
-                                onClick = {
-                                    showVersionMenu = false
-                                    if (v.sourceUrl != currentSong.sourceUrl) viewModel.switchVersion(v.sourceUrl)
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Sheet. One Box owns the whole reading area so the tapped-chord diagram
-        // card can float in its top-right corner (QA-5b), over whichever mode is
-        // active, instead of blocking the sheet from a centered dialog.
-        val lines = if (hasContent) currentSheet!!.lines else emptyList()
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) {
-            when {
-                !hasContent -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        strings.noSheetContent,
-                        color = MutedText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center
-                    )
-                }
-                isPageFlip -> {
-                    // Discrete full-screen "slides": vertical scroll is locked and
-                    // pages change by swiping left/right; dots row below the sheet.
                     PagedSheet(
                         lines = lines,
                         fontSize = fontSize,
@@ -893,138 +899,328 @@ fun PlayerScreen(
                         requestDiagram = requestDiagram
                     )
                 }
-                else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        itemsIndexed(
-                            items = lines,
-                            key = { idx, _ -> idx },
-                            contentType = { _, line ->
-                                when (line) {
-                                    is SheetLine.Blank -> 0
-                                    is SheetLine.Section -> 1
-                                    is SheetLine.Lyric -> 2
-                                    is SheetLine.Chords -> if (line.isBarLine) 3 else 4
-                                }
+            }
+            else -> {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = 88.dp, bottom = 96.dp, start = 16.dp, end = 16.dp)
+                ) {
+                    itemsIndexed(
+                        items = lines,
+                        key = { idx, _ -> idx },
+                        contentType = { _, line ->
+                            when (line) {
+                                is SheetLine.Blank -> 0
+                                is SheetLine.Section -> 1
+                                is SheetLine.Lyric -> 2
+                                is SheetLine.Chords -> if (line.isBarLine) 3 else 4
                             }
-                        ) { idx, line ->
-                            // Chord+lyric wrap sebagai satu blok: chord tetap di atas
-                            // katanya dan turun bersama katanya ketika baris tidak muat.
-                            // Index tetap 1:1 dengan `lines` supaya anchor scroll saat
-                            // ganti versi tetap valid.
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                when (line) {
-                                    is SheetLine.Blank -> {
-                                        Spacer(modifier = Modifier.height((fontSize * 1.5).dp))
-                                    }
-                                    is SheetLine.Section -> {
-                                        Text(
-                                            text = line.text,
-                                            color = AccentGold,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontSize = fontSize.sp,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(top = 16.dp, bottom = 4.dp)
+                        }
+                    ) { idx, line ->
+                        // Chord+lyric wrap sebagai satu blok: chord tetap di atas
+                        // katanya dan turun bersama katanya ketika baris tidak muat.
+                        // Index tetap 1:1 dengan `lines` supaya anchor scroll saat
+                        // ganti versi tetap valid.
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            when (line) {
+                                is SheetLine.Blank -> {
+                                    Spacer(modifier = Modifier.height((fontSize * 1.5).dp))
+                                }
+                                is SheetLine.Section -> {
+                                    Text(
+                                        text = line.text,
+                                        color = AccentGold,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = fontSize.sp,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 16.dp, bottom = 4.dp)
+                                    )
+                                }
+                                is SheetLine.Lyric -> {
+                                    // Lirik yang sudah dipasangkan ke baris chord di
+                                    // atasnya dirender oleh chord itu; jangan dobel.
+                                    val prev = lines.getOrNull(idx - 1)
+                                    val pairedWithPrev = prev is SheetLine.Chords && !prev.isBarLine
+                                    if (!pairedWithPrev) {
+                                        ChordLyricFlow(
+                                            chordLine = null,
+                                            lyric = line.text,
+                                            fontSize = fontSize,
+                                            transposeDelta = transposeDelta,
+                                            requestDiagram = requestDiagram
                                         )
                                     }
-                                    is SheetLine.Lyric -> {
-                                        // Lirik yang sudah dipasangkan ke baris chord di
-                                        // atasnya dirender oleh chord itu; jangan dobel.
-                                        val prev = lines.getOrNull(idx - 1)
-                                        val pairedWithPrev = prev is SheetLine.Chords && !prev.isBarLine
-                                        if (!pairedWithPrev) {
-                                            ChordLyricFlow(
-                                                chordLine = null,
-                                                lyric = line.text,
-                                                fontSize = fontSize,
-                                                transposeDelta = transposeDelta,
-                                                requestDiagram = requestDiagram
-                                            )
-                                        }
-                                    }
-                                    is SheetLine.Chords -> {
-                                        if (line.isBarLine) {
-                                            BarLineFlow(
-                                                barLine = line,
-                                                fontSize = fontSize,
-                                                transposeDelta = transposeDelta,
-                                                requestDiagram = requestDiagram
-                                            )
-                                        } else {
-                                            ChordLyricFlow(
-                                                chordLine = line,
-                                                lyric = (lines.getOrNull(idx + 1) as? SheetLine.Lyric)?.text,
-                                                fontSize = fontSize,
-                                                transposeDelta = transposeDelta,
-                                                requestDiagram = requestDiagram
-                                            )
-                                        }
+                                }
+                                is SheetLine.Chords -> {
+                                    if (line.isBarLine) {
+                                        BarLineFlow(
+                                            barLine = line,
+                                            fontSize = fontSize,
+                                            transposeDelta = transposeDelta,
+                                            requestDiagram = requestDiagram
+                                        )
+                                    } else {
+                                        ChordLyricFlow(
+                                            chordLine = line,
+                                            lyric = (lines.getOrNull(idx + 1) as? SheetLine.Lyric)?.text,
+                                            fontSize = fontSize,
+                                            transposeDelta = transposeDelta,
+                                            requestDiagram = requestDiagram
+                                        )
                                     }
                                 }
                             }
                         }
-                        item { Spacer(modifier = Modifier.height(120.dp)) }
                     }
+                    item { Spacer(modifier = Modifier.height(30.dp)) }
+                }
 
-                    if (autoScrollSpeed > 0f) {
-                        AutoScrollRail(speed = autoScrollSpeed) { viewModel.setAutoScrollSpeed(it) }
+                if (autoScrollSpeed > 0f) {
+                    AutoScrollRail(speed = autoScrollSpeed) { viewModel.setAutoScrollSpeed(it) }
+                }
+            }
+        }
+
+        // Tapped-chord diagram: a small fretboard card pinned to the top-right
+        // of the sheet. The overlay consumes taps before the page-turn handler.
+        if (diagramSymbol != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { diagramSymbol = null }
+            )
+            ChordDiagramCard(
+                symbol = diagramSymbol!!,
+                db = fingeringDb,
+                onDismiss = { diagramSymbol = null },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 80.dp, end = 12.dp)
+            )
+        }
+
+        // Top Fadeout Scrim: Lyrics scroll behind this gradient into black
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(115.dp)
+                .align(Alignment.TopCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Background,
+                            Background.copy(alpha = 0.85f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        // Top Floating Islands: (<) (Title • Version ▾) (Love) (Setlist)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .align(Alignment.TopCenter),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Back circular button
+            CircularActionButton(
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                onClick = onBackClick
+            )
+
+            // Title + Version floating capsule
+            Box(modifier = Modifier.weight(1f)) {
+                Surface(
+                    shape = RoundedCornerShape(22.dp),
+                    color = CardSurface.copy(alpha = 0.88f),
+                    border = BorderStroke(1.dp, Border),
+                    shadowElevation = 4.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .clickable {
+                            if (availableVersions.isNotEmpty()) {
+                                showVersionMenu = true
+                            }
+                        }
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 10.dp, vertical = 2.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = currentSong.title,
+                                color = PrimaryText,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = versionLabel,
+                                color = AccentGold,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1
+                            )
+                        }
+                        val subtitle = buildString {
+                            append(currentSong.artist)
+                            effectiveKey?.takeIf { it.isNotBlank() }?.let { append(" • Key: $it") }
+                        }
+                        Text(
+                            text = subtitle,
+                            color = MutedText,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                DropdownMenu(
+                    expanded = showVersionMenu,
+                    onDismissRequest = { showVersionMenu = false }
+                ) {
+                    availableVersions.forEachIndexed { index, v ->
+                        val itemTag = if (v.source.contains("Ultimate Guitar", ignoreCase = true)) "UG" else v.source
+                        val label = v.versionName ?: "$itemTag v${index + 1}"
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    label,
+                                    color = if (v.sourceUrl == currentSong.sourceUrl) AccentGold else PrimaryText,
+                                    fontWeight = if (v.sourceUrl == currentSong.sourceUrl) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            onClick = {
+                                showVersionMenu = false
+                                if (v.sourceUrl != currentSong.sourceUrl) {
+                                    viewModel.switchVersion(v.sourceUrl)
+                                }
+                            }
+                        )
                     }
                 }
             }
 
-            // Tapped-chord diagram: a small fretboard card pinned to the top-right
-            // of the sheet. The overlay consumes taps before the page-turn handler.
-            if (diagramSymbol != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { diagramSymbol = null }
-                )
-                ChordDiagramCard(
-                    symbol = diagramSymbol!!,
-                    db = fingeringDb,
-                    onDismiss = { diagramSymbol = null },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 6.dp, end = 8.dp)
-                )
-            }
+            // Favorite circular button
+            CircularActionButton(
+                icon = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                tint = if (isFavorite) ActiveHeart else PrimaryText,
+                contentDescription = if (isFavorite) strings.removeFromFavorites else strings.addToFavorites,
+                enabled = !isUpdatingFavorite,
+                onClick = { viewModel.toggleFavorite() }
+            )
+
+            // Add to setlist circular button
+            CircularActionButton(
+                icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+                tint = PrimaryText,
+                contentDescription = strings.addSongToSetlist,
+                enabled = !isAddingToSetlist,
+                onClick = { showSetlistPicker = true }
+            )
         }
 
-        // Controls: one aligned control band (QA-2). Left→right, all
-        // center-aligned on one row: [Auto Scroll] & [Page Flip] at 2× ·
-        // transpose group at 1× · A− A+ at normal size (far right).
-        Column(
+        // Bottom Fadeout Scrim: Lyrics scroll behind this gradient into black
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(RaisedSurface)
-                .padding(horizontal = 8.dp, vertical = 8.dp)
+                .height(125.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Background.copy(alpha = 0.85f),
+                            Background
+                        )
+                    )
+                )
+        )
+
+        // Bottom Floating Symbolic Dock: (scroll flip transpose size lampu)
+        Surface(
+            shape = RoundedCornerShape(32.dp),
+            color = CardSurface.copy(alpha = 0.92f),
+            border = BorderStroke(1.dp, Border),
+            shadowElevation = 8.dp,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                PillButton("Auto Scroll", active = autoScrollSpeed > 0f, large = true) { viewModel.toggleAutoScroll() }
-                PillButton("Page Flip", active = isPageFlip, large = true) { viewModel.togglePageFlip() }
-                TransposeGroup(
+                // Auto Scroll (▶ / ⏸)
+                SymbolicIconButton(
+                    icon = if (autoScrollSpeed > 0f) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = "Auto Scroll",
+                    active = autoScrollSpeed > 0f,
+                    onClick = { viewModel.toggleAutoScroll() }
+                )
+
+                // Page Flip (📖)
+                SymbolicIconButton(
+                    icon = Icons.AutoMirrored.Filled.MenuBook,
+                    contentDescription = "Page Flip",
+                    active = isPageFlip,
+                    onClick = { viewModel.togglePageFlip() }
+                )
+
+                Box(modifier = Modifier.width(1.dp).height(20.dp).background(Border.copy(alpha = 0.6f)))
+
+                // Transpose (− 0 +) - tap 0 resets to 0
+                TransposeSegment(
                     delta = transposeDelta,
                     onDown = { viewModel.transposeDown() },
-                    onUp = { viewModel.transposeUp() },
-                    onReset = { viewModel.resetTranspose() }
+                    onReset = { viewModel.resetTranspose() },
+                    onUp = { viewModel.transposeUp() }
                 )
-                PillButton("A−") { viewModel.decreaseFontSize() }
-                PillButton("A+") { viewModel.increaseFontSize() }
-                Spacer(modifier = Modifier.weight(1f))
-                KeepScreenButton(enabled = keepScreenAwake) { viewModel.toggleKeepScreenAwake() }
+
+                Box(modifier = Modifier.width(1.dp).height(20.dp).background(Border.copy(alpha = 0.6f)))
+
+                // Font Size (a 0 A) - tap 0 resets to default (14sp)
+                FontSizeSegment(
+                    fontSize = fontSize,
+                    onDecrease = { viewModel.decreaseFontSize() },
+                    onReset = { viewModel.resetFontSize() },
+                    onIncrease = { viewModel.increaseFontSize() }
+                )
+
+                Box(modifier = Modifier.width(1.dp).height(20.dp).background(Border.copy(alpha = 0.6f)))
+
+                // Keep Screen Awake (💡)
+                SymbolicIconButton(
+                    icon = if (keepScreenAwake) Icons.Filled.Lightbulb else Icons.Outlined.Lightbulb,
+                    contentDescription = "Keep Screen On",
+                    active = keepScreenAwake,
+                    onClick = { viewModel.toggleKeepScreenAwake() }
+                )
             }
         }
     }

@@ -37,6 +37,13 @@ class SettingsViewModel(
         com.chordapp.localization.AppLanguageManager.setLanguage(appContext, language)
     }
 
+    val currentTheme: StateFlow<com.chordapp.ui.theme.AppThemeMode> =
+        com.chordapp.ui.theme.AppThemeManager.currentTheme
+
+    fun setTheme(theme: com.chordapp.ui.theme.AppThemeMode) {
+        com.chordapp.ui.theme.AppThemeManager.setTheme(appContext, theme)
+    }
+
     init {
         viewModelScope.launch {
             _catalogStats.value = CatalogStats(

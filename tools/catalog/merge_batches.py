@@ -80,7 +80,12 @@ def merge_all_batches():
         print(f"No batch databases found in {DB_BATCHES_DIR}")
         return
 
-    # Put batch_ost.db and batch_22.db first so curated soundtracks with category='Soundtrack' take precedence
+    # Put batch_ost.db, batch_22.db, and batch_23.db first so curated soundtracks take precedence
+    b23_db = str(DB_BATCHES_DIR / "batch_23.db")
+    if b23_db in batch_dbs:
+        batch_dbs.remove(b23_db)
+        batch_dbs.insert(0, b23_db)
+
     b22_db = str(DB_BATCHES_DIR / "batch_22.db")
     if b22_db in batch_dbs:
         batch_dbs.remove(b22_db)

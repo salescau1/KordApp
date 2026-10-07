@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.sp
 import com.chordapp.player.ChordParser
 import com.chordapp.player.SheetLine
 import com.chordapp.player.Transposer
-import com.chordapp.ui.theme.CtText
+import com.chordapp.ui.theme.ChordText
 import com.chordapp.ui.theme.PrimaryText
 
 /**
@@ -111,7 +111,7 @@ internal fun ChordLyricFlow(
                 val transposed = Transposer.transpose(token.symbol, transposeDelta)
                 Text(
                     text = transposed + "   ",
-                    color = CtText,
+                    color = ChordText,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
                     fontSize = fontSize.sp,
@@ -139,7 +139,7 @@ internal fun ChordLyricFlow(
                     }
                     Text(
                         text = chordText,
-                        color = CtText,
+                        color = ChordText,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
                         fontSize = fontSize.sp,
@@ -181,7 +181,9 @@ internal fun BarLineFlow(
     val segments = remember(barLine) {
         ChordParser.buildBarSegments(barLine)
     }
-    val annotated = remember(segments, transposeDelta, fontSize) {
+    val chordColor = ChordText
+    val textColor = PrimaryText
+    val annotated = remember(segments, transposeDelta, fontSize, chordColor, textColor) {
         buildAnnotatedString {
             for (seg in segments) {
                 if (seg.isChord) {
@@ -190,7 +192,7 @@ internal fun BarLineFlow(
                     append(transposed)
                     addStyle(
                         SpanStyle(
-                            color = CtText,
+                            color = chordColor,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
                             fontSize = fontSize.sp
@@ -209,7 +211,7 @@ internal fun BarLineFlow(
                     append(seg.text)
                     addStyle(
                         SpanStyle(
-                            color = PrimaryText,
+                            color = textColor,
                             fontWeight = FontWeight.Normal,
                             fontFamily = FontFamily.Monospace,
                             fontSize = fontSize.sp

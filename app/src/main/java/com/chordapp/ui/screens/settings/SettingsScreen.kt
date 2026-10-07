@@ -48,11 +48,13 @@ fun SettingsScreen(
 ) {
     val strings = LocalAppStrings.current
     val currentLanguage by viewModel.currentLanguage.collectAsState()
+    val currentTheme by viewModel.currentTheme.collectAsState()
     val stats by viewModel.catalogStats.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
     var showTransferDialog by remember { mutableStateOf(false) }
     var isTransferring by remember { mutableStateOf(false) }
 
@@ -70,6 +72,30 @@ fun SettingsScreen(
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.headlineSmall
         )
+
+        // Appearance / Theme Section
+        SettingsSection(strings.themeSection) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showThemeDialog = true }
+                    .padding(vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(strings.appThemeLabel, color = PrimaryText)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val themeName = when (currentTheme) {
+                        com.chordapp.ui.theme.AppThemeMode.DARK -> strings.themeDark
+                        com.chordapp.ui.theme.AppThemeMode.LIGHT -> strings.themeLight
+                        com.chordapp.ui.theme.AppThemeMode.SYSTEM -> strings.themeSystem
+                    }
+                    Text(themeName, color = AccentGold, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.width(8.dp))
+                    Text("›", color = AccentGold)
+                }
+            }
+        }
 
         // Language Section
         SettingsSection(strings.languageSection) {
@@ -208,6 +234,52 @@ fun SettingsScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { showLanguageDialog = false }) {
+                        Text(strings.cancel, color = MutedText)
+                    }
+                },
+                containerColor = CardSurface
+            )
+        }
+
+        if (showThemeDialog) {
+            AlertDialog(
+                onDismissRequest = { showThemeDialog = false },
+                title = { Text(strings.selectTheme, color = PrimaryText, fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        com.chordapp.ui.theme.AppThemeMode.entries.forEach { mode ->
+                            val isSelected = mode == currentTheme
+                            val label = when (mode) {
+                                com.chordapp.ui.theme.AppThemeMode.DARK -> strings.themeDark
+                                com.chordapp.ui.theme.AppThemeMode.LIGHT -> strings.themeLight
+                                com.chordapp.ui.theme.AppThemeMode.SYSTEM -> strings.themeSystem
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.setTheme(mode)
+                                        showThemeDialog = false
+                                    }
+                                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    label,
+                                    color = if (isSelected) AccentGold else PrimaryText,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                if (isSelected) {
+                                    Text("✓", color = AccentGold, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showThemeDialog = false }) {
                         Text(strings.cancel, color = MutedText)
                     }
                 },

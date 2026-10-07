@@ -92,7 +92,8 @@ object IndonesianStrings : AppStrings {
     // Setlists Screen & Tracklist Screen
     override val setlistsTitle = "SETLIST"
     override val sortSetlists = "Urutkan setlist"
-    override val sortAZ = "Nama A–Z"
+    override val sortAZ = "A–Z"
+    override val sortPopular = "Terpopuler"
     override val searchSetlists = "Cari setlist"
     override val noSetlistsYet = "Belum ada setlist."
     override val noSetlistsFound = "Setlist tidak ditemukan."
@@ -136,6 +137,12 @@ object IndonesianStrings : AppStrings {
 
     // Settings Screen
     override val settingsTitle = "PENGATURAN"
+    override val themeSection = "TAMPILAN"
+    override val appThemeLabel = "Tema"
+    override val selectTheme = "Pilih Tema"
+    override val themeDark = "Mode Gelap (Dark)"
+    override val themeLight = "Mode Terang (Light)"
+    override val themeSystem = "Ikuti Sistem"
     override val languageSection = "BAHASA"
     override val appLanguageLabel = "Bahasa Aplikasi"
     override val selectLanguage = "Pilih Bahasa"

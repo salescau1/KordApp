@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import com.chordapp.localization.AppLanguageManager
 import com.chordapp.localization.LocalAppStrings
 import com.chordapp.ui.navigation.AppNavigation
+import com.chordapp.ui.theme.AppThemeManager
 import com.chordapp.ui.theme.ChordAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,12 +20,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         optimizeRefreshRate()
         AppLanguageManager.initialize(this)
+        AppThemeManager.initialize(this)
         setContent {
             val currentLanguage by AppLanguageManager.currentLanguage.collectAsState()
+            val currentTheme by AppThemeManager.currentTheme.collectAsState()
             val strings = remember(currentLanguage) { AppLanguageManager.strings(currentLanguage) }
 
             CompositionLocalProvider(LocalAppStrings provides strings) {
-                ChordAppTheme {
+                ChordAppTheme(themeMode = currentTheme) {
                     AppNavigation()
                 }
             }

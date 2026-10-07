@@ -93,6 +93,7 @@ interface AppStrings {
     val setlistsTitle: String
     val sortSetlists: String
     val sortAZ: String
+    val sortPopular: String
     val searchSetlists: String
     val noSetlistsYet: String
     val noSetlistsFound: String
@@ -136,6 +137,12 @@ interface AppStrings {
 
     // Settings Screen
     val settingsTitle: String
+    val themeSection: String
+    val appThemeLabel: String
+    val selectTheme: String
+    val themeDark: String
+    val themeLight: String
+    val themeSystem: String
     val languageSection: String
     val appLanguageLabel: String
     val selectLanguage: String

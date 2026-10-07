@@ -53,6 +53,7 @@ import com.chordapp.player.ChordFingeringDb
 import com.chordapp.player.FretPosition
 import com.chordapp.ui.theme.AccentGold
 import com.chordapp.ui.theme.Background
+import com.chordapp.ui.theme.LocalChordAppColors
 import com.chordapp.ui.theme.Border
 import com.chordapp.ui.theme.CardSurface
 import com.chordapp.ui.theme.MutedText
@@ -213,9 +214,13 @@ fun FretboardCanvas(position: FretPosition, modifier: Modifier = Modifier) {
     val fretStroke = with(density) { 1.8f.dp.toPx() }
     val nutStroke = with(density) { 4.dp.toPx() }
     val gridColor = PrimaryText.copy(alpha = 0.82f)
-    val markerColor = Color(0xFFF5F5F5)
-    val fingerStyle = TextStyle(color = Background, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-    val labelStyle = TextStyle(color = MutedText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    val accentGold = AccentGold
+    val mutedText = MutedText
+    val background = Background
+    val primaryText = PrimaryText
+    val markerColor = if (LocalChordAppColors.current.isDark) Color(0xFFF5F5F5) else Color(0xFF334155)
+    val fingerStyle = TextStyle(color = background, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    val labelStyle = TextStyle(color = mutedText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
 
     Canvas(modifier = modifier) {
         val w = size.width
@@ -251,7 +256,7 @@ fun FretboardCanvas(position: FretPosition, modifier: Modifier = Modifier) {
             val y = topY + r * rowH
             val isTop = r == 0
             if (isTop && nutAtTop) {
-                drawLine(AccentGold, Offset(left, y), Offset(right, y), nutStroke)
+                drawLine(accentGold, Offset(left, y), Offset(right, y), nutStroke)
             } else {
                 drawLine(gridColor, Offset(left, y), Offset(right, y), fretStroke)
             }
@@ -261,7 +266,7 @@ fun FretboardCanvas(position: FretPosition, modifier: Modifier = Modifier) {
             val label = textMeasurer.measure(AnnotatedString(position.baseFret.toString()), labelStyle)
             drawText(
                 textLayoutResult = label,
-                color = MutedText,
+                color = mutedText,
                 topLeft = Offset(left * 0.12f, topY + rowH * 0.5f - label.size.height / 2f)
             )
         }
@@ -293,13 +298,13 @@ fun FretboardCanvas(position: FretPosition, modifier: Modifier = Modifier) {
             if (position.barres.any { it == f }) continue
             val x = xFor(k)
             val cy = topY + (f - 1) * rowH + rowH * 0.5f
-            drawCircle(color = AccentGold, radius = dotR, center = Offset(x, cy))
+            drawCircle(color = accentGold, radius = dotR, center = Offset(x, cy))
             val finger = position.fingers.getOrNull(k) ?: 0
             if (finger > 0) {
                 val digit = textMeasurer.measure(AnnotatedString(finger.toString()), fingerStyle)
                 drawText(
                     textLayoutResult = digit,
-                    color = Background,
+                    color = background,
                     topLeft = Offset(x - digit.size.width / 2f, cy - digit.size.height / 2f)
                 )
             }
@@ -311,7 +316,7 @@ fun FretboardCanvas(position: FretPosition, modifier: Modifier = Modifier) {
             if (covered.isEmpty()) continue
             val y = topY + (b - 1) * rowH + rowH * 0.5f
             drawLine(
-                color = PrimaryText,
+                color = primaryText,
                 start = Offset(xFor(covered.first()), y),
                 end = Offset(xFor(covered.last()), y),
                 strokeWidth = (rowH * 0.3f).coerceAtLeast(stringStroke * 2f),

@@ -20,6 +20,8 @@ import com.chordapp.ui.components.RegionBadge
 import com.chordapp.ui.components.SourceBadge
 import com.chordapp.ui.theme.*
 import com.chordapp.viewmodels.ArtistDirectoryViewModel
+import com.chordapp.viewmodels.ArtistSongSortOrder
+import androidx.compose.ui.text.font.FontWeight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +35,7 @@ fun ArtistDirectoryScreen(
     val artistName by viewModel.artistName.collectAsState()
     val region by viewModel.region.collectAsState()
     val songs by viewModel.songs.collectAsState()
+    val sortOrder by viewModel.sortOrder.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
@@ -64,18 +67,13 @@ fun ArtistDirectoryScreen(
                 CircularProgressIndicator(color = AccentGold)
             }
         } else {
-            // A-Z is the only sort mode. The catalog has no play-count/popularity data to
-            // power a "Popular" order, so we never offer a fake one.
             var filter by rememberSaveable { mutableStateOf("") }
-            val sortedSongs = remember(songs) {
-                songs.entries.sortedBy { it.key.title.lowercase() }
-            }
-            val shownSongs = remember(sortedSongs, filter) {
+            val shownSongs = remember(songs, filter) {
                 val query = filter.trim()
                 if (query.isEmpty()) {
-                    sortedSongs
+                    songs.entries.toList()
                 } else {
-                    sortedSongs.filter { it.key.title.contains(query, ignoreCase = true) }
+                    songs.entries.filter { it.key.title.contains(query, ignoreCase = true) }
                 }
             }
 
@@ -85,11 +83,21 @@ fun ArtistDirectoryScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(text = strings.songsCount(shownSongs.size), color = MutedText)
-                Text(
-                    text = "A-Z",
-                    color = MutedText,
-                    style = MaterialTheme.typography.labelMedium
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ArtistSortButton(
+                        label = strings.sortAZ,
+                        selected = sortOrder == ArtistSongSortOrder.ALPHABETICAL,
+                        onClick = { viewModel.setSortOrder(ArtistSongSortOrder.ALPHABETICAL) }
+                    )
+                    ArtistSortButton(
+                        label = strings.sortPopular,
+                        selected = sortOrder == ArtistSongSortOrder.POPULAR,
+                        onClick = { viewModel.setSortOrder(ArtistSongSortOrder.POPULAR) }
+                    )
+                }
             }
 
             // Local "Filter judul": narrows the already-loaded artist songs by title.
@@ -194,13 +202,57 @@ private fun SongRow(
             )
             if (versions.isNotEmpty()) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    versions.map { it.source }.distinct().forEach { source ->
-                        SourceBadge(source = source)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        versions.map { it.source }.distinct().forEach { source ->
+                            SourceBadge(source = source)
+                        }
+                    }
+
+                    val maxVotes = versions.maxOfOrNull { it.votes ?: 0 } ?: 0
+                    val maxRating = versions.maxOfOrNull { it.rating ?: 0f } ?: 0f
+                    if (maxVotes > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "★ $maxRating",
+                                color = AccentGold,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "($maxVotes)",
+                                color = MutedText,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ArtistSortButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) AccentGold else CardSurface,
+        border = BorderStroke(1.dp, if (selected) AccentGold else Border)
+    ) {
+        Text(
+            text = label,
+            color = if (selected) Background else PrimaryText,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        )
     }
 }

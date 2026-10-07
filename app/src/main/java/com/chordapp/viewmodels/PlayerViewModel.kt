@@ -262,6 +262,10 @@ class PlayerViewModel(
         _fontSize.value = (_fontSize.value - 2f).coerceAtLeast(10f)
     }
 
+    fun resetFontSize() {
+        _fontSize.value = 14f
+    }
+
     fun effectiveKey(): String? {
         val base = _song.value?.keyBase?.trim()
         if (base.isNullOrEmpty()) return null

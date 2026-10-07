@@ -92,7 +92,8 @@ object EnglishStrings : AppStrings {
     // Setlists Screen & Tracklist Screen
     override val setlistsTitle = "SETLISTS"
     override val sortSetlists = "Sort setlists"
-    override val sortAZ = "Name A–Z"
+    override val sortAZ = "A–Z"
+    override val sortPopular = "Popular"
     override val searchSetlists = "Search setlists"
     override val noSetlistsYet = "No setlists yet."
     override val noSetlistsFound = "No setlists found."
@@ -136,6 +137,12 @@ object EnglishStrings : AppStrings {
 
     // Settings Screen
     override val settingsTitle = "SETTINGS"
+    override val themeSection = "APPEARANCE"
+    override val appThemeLabel = "Theme"
+    override val selectTheme = "Select Theme"
+    override val themeDark = "Dark Mode"
+    override val themeLight = "Light Mode"
+    override val themeSystem = "System Default"
     override val languageSection = "LANGUAGE"
     override val appLanguageLabel = "App Language"
     override val selectLanguage = "Select Language"

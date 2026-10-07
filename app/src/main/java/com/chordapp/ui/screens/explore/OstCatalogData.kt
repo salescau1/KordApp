@@ -154,12 +154,72 @@ object OstCatalogData {
             id = "bleach_fma",
             title = "Bleach & Fullmetal Alchemist",
             category = "Anime & Jepang",
-            subtitle = "YUI, Orange Range, SID",
+            subtitle = "YUI, Orange Range, UVERworld, Aqua Timez, SID",
             songs = listOf(
-                OstSongItem("Again", "YUI", "yui", "again", "FMA Brotherhood OP 1"),
-                OstSongItem("Rolling Star", "YUI", "yui", "rolling-star", "Bleach OP 5"),
                 OstSongItem("Asterisk", "Orange Range", "orange-range", "asterisk", "Bleach OP 1"),
-                OstSongItem("Ranbu no Melody", "SID", "sid", "ranbu-no-melody", "Bleach OP 13")
+                OstSongItem("D-tecnolife", "UVERworld", "uverworld", "d-tecnolife", "Bleach OP 2"),
+                OstSongItem("Rolling Star", "YUI", "yui", "rolling-star", "Bleach OP 5"),
+                OstSongItem("Alones", "Aqua Timez", "aqua-timez", "alones", "Bleach OP 6"),
+                OstSongItem("Velonica", "Aqua Timez", "aqua-timez", "velonica", "Bleach OP 9"),
+                OstSongItem("Ranbu no Melody", "SID", "sid", "ranbu-no-melody", "Bleach OP 13"),
+                OstSongItem("Again", "YUI", "yui", "again", "FMA Brotherhood OP 1")
+            )
+        ),
+        OstFranchise(
+            id = "studio_ghibli",
+            title = "Studio Ghibli (Hayao Miyazaki)",
+            category = "Anime & Jepang",
+            subtitle = "Joe Hisaishi, Youmi Kimura, Yumi Matsutoya",
+            songs = listOf(
+                OstSongItem("Always with Me (Itsumo Nando Demo)", "Youmi Kimura", "youmi-kimura", "always-with-me-itsumo-nando-demo", "Spirited Away Theme"),
+                OstSongItem("The Promise of the World (Sekai no Yakusoku)", "Chieko Baisho & Joe Hisaishi", "chieko-baisho-joe-hisaishi", "the-promise-of-the-world-sekai-no-yakusoku", "Howl's Moving Castle Theme"),
+                OstSongItem("Tonari no Totoro", "Azumi Inoue & Joe Hisaishi", "azumi-inoue-joe-hisaishi", "tonari-no-totoro", "Totoro Theme"),
+                OstSongItem("Rouge no Dengon", "Yumi Matsutoya", "yumi-matsutoya", "rouge-no-dengon", "Kiki's Delivery Service OP"),
+                OstSongItem("Mononoke Hime", "Joe Hisaishi", "joe-hisaishi", "mononoke-hime", "Princess Mononoke Theme")
+            )
+        ),
+        OstFranchise(
+            id = "hunter_x_hunter",
+            title = "Hunter x Hunter",
+            category = "Anime & Jepang",
+            subtitle = "Masatoshi Ono, Yuzu, Galneryus",
+            songs = listOf(
+                OstSongItem("Departure!", "Masatoshi Ono", "masatoshi-ono", "departure", "Opening Theme"),
+                OstSongItem("Hyori Ittai", "Yuzu", "yuzu", "hyori-ittai", "Chimera Ant ED 2"),
+                OstSongItem("Hunting for Your Dream", "Galneryus", "galneryus", "hunting-for-your-dream", "Ending 2")
+            )
+        ),
+        OstFranchise(
+            id = "your_lie_in_april",
+            title = "Your Lie in April (Shigatsu wa Kimi no Uso)",
+            category = "Anime & Jepang",
+            subtitle = "Goose house, 7!!",
+            songs = listOf(
+                OstSongItem("Hikaru Nara", "Goose house", "goose-house", "hikaru-nara", "Opening 1"),
+                OstSongItem("Orange", "7!!", "7", "orange", "Ending 2")
+            )
+        ),
+        OstFranchise(
+            id = "bocchi_oshi_no_ko",
+            title = "Oshi no Ko & Bocchi the Rock!",
+            category = "Anime & Jepang",
+            subtitle = "YOASOBI, Kessoku Band, Official HIGE DANdism",
+            songs = listOf(
+                OstSongItem("Idol", "YOASOBI", "yoasobi", "idol", "Oshi no Ko OP - Global Hit"),
+                OstSongItem("Seishun Complex", "Kessoku Band", "kessoku-band", "seishun-complex", "Bocchi the Rock OP"),
+                OstSongItem("Ano Band", "Kessoku Band", "kessoku-band", "ano-band", "Bocchi the Rock Live"),
+                OstSongItem("Guitar, Loneliness and Blue Planet", "Kessoku Band", "kessoku-band", "guitar-loneliness-and-blue-planet", "Bocchi the Rock Insert"),
+                OstSongItem("Cry Baby", "Official HIGE DANdism", "official-hige-dandism", "cry-baby", "Tokyo Revengers OP")
+            )
+        ),
+        OstFranchise(
+            id = "fairytail_deathnote",
+            title = "Fairy Tail & Death Note",
+            category = "Anime & Jepang",
+            subtitle = "FUNKIST, Nightmare",
+            songs = listOf(
+                OstSongItem("Snow Fairy", "FUNKIST", "funkist", "snow-fairy", "Fairy Tail OP 1"),
+                OstSongItem("The World", "Nightmare", "nightmare", "the-world", "Death Note OP 1")
             )
         ),
         OstFranchise(
@@ -204,10 +264,11 @@ object OstCatalogData {
             id = "evangelion_modern",
             title = "Evangelion, Jujutsu Kaisen & Spy x Family",
             category = "Anime & Jepang",
-            subtitle = "Yoko Takahashi, Eve, Official HIGE DANdism",
+            subtitle = "Yoko Takahashi, Eve, Tatsuya Kitani, Official HIGE DANdism",
             songs = listOf(
                 OstSongItem("A Cruel Angel's Thesis", "Yoko Takahashi", "yoko-takahashi", "a-cruel-angel-s-thesis", "Evangelion OP"),
                 OstSongItem("Kaikai Kitan", "Eve", "eve", "kaikai-kitan", "Jujutsu Kaisen OP 1"),
+                OstSongItem("Ao no Sumika (Where Our Blue Is)", "Tatsuya Kitani", "tatsuya-kitani", "ao-no-sumika-where-our-blue-is", "Jujutsu Kaisen S2 OP"),
                 OstSongItem("Mixed Nuts", "Official HIGE DANdism", "official-hige-dandism", "mixed-nuts", "Spy x Family OP 1")
             )
         ),
@@ -501,15 +562,49 @@ object OstCatalogData {
             id = "queen_of_tears",
             title = "Queen of Tears",
             category = "K-Drama",
-            subtitle = "BSS (SEVENTEEN)",
+            subtitle = "BSS (SEVENTEEN), Crush",
             songs = listOf(
-                OstSongItem("The Reasons of My Smiles", "BSS (SEVENTEEN)", "bss-seventeen", "the-reasons-of-my-smiles", "OST Part 1")
+                OstSongItem("The Reasons of My Smiles", "BSS (SEVENTEEN)", "bss-seventeen", "the-reasons-of-my-smiles", "OST Part 1"),
+                OstSongItem("Love You With All My Heart", "Crush", "crush", "love-you-with-all-my-heart", "OST Part 4")
+            )
+        ),
+        OstFranchise(
+            id = "hospital_playlist",
+            title = "Hospital Playlist (1 & 2)",
+            category = "K-Drama",
+            subtitle = "Jo Jung Suk, Lee Mujin",
+            songs = listOf(
+                OstSongItem("I Like You", "Jo Jung Suk", "jo-jung-suk", "i-like-you", "Season 1 OST"),
+                OstSongItem("Rain and You", "Lee Mujin", "lee-mujin", "rain-and-you", "Season 2 OST")
+            )
+        ),
+        OstFranchise(
+            id = "beloved_summer_moon_lovers",
+            title = "Our Beloved Summer & Moon Lovers",
+            category = "K-Drama",
+            subtitle = "V (BTS), EXO-CBX, Loco & Punch",
+            songs = listOf(
+                OstSongItem("Christmas Tree", "V", "v", "christmas-tree", "Our Beloved Summer OST"),
+                OstSongItem("For You", "EXO-CBX", "exo-cbx", "for-you", "Moon Lovers OST Part 1"),
+                OstSongItem("Say Yes", "Loco & Punch", "loco-punch", "say-yes", "Moon Lovers OST Part 2")
             )
         ),
 
         // ==========================================
         // 4. HOLLYWOOD & DISNEY
         // ==========================================
+        OstFranchise(
+            id = "little_mermaid_cars",
+            title = "The Little Mermaid, Cars & Brave",
+            category = "Hollywood & Disney",
+            subtitle = "Jodi Benson, Rascal Flatts, Julie Fowlis, Cliff Edwards",
+            songs = listOf(
+                OstSongItem("Part of Your World", "Jodi Benson", "jodi-benson", "part-of-your-world", "Ariel Main Anthem"),
+                OstSongItem("Life Is a Highway", "Rascal Flatts", "rascal-flatts", "life-is-a-highway", "Cars Main Track"),
+                OstSongItem("Touch the Sky", "Julie Fowlis", "julie-fowlis", "touch-the-sky", "Disney Pixar's Brave"),
+                OstSongItem("When You Wish Upon a Star", "Cliff Edwards", "cliff-edwards", "when-you-wish-upon-a-star", "Pinocchio Classic Theme")
+            )
+        ),
         OstFranchise(
             id = "greatest_showman",
             title = "The Greatest Showman",

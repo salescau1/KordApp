@@ -17,9 +17,14 @@ class PlayerPreferences(context: Context) {
         get() = prefs.getString(KEY_APP_LANGUAGE, "en") ?: "en"
         set(value) { prefs.edit().putString(KEY_APP_LANGUAGE, value).apply() }
 
+    var appTheme: String
+        get() = prefs.getString(KEY_APP_THEME, "dark") ?: "dark"
+        set(value) { prefs.edit().putString(KEY_APP_THEME, value).apply() }
+
     companion object {
         private const val KEY_KEEP_AWAKE = "keep_screen_awake"
         private const val KEY_SCROLL_SPEED = "default_scroll_speed"
         const val KEY_APP_LANGUAGE = "app_language"
+        const val KEY_APP_THEME = "app_theme"
     }
 }
