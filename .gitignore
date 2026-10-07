@@ -1,0 +1,24 @@
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Android build outputs
+**/build/
+app/build/
+
+# SQLite databases & temp batches in tools (do not track 500MB raw files in Git)
+tools/catalog/*.db
+tools/catalog/*.db-shm
+tools/catalog/*.db-wal
+tools/catalog/db_batches/
+tools/catalog/new_catalog.db.xz
+tools/crawler/cache/
+*.tmp
+*.png

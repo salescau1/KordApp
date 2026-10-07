@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- KordApp launcher foreground: pick gitar emas + huruf K brown + long shadow tegas.
+     Bentuk simetris (sumbu x=54), ujung bawah membulat, tanpa background (transparan).
+     Tiap elemen path diberi nama agar bisa dipisah untuk animasi splash. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- PICK (emas), gradient vertikal -->
+    <path
+        android:name="pick"
+        android:pathData="M54,28 C68,28 80,34 80,48 C80,63 67,80 54,84 C41,80 28,63 28,48 C28,34 40,28 54,28 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="28"
+                android:endX="54" android:endY="84">
+                <item android:offset="0" android:color="#FFF2C763" />
+                <item android:offset="1" android:color="#FFD89F36" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- K + shadow di-clip ke dalam pick -->
+    <group android:name="clip_k">
+        <clip-path
+            android:name="pick_clip"
+            android:pathData="M54,28 C68,28 80,34 80,48 C80,63 67,80 54,84 C41,80 28,63 28,48 C28,34 40,28 54,28 Z" />
+
+        <!-- LONG SHADOW SOLID: tiga garis K di-extrusi jadi bidang penuh ke pojok kanan-atas.
+             Digabung dalam SATU path + digambar sekali (fill+stroke alpha 0.5) supaya
+             transparansinya satu lapis seperti opacity grup di SVG — tidak menumpuk/gelap
+             di area yang beririsan, tepi tetap tegas tanpa gerigi. -->
+        <path
+            android:name="shadow"
+            android:pathData="M45,50 L45,78 L79,42 L79,14 Z M45,64 L61,50 L95,14 L79,28 Z M45,64 L62,78 L96,42 L79,28 Z"
+            android:fillColor="#3E2410" android:fillAlpha="0.5" />
+
+        <!-- K utama brown, tegas -->
+        <path
+            android:name="letter_k"
+            android:pathData="M45,50 L45,78 M45,64 L61,50 M45,64 L62,78"
+            android:strokeColor="#6B3A17" android:strokeWidth="8"
+            android:strokeLineCap="round" android:strokeLineJoin="round" />
+    </group>
+</vector>

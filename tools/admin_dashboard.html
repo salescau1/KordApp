@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KordApp - Admin & License Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0E1117; color: #F5F8FF; }
+        .card-surface { background-color: #161B22; border: 1px solid #242C3D; }
+        .accent-gold { color: #E5A93C; }
+        .bg-gold { background-color: #E5A93C; }
+        .border-custom { border-color: #242C3D; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #242C3D; border-radius: 4px; }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen">
+
+    <!-- Top Header -->
+    <div class="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-custom pb-6">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="text-3xl font-extrabold text-white">Kord</span>
+                <span class="text-3xl font-extrabold accent-gold">App</span>
+                <span class="text-xs px-2.5 py-1 rounded-full bg-yellow-500/10 text-yellow-400 font-semibold border border-yellow-500/20 ml-2">ADMIN MONITOR</span>
+            </div>
+            <p class="text-sm text-gray-400 mt-1">Sistem Pemantau Pengguna & Generator Lisensi KordApp by kekalclip</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="fetchAllData()" class="px-4 py-2 rounded-xl card-surface hover:bg-gray-800 text-sm font-medium transition flex items-center gap-2 text-gray-200">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Refresh Data
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto space-y-8">
+
+        <!-- Stat Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="card-surface p-5 rounded-2xl">
+                <p class="text-xs text-gray-400 font-medium">TOTAL DEVICE TERDETEKSI</p>
+                <h3 id="statTotalDevices" class="text-3xl font-bold mt-2 text-white">-</h3>
+                <p class="text-xs text-gray-500 mt-1">Perangkat yang pernah buka app</p>
+            </div>
+            <div class="card-surface p-5 rounded-2xl">
+                <p class="text-xs text-gray-400 font-medium">TOTAL KODE DIBUAT</p>
+                <h3 id="statTotalLicenses" class="text-3xl font-bold mt-2 accent-gold">-</h3>
+                <p class="text-xs text-gray-500 mt-1">Seluruh voucher lisensi</p>
+            </div>
+            <div class="card-surface p-5 rounded-2xl">
+                <p class="text-xs text-gray-400 font-medium">LISENSI TERPAKAI (AKTIF)</p>
+                <h3 id="statUsedLicenses" class="text-3xl font-bold mt-2 text-emerald-400">-</h3>
+                <p class="text-xs text-gray-500 mt-1">Pengguna aktif berbayar</p>
+            </div>
+            <div class="card-surface p-5 rounded-2xl">
+                <p class="text-xs text-gray-400 font-medium">SISA STOK KODE</p>
+                <h3 id="statAvailableLicenses" class="text-3xl font-bold mt-2 text-cyan-400">-</h3>
+                <p class="text-xs text-gray-500 mt-1">Siap dijual ke pembeli</p>
+            </div>
+        </div>
+
+        <!-- License Generator Panel -->
+        <div class="card-surface p-6 rounded-2xl">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-gold"></span>
+                Buat Kode Lisensi Baru
+            </h2>
+            <p class="text-sm text-gray-400 mt-1">Generate kode acak baru yang langsung tersimpan di database Supabase kamu.</p>
+
+            <div class="mt-5 flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-2 bg-[#0E1117] border border-custom rounded-xl px-3 py-2">
+                    <span class="text-xs text-gray-400">Jumlah:</span>
+                    <select id="genCount" class="bg-transparent text-sm text-white font-medium focus:outline-none">
+                        <option value="1" class="bg-[#161B22]">1 Kode</option>
+                        <option value="5" class="bg-[#161B22]">5 Kode</option>
+                        <option value="10" class="bg-[#161B22]">10 Kode</option>
+                    </select>
+                </div>
+                <button onclick="generateLicenses()" id="btnGenerate" class="bg-gold hover:bg-yellow-500 text-black font-bold px-6 py-2.5 rounded-xl text-sm transition flex items-center gap-2 shadow-lg shadow-yellow-500/10">
+                    <span>⚡ Generate Sekarang</span>
+                </button>
+            </div>
+
+            <!-- Newly Generated Box -->
+            <div id="newCodesContainer" class="hidden mt-4 p-4 rounded-xl bg-[#0E1117] border border-yellow-500/30">
+                <p class="text-xs text-yellow-400 font-semibold mb-2">KODE BARU BERHASIL DIBUAT (Klik untuk copy):</p>
+                <div id="newCodesList" class="flex flex-wrap gap-2"></div>
+            </div>
+        </div>
+
+        <!-- Tables Section: 2 Columns on desktop -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+            <!-- Devices Table -->
+            <div class="card-surface p-6 rounded-2xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        Monitor Perangkat (Devices)
+                    </h2>
+                    <span id="deviceCountBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">0 HP</span>
+                </div>
+                <div class="overflow-x-auto custom-scroll max-h-[420px]">
+                    <table class="w-full text-left text-xs">
+                        <thead class="text-gray-400 border-b border-custom sticky top-0 bg-[#161B22]">
+                            <tr>
+                                <th class="py-2.5 px-3">Model HP</th>
+                                <th class="py-2.5 px-3">OS</th>
+                                <th class="py-2.5 px-3">App</th>
+                                <th class="py-2.5 px-3">Terakhir Aktif</th>
+                            </tr>
+                        </thead>
+                        <tbody id="devicesTableBody" class="divide-y divide-custom text-gray-300">
+                            <tr><td colspan="4" class="text-center py-6 text-gray-500">Memuat data perangkat...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Licenses Table -->
+            <div class="card-surface p-6 rounded-2xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                        Daftar Lisensi (Licenses)
+                    </h2>
+                    <span id="licenseCountBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-yellow-500/10 accent-gold border border-yellow-500/20">0 Kode</span>
+                </div>
+                <div class="overflow-x-auto custom-scroll max-h-[420px]">
+                    <table class="w-full text-left text-xs">
+                        <thead class="text-gray-400 border-b border-custom sticky top-0 bg-[#161B22]">
+                            <tr>
+                                <th class="py-2.5 px-3">Kode Lisensi</th>
+                                <th class="py-2.5 px-3">Status</th>
+                                <th class="py-2.5 px-3">Device ID</th>
+                                <th class="py-2.5 px-3 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="licensesTableBody" class="divide-y divide-custom text-gray-300">
+                            <tr><td colspan="4" class="text-center py-6 text-gray-500">Memuat data lisensi...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://rhgcsgrdqbhimpdloxgo.supabase.co/rest/v1";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZ2NzZ3JkcWJoaW1wZGxveGdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMDAzNjksImV4cCI6MjEwNjg3NjM2OX0.JKlFUjdom0M0WV62xYvCn9vCq23O9UPisXdPdCCHGtk";
+
+        const headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": "Bearer " + SUPABASE_KEY,
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+        };
+
+        async function fetchAllData() {
+            await Promise.all([loadDevices(), loadLicenses()]);
+        }
+
+        async function loadDevices() {
+            try {
+                const res = await fetch(`${SUPABASE_URL}/devices?select=*&order=last_seen.desc`, { headers });
+                const data = await res.json();
+                document.getElementById('statTotalDevices').innerText = data.length || 0;
+                document.getElementById('deviceCountBadge').innerText = `${data.length || 0} HP`;
+
+                const tbody = document.getElementById('devicesTableBody');
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-500">Belum ada perangkat terdaftar.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.map(d => `
+                    <tr class="hover:bg-gray-800/40 transition">
+                        <td class="py-3 px-3 font-semibold text-white">${escapeHtml(d.device_model || 'Unknown')}</td>
+                        <td class="py-3 px-3 text-gray-400">${escapeHtml(d.os_version || '-')}</td>
+                        <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-gray-800 text-gray-300 text-[10px]">v${escapeHtml(d.app_version || '1.0')}</span></td>
+                        <td class="py-3 px-3 text-gray-400">${formatDate(d.last_seen)}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+                document.getElementById('devicesTableBody').innerHTML = '<tr><td colspan="4" class="text-center py-6 text-red-400">Gagal memuat data perangkat.</td></tr>';
+            }
+        }
+
+        async function loadLicenses() {
+            try {
+                const res = await fetch(`${SUPABASE_URL}/licenses?select=*&order=created_at.desc`, { headers });
+                const data = await res.json();
+
+                const total = data.length || 0;
+                const used = data.filter(l => l.is_used).length;
+                const available = total - used;
+
+                document.getElementById('statTotalLicenses').innerText = total;
+                document.getElementById('statUsedLicenses').innerText = used;
+                document.getElementById('statAvailableLicenses').innerText = available;
+                document.getElementById('licenseCountBadge').innerText = `${total} Kode`;
+
+                const tbody = document.getElementById('licensesTableBody');
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-500">Belum ada kode lisensi dibuat.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.map(l => `
+                    <tr class="hover:bg-gray-800/40 transition">
+                        <td class="py-3 px-3 font-mono font-bold text-white select-all">${escapeHtml(l.license_key)}</td>
+                        <td class="py-3 px-3">
+                            ${l.is_used 
+                                ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">TERPAKAI</span>'
+                                : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">TERSEDIA</span>'
+                            }
+                        </td>
+                        <td class="py-3 px-3 text-gray-400 font-mono text-[11px]">${l.device_id ? escapeHtml(l.device_id) : '<span class="text-gray-600">-</span>'}</td>
+                        <td class="py-3 px-3 text-right">
+                            ${l.is_used ? `
+                                <button onclick="resetLicense('${l.id}')" class="text-yellow-400 hover:text-yellow-300 text-[11px] font-semibold underline">
+                                    Reset HP
+                                </button>
+                            ` : '<span class="text-gray-600 text-[11px]">Siap pakai</span>'}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+                document.getElementById('licensesTableBody').innerHTML = '<tr><td colspan="4" class="text-center py-6 text-red-400">Gagal memuat data lisensi.</td></tr>';
+            }
+        }
+
+        async function generateLicenses() {
+            const count = parseInt(document.getElementById('genCount').value) || 1;
+            const btn = document.getElementById('btnGenerate');
+            btn.disabled = true;
+            btn.innerText = "Menyimpan...";
+
+            const newKeys = [];
+            const rows = [];
+            for (let i = 0; i < count; i++) {
+                const rand = Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+                const key = `KORD-${rand}`;
+                newKeys.push(key);
+                rows.push({ license_key: key });
+            }
+
+            try {
+                const res = await fetch(`${SUPABASE_URL}/licenses`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(rows)
+                });
+
+                if (res.ok) {
+                    const box = document.getElementById('newCodesContainer');
+                    const list = document.getElementById('newCodesList');
+                    box.classList.remove('hidden');
+                    list.innerHTML = newKeys.map(k => `
+                        <button onclick="copyToClipboard('${k}')" title="Klik untuk salin" class="px-3 py-1.5 rounded-lg bg-yellow-500/20 text-yellow-300 font-mono text-xs font-bold border border-yellow-500/40 hover:bg-yellow-500/30 transition flex items-center gap-1.5">
+                            ${k}
+                            <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        </button>
+                    `).join('');
+
+                    await loadLicenses();
+                } else {
+                    alert("Gagal menyimpan ke Supabase. Cek console.");
+                }
+            } catch (err) {
+                alert("Error koneksi: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "⚡ Generate Sekarang";
+            }
+        }
+
+        async function resetLicense(id) {
+            if (!confirm("Yakin ingin mereset lisensi ini agar bisa dipakai di HP lain?")) return;
+            try {
+                const res = await fetch(`${SUPABASE_URL}/licenses?id=eq.${id}`, {
+                    method: 'PATCH',
+                    headers: headers,
+                    body: JSON.stringify({ is_used: false, device_id: null, activated_at: null })
+                });
+                if (res.ok) {
+                    await loadLicenses();
+                } else {
+                    alert("Gagal reset. Cek izin RLS di Supabase.");
+                }
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            alert("Disalin ke clipboard: " + text);
+        }
+
+        function formatDate(str) {
+            if (!str) return '-';
+            const d = new Date(str);
+            return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // Initial fetch
+        fetchAllData();
+    </script>
+</body>
+</html>
