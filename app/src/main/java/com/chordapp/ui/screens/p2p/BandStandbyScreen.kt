@@ -39,7 +39,6 @@ import java.util.*
 
 @Composable
 fun BandStandbyScreen(
-    onSongReceived: (LiveSongPayload) -> Unit,
     onDisconnectClick: () -> Unit
 ) {
     val strings = LocalAppStrings.current
@@ -62,13 +61,6 @@ fun BandStandbyScreen(
         while (true) {
             currentTime = formatter.format(Date())
             delay(1000)
-        }
-    }
-
-    // Listen for incoming song push from server
-    LaunchedEffect(Unit) {
-        BandSessionManager.incomingSong.collect { payload ->
-            onSongReceived(payload)
         }
     }
 

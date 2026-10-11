@@ -105,28 +105,34 @@ fun AppNavigation() {
     val exploreViewModel: ExploreViewModel = viewModel(factory = viewModelFactory)
     val isEditMode by exploreViewModel.isEditMode.collectAsState()
 
-    // Global listener for Band Live Sync in Client Mode
+    // Global listener for Band Live Sync in Client Mode (only when connected)
     androidx.compose.runtime.LaunchedEffect(Unit) {
         com.chordapp.p2p.BandSessionManager.incomingSong.collect { payload ->
-            if (com.chordapp.p2p.BandSessionManager.currentMode.value == com.chordapp.p2p.BandMode.CLIENT) {
-                val safeHash = java.net.URLEncoder.encode(payload.sourceUrl, "UTF-8")
-                navController.navigate(
-                    Screen.Player.createRoute(
-                        safeHash,
-                        transpose = payload.transpose,
-                        capo = payload.capo
+            if (com.chordapp.p2p.BandSessionManager.currentMode.value == com.chordapp.p2p.BandMode.CLIENT &&
+                com.chordapp.p2p.BandSessionManager.connectionState.value is com.chordapp.p2p.ClientConnectionState.Connected
+            ) {
+                val activeRoute = navController.currentBackStackEntry?.destination?.route
+                if (activeRoute?.startsWith("player") != true) {
+                    val safeHash = java.net.URLEncoder.encode(payload.sourceUrl, "UTF-8")
+                    navController.navigate(
+                        Screen.Player.createRoute(
+                            safeHash,
+                            transpose = payload.transpose,
+                            capo = payload.capo
+                        )
                     )
-                ) {
-                    popUpTo(Screen.Player.route) { inclusive = true }
                 }
             }
         }
     }
     androidx.compose.runtime.LaunchedEffect(Unit) {
         com.chordapp.p2p.BandSessionManager.standbyTrigger.collect {
-            if (com.chordapp.p2p.BandSessionManager.currentMode.value == com.chordapp.p2p.BandMode.CLIENT) {
-                navController.navigate(Screen.BandStandby.route) {
-                    popUpTo(Screen.BandStandby.route) { inclusive = true }
+            if (com.chordapp.p2p.BandSessionManager.currentMode.value == com.chordapp.p2p.BandMode.CLIENT &&
+                com.chordapp.p2p.BandSessionManager.connectionState.value is com.chordapp.p2p.ClientConnectionState.Connected
+            ) {
+                val activeRoute = navController.currentBackStackEntry?.destination?.route
+                if (activeRoute?.startsWith("player") == true) {
+                    navController.popBackStack()
                 }
             }
         }
@@ -514,16 +520,6 @@ private fun AppNavHost(
         }
         composable(Screen.BandStandby.route) {
             com.chordapp.ui.screens.p2p.BandStandbyScreen(
-                onSongReceived = { payload ->
-                    val safeHash = java.net.URLEncoder.encode(payload.sourceUrl, "UTF-8")
-                    navController.navigate(
-                        Screen.Player.createRoute(
-                            safeHash,
-                            transpose = payload.transpose,
-                            capo = payload.capo
-                        )
-                    )
-                },
                 onDisconnectClick = {
                     com.chordapp.p2p.BandSessionManager.disconnectClient()
                     navController.popBackStack()

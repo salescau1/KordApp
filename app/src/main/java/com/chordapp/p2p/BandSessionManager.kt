@@ -140,7 +140,7 @@ object BandSessionManager {
     private val _connectionState = MutableStateFlow<ClientConnectionState>(ClientConnectionState.Disconnected)
     val connectionState: StateFlow<ClientConnectionState> = _connectionState.asStateFlow()
 
-    private val _incomingSong = MutableSharedFlow<LiveSongPayload>(replay = 1, extraBufferCapacity = 1)
+    private val _incomingSong = MutableSharedFlow<LiveSongPayload>(replay = 0, extraBufferCapacity = 64)
     val incomingSong: SharedFlow<LiveSongPayload> = _incomingSong.asSharedFlow()
 
     private val _incomingTranspose = MutableSharedFlow<Int>(extraBufferCapacity = 1)

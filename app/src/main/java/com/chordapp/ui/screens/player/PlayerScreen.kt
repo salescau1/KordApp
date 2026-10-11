@@ -805,7 +805,7 @@ fun PlayerScreen(
         }
     }
 
-    if (isLoading) {
+    if (isLoading && song == null) {
         Box(modifier = Modifier.fillMaxSize().background(Background), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = AccentGold)
         }
@@ -879,8 +879,8 @@ fun PlayerScreen(
     val connectedClients by com.chordapp.p2p.BandSessionManager.connectedClients.collectAsState()
     val isBroadcastPaused by com.chordapp.p2p.BandSessionManager.isBroadcastPaused.collectAsState()
 
-    // Server Mode: Broadcast current song
-    LaunchedEffect(currentSong.sourceUrl, currentSheet, transposeDelta, capo, isBroadcastPaused) {
+    // Server Mode: Broadcast current song only when song or broadcast pause changes
+    LaunchedEffect(currentSong.sourceUrl, isBroadcastPaused) {
         if (bandMode == com.chordapp.p2p.BandMode.SERVER && hasContent && !isBroadcastPaused) {
             val rawContent = currentSong.content.ifBlank {
                 com.chordapp.p2p.BandSessionManager.getCachedRawSheet(currentSong.sourceUrl) ?: ""
@@ -918,28 +918,33 @@ fun PlayerScreen(
         }
     }
 
-    // Client Mode: Follow server song changes
-    LaunchedEffect(bandMode) {
-        if (bandMode == com.chordapp.p2p.BandMode.CLIENT) {
+    val connectionState by com.chordapp.p2p.BandSessionManager.connectionState.collectAsState()
+    val isConnectedClient = bandMode == com.chordapp.p2p.BandMode.CLIENT && connectionState is com.chordapp.p2p.ClientConnectionState.Connected
+
+    // Client Mode: Follow server song changes (only when connected and URL is different)
+    LaunchedEffect(isConnectedClient) {
+        if (isConnectedClient) {
             com.chordapp.p2p.BandSessionManager.incomingSong.collect { payload ->
-                val safeHash = java.net.URLEncoder.encode(payload.sourceUrl, "UTF-8")
-                viewModel.loadSong(safeHash, payload.transpose, payload.capo)
+                if (song?.sourceUrl != payload.sourceUrl) {
+                    val safeHash = java.net.URLEncoder.encode(payload.sourceUrl, "UTF-8")
+                    viewModel.loadSong(safeHash, payload.transpose, payload.capo)
+                }
             }
         }
     }
 
-    // Client Mode: Follow server transpose
-    LaunchedEffect(bandMode) {
-        if (bandMode == com.chordapp.p2p.BandMode.CLIENT) {
+    // Client Mode: Follow server transpose (only when connected)
+    LaunchedEffect(isConnectedClient) {
+        if (isConnectedClient) {
             com.chordapp.p2p.BandSessionManager.incomingTranspose.collect { delta ->
                 viewModel.setTranspose(delta)
             }
         }
     }
 
-    // Client Mode: Follow server standby
-    LaunchedEffect(bandMode) {
-        if (bandMode == com.chordapp.p2p.BandMode.CLIENT) {
+    // Client Mode: Follow server standby (only when connected)
+    LaunchedEffect(isConnectedClient) {
+        if (isConnectedClient) {
             com.chordapp.p2p.BandSessionManager.standbyTrigger.collect {
                 onBackClick()
             }
@@ -1184,7 +1189,7 @@ fun PlayerScreen(
                                         fontSize = 10.sp
                                     )
                                 }
-                            } else if (bandMode == com.chordapp.p2p.BandMode.CLIENT) {
+                            } else if (isConnectedClient) {
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Box(
                                     modifier = Modifier
