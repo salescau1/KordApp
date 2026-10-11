@@ -76,7 +76,7 @@ import com.chordapp.ui.theme.*
 import com.chordapp.viewmodels.PlayerFavoriteEvent
 import com.chordapp.viewmodels.PlayerSetlistEvent
 import com.chordapp.viewmodels.PlayerViewModel
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 
 /** Maps a tap offset inside the chord line back to the chord under it. */
 internal data class ChordSpan(val start: Int, val length: Int, val symbol: String)
@@ -846,7 +846,17 @@ fun PlayerScreen(
         if (autoScrollSpeed <= 0f || isPageFlip) return@LaunchedEffect
         var previousFrame = withFrameNanos { it }
         var remainder = 0f
-        while (currentAutoScrollSpeed > 0f && !currentPageFlip) {
+        while (currentAutoScrollSpeed > 0f && !currentPageFlip && isActive) {
+            // If user is actively touching or dragging the list, pause temporarily until finger released
+            if (listState.isScrollInProgress) {
+                while (listState.isScrollInProgress && isActive && currentAutoScrollSpeed > 0f) {
+                    delay(50)
+                }
+                previousFrame = withFrameNanos { it }
+                remainder = 0f
+                continue
+            }
+
             val frame = withFrameNanos { it }
             val rawDelta = autoScrollDeltaPx(
                 elapsedNanos = frame - previousFrame,
@@ -862,10 +872,23 @@ fun PlayerScreen(
                 remainder = 0f
                 rawDelta
             }
-            val consumed = listState.scrollBy(toScroll)
-            if (consumed < toScroll * 0.5f && !listState.canScrollForward) {
-                viewModel.pauseAutoScroll()
-                break
+
+            try {
+                val consumed = listState.scrollBy(toScroll)
+                val isAtBottom = !listState.canScrollForward &&
+                    listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index == (itemCount - 1).coerceAtLeast(0)
+                if (consumed < toScroll * 0.5f && isAtBottom) {
+                    viewModel.pauseAutoScroll()
+                    break
+                }
+            } catch (e: CancellationException) {
+                if (!isActive || currentAutoScrollSpeed <= 0f) throw e
+                // Touch gesture or UI interruption: wait until user releases finger and resume smoothly
+                while (listState.isScrollInProgress && isActive && currentAutoScrollSpeed > 0f) {
+                    delay(50)
+                }
+                previousFrame = withFrameNanos { it }
+                remainder = 0f
             }
         }
     }

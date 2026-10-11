@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -187,9 +188,11 @@ fun SearchScreen(
         }
 
         // Source Selector Pills: [ Local ] [ UG ] [ GT ] [ CI ]
+        val sourcePillsScrollState = rememberScrollState()
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .horizontalScroll(sourcePillsScrollState)
                 .padding(horizontal = 16.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -1227,6 +1230,7 @@ private fun SearchSourcePill(
 
     Row(
         modifier = Modifier
+            .defaultMinSize(minHeight = 34.dp)
             .background(bgColor, RoundedCornerShape(20.dp))
             .border(1.dp, borderColor, RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
@@ -1247,12 +1251,14 @@ private fun SearchSourcePill(
                 fontSize = 13.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
             ),
-            color = textColor
+            color = textColor,
+            maxLines = 1
         )
         Text(
             text = "($badge)",
             style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
-            color = badgeColor
+            color = badgeColor,
+            maxLines = 1
         )
     }
 }
