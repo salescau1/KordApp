@@ -19,25 +19,34 @@ import com.chordapp.ui.theme.PrimaryText
 import com.chordapp.ui.theme.UgBg
 import com.chordapp.ui.theme.UgText
 
-/** Label pendek yang ditampilkan untuk tiap sumber chord ("ChordTela" -> "CT"). */
+import com.chordapp.ui.theme.CiBg
+import com.chordapp.ui.theme.CiText
+
+/** Label pendek yang ditampilkan untuk tiap sumber chord ("ChordTela" -> "CT", "ChordIndonesia" -> "CI", dll). */
 fun sourceLabel(source: String): String = when (source) {
     "ChordTela" -> "CT"
-    else -> source // UG / GT sudah singkat
+    "ChordIndonesia", "Chord Indonesia" -> "CI"
+    "GuitarTuna", "Guitar Tuna" -> "GT"
+    "Ultimate Guitar", "UltimateGuitar" -> "UG"
+    else -> source // UG / GT / CT / CI sudah singkat
 }
 
 /** Non-interactive badge showing a chord source name, deduplicated per source. */
 @Composable
 fun SourceBadge(source: String, compact: Boolean = false) {
-    val bg = when (source) {
+    val norm = sourceLabel(source)
+    val bg = when (norm) {
         "UG" -> UgBg
         "GT" -> GtBg
-        "ChordTela" -> CtBg
+        "CT" -> CtBg
+        "CI" -> CiBg
         else -> CardSurface
     }
-    val textColor = when (source) {
+    val textColor = when (norm) {
         "UG" -> UgText
         "GT" -> GtText
-        "ChordTela" -> CtText
+        "CT" -> CtText
+        "CI" -> CiText
         else -> PrimaryText
     }
 

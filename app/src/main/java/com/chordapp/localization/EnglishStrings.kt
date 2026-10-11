@@ -91,6 +91,7 @@ object EnglishStrings : AppStrings {
 
     // Setlists Screen & Tracklist Screen
     override val setlistsTitle = "SETLISTS"
+    override val setlistsSubtitle = "Manage and organize your song setlists"
     override val sortSetlists = "Sort setlists"
     override val sortAZ = "A–Z"
     override val sortPopular = "Popular"
@@ -123,6 +124,7 @@ object EnglishStrings : AppStrings {
     override fun diagramNotAvailable(symbol: String) = "Chord diagram not yet available for $symbol."
     override val previousShape = "Previous shape"
     override val nextShape = "Next shape"
+    override val addAnotherVersion = "Add another version"
 
     // Song Versions Screen & Artist Directory
     override val noVersionsFound = "No versions found"
@@ -137,11 +139,15 @@ object EnglishStrings : AppStrings {
 
     // Settings Screen
     override val settingsTitle = "SETTINGS"
+    override val settingsSubtitle = "Application system and display preferences"
     override val themeSection = "APPEARANCE"
     override val appThemeLabel = "Theme"
     override val selectTheme = "Select Theme"
     override val themeDark = "Dark Mode"
     override val themeLight = "Light Mode"
+    override val themePaper = "Paper (Sepia)"
+    override val themeBlackboard = "Blackboard"
+    override val themeGreenboard = "Greenboard"
     override val themeSystem = "System Default"
     override val languageSection = "LANGUAGE"
     override val appLanguageLabel = "App Language"

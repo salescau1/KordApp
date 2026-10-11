@@ -21,7 +21,10 @@ import com.chordapp.ui.components.SourceBadge
 import com.chordapp.ui.theme.*
 import com.chordapp.viewmodels.ArtistDirectoryViewModel
 import com.chordapp.viewmodels.ArtistSongSortOrder
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,26 +81,23 @@ fun ArtistDirectoryScreen(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = strings.songsCount(shownSongs.size), color = MutedText)
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    ArtistSortButton(
-                        label = strings.sortAZ,
-                        selected = sortOrder == ArtistSongSortOrder.ALPHABETICAL,
-                        onClick = { viewModel.setSortOrder(ArtistSongSortOrder.ALPHABETICAL) }
-                    )
-                    ArtistSortButton(
-                        label = strings.sortPopular,
-                        selected = sortOrder == ArtistSongSortOrder.POPULAR,
-                        onClick = { viewModel.setSortOrder(ArtistSongSortOrder.POPULAR) }
-                    )
-                }
+                Text(
+                    text = strings.songsCount(shownSongs.size),
+                    color = MutedText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                ArtistSortSegmentedControl(
+                    selectedOrder = sortOrder,
+                    onSelectOrder = { viewModel.setSortOrder(it) },
+                    strings = strings
+                )
             }
 
             // Local "Filter judul": narrows the already-loaded artist songs by title.
@@ -215,18 +215,35 @@ private fun SongRow(
                     val maxVotes = versions.maxOfOrNull { it.votes ?: 0 } ?: 0
                     val maxRating = versions.maxOfOrNull { it.rating ?: 0f } ?: 0f
                     if (maxVotes > 0) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "★ $maxRating",
-                                color = AccentGold,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "($maxVotes)",
-                                color = MutedText,
-                                style = MaterialTheme.typography.labelSmall
-                            )
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = RaisedSurface.copy(alpha = 0.85f),
+                            border = BorderStroke(1.dp, Border.copy(alpha = 0.6f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "★",
+                                    color = AccentGold,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = if (maxRating % 1f == 0f) maxRating.toInt().toString() else String.format(java.util.Locale.US, "%.1f", maxRating),
+                                    color = PrimaryText,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "(${formatVoteCount(maxVotes)})",
+                                    color = MutedText,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
                         }
                     }
                 }
@@ -235,24 +252,80 @@ private fun SongRow(
     }
 }
 
+private fun formatVoteCount(votes: Int): String = when {
+    votes >= 1000 -> String.format(java.util.Locale.US, "%.1fk", votes / 1000f)
+    else -> votes.toString()
+}
+
 @Composable
-private fun ArtistSortButton(
+private fun ArtistSortSegmentedControl(
+    selectedOrder: ArtistSongSortOrder,
+    onSelectOrder: (ArtistSongSortOrder) -> Unit,
+    strings: com.chordapp.localization.AppStrings
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = CardSurface,
+        border = BorderStroke(1.dp, Border),
+        modifier = Modifier.height(34.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SortSegmentItem(
+                label = strings.sortAZ,
+                icon = null,
+                selected = selectedOrder == ArtistSongSortOrder.ALPHABETICAL,
+                onClick = { onSelectOrder(ArtistSongSortOrder.ALPHABETICAL) }
+            )
+            SortSegmentItem(
+                label = strings.sortPopular,
+                icon = "🔥",
+                selected = selectedOrder == ArtistSongSortOrder.POPULAR,
+                onClick = { onSelectOrder(ArtistSongSortOrder.POPULAR) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SortSegmentItem(
     label: String,
+    icon: String?,
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        color = if (selected) AccentGold else CardSurface,
-        border = BorderStroke(1.dp, if (selected) AccentGold else Border)
+    val bg = if (selected) AccentGold else Color.Transparent
+    val textColor = if (selected) Background else MutedText
+    val fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(18.dp))
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            color = if (selected) Background else PrimaryText,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (icon != null) {
+                Text(
+                    text = icon,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+            }
+            Text(
+                text = label,
+                color = textColor,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = fontWeight
+            )
+        }
     }
 }

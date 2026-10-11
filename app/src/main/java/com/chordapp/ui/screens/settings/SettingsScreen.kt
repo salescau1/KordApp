@@ -6,10 +6,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,20 +64,46 @@ fun SettingsScreen(
     var showTransferDialog by remember { mutableStateOf(false) }
     var isTransferring by remember { mutableStateOf(false) }
 
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var updateInfo by remember { mutableStateOf<com.chordapp.repositories.AppUpdateInfo?>(null) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var isDownloadingUpdate by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Background)
-            .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 96.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = strings.settingsTitle,
-            color = PrimaryText,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.headlineSmall
-        )
+        // Unified Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = strings.settingsTitle,
+                    color = PrimaryText,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = strings.settingsSubtitle,
+                    color = MutedText,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
 
         // Appearance / Theme Section
         SettingsSection(strings.themeSection) {
@@ -88,7 +120,9 @@ fun SettingsScreen(
                     val themeName = when (currentTheme) {
                         com.chordapp.ui.theme.AppThemeMode.DARK -> strings.themeDark
                         com.chordapp.ui.theme.AppThemeMode.LIGHT -> strings.themeLight
-                        com.chordapp.ui.theme.AppThemeMode.SYSTEM -> strings.themeSystem
+                        com.chordapp.ui.theme.AppThemeMode.PAPER -> strings.themePaper
+                        com.chordapp.ui.theme.AppThemeMode.BLACKBOARD -> strings.themeBlackboard
+                        com.chordapp.ui.theme.AppThemeMode.GREENBOARD -> strings.themeGreenboard
                     }
                     Text(themeName, color = AccentGold, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.width(8.dp))
@@ -116,6 +150,11 @@ fun SettingsScreen(
             }
         }
 
+        val isDownloadingCatalog by viewModel.isDownloadingCatalog.collectAsState()
+        val catalogDownloadProgress by viewModel.catalogDownloadProgress.collectAsState()
+        val catalogDownloadStatus by viewModel.catalogDownloadStatus.collectAsState()
+        val catalogDownloadError by viewModel.catalogDownloadError.collectAsState()
+
         // Offline Catalog Section
         SettingsSection(strings.offlineCatalogSection) {
             InfoRow(strings.artists, stats.artists.toString())
@@ -123,6 +162,60 @@ fun SettingsScreen(
             InfoRow(strings.songs, stats.songs.toString())
             HorizontalDivider(color = Border)
             InfoRow(strings.catalogSize, formatBytes(stats.catalogBytes, strings.calculating))
+            HorizontalDivider(color = Border)
+
+            Spacer(Modifier.height(10.dp))
+            if (isDownloadingCatalog) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = catalogDownloadStatus,
+                        color = PrimaryText,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    LinearProgressIndicator(
+                        progress = { catalogDownloadProgress / 100f },
+                        modifier = Modifier.fillMaxWidth().height(8.dp),
+                        color = AccentGold,
+                        trackColor = Border
+                    )
+                }
+            } else {
+                Button(
+                    onClick = { viewModel.downloadCatalog() },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (stats.songs < 1000) AccentGold else CardSurface
+                    ),
+                    border = if (stats.songs >= 1000) BorderStroke(1.dp, Border) else null,
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(
+                        imageVector = if (stats.songs < 1000) Icons.Filled.CloudDownload else Icons.Filled.Refresh,
+                        contentDescription = null,
+                        tint = if (stats.songs < 1000) Background else AccentGold,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (stats.songs < 1000) "Tarik 157k Lagu Offline (80 MB)" else "Perbarui / Unduh Ulang Database",
+                        color = if (stats.songs < 1000) Background else PrimaryText,
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+            if (catalogDownloadError != null) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = catalogDownloadError!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
 
         val isLicensed = remember { LicenseRepository.isLicensed(context) }
@@ -252,7 +345,9 @@ fun SettingsScreen(
                             val label = when (mode) {
                                 com.chordapp.ui.theme.AppThemeMode.DARK -> strings.themeDark
                                 com.chordapp.ui.theme.AppThemeMode.LIGHT -> strings.themeLight
-                                com.chordapp.ui.theme.AppThemeMode.SYSTEM -> strings.themeSystem
+                                com.chordapp.ui.theme.AppThemeMode.PAPER -> strings.themePaper
+                                com.chordapp.ui.theme.AppThemeMode.BLACKBOARD -> strings.themeBlackboard
+                                com.chordapp.ui.theme.AppThemeMode.GREENBOARD -> strings.themeGreenboard
                             }
                             Row(
                                 modifier = Modifier
@@ -296,6 +391,42 @@ fun SettingsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clickable(enabled = !isCheckingUpdate) {
+                        isCheckingUpdate = true
+                        scope.launch {
+                            val result = com.chordapp.repositories.UpdateRepository.checkAppUpdate(context)
+                            isCheckingUpdate = false
+                            result.onSuccess { info ->
+                                if (info.hasUpdate) {
+                                    updateInfo = info
+                                    showUpdateDialog = true
+                                } else {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Aplikasi sudah versi terbaru (v${viewModel.versionName})",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }.onFailure {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Gagal memeriksa pembaruan: ${it.message ?: "Koneksi bermasalah"}",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
+                    .padding(vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Periksa Pembaruan", color = PrimaryText)
+                Text(if (isCheckingUpdate) "Memeriksa..." else "Cek Versi ›", color = AccentGold, fontWeight = FontWeight.SemiBold)
+            }
+            HorizontalDivider(color = Border)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
                     .clickable(onClick = onAboutClick)
                     .padding(vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -305,6 +436,78 @@ fun SettingsScreen(
             }
         }
 
+        // Dialog Pembaruan Tersedia
+        if (showUpdateDialog && updateInfo != null) {
+            val info = updateInfo!!
+            AlertDialog(
+                onDismissRequest = {
+                    if (!info.isForceUpdate && !isDownloadingUpdate) showUpdateDialog = false
+                },
+                title = {
+                    Text("Pembaruan Tersedia!", color = PrimaryText, fontWeight = FontWeight.Bold)
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "Versi baru v${info.latestVersionName} telah dirilis.",
+                            color = AccentGold,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            "Catatan Perubahan:\n${info.changelog}",
+                            color = MutedText,
+                            fontSize = 13.sp
+                        )
+                        if (isDownloadingUpdate) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Sedang mengunduh APK... Cek status bar notifikasi.",
+                                color = AccentGold,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            isDownloadingUpdate = true
+                            com.chordapp.repositories.UpdateRepository.startDownloadAndInstall(
+                                context,
+                                info.downloadUrl,
+                                "KordApp-v${info.latestVersionName}.apk"
+                            )
+                            android.widget.Toast.makeText(
+                                context,
+                                "Unduhan dimulai. Buka notifikasi setelah selesai untuk memasang.",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                            if (!info.isForceUpdate) {
+                                showUpdateDialog = false
+                                isDownloadingUpdate = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold),
+                        enabled = !isDownloadingUpdate
+                    ) {
+                        Text("Update Sekarang", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    if (!info.isForceUpdate) {
+                        TextButton(
+                            onClick = { showUpdateDialog = false },
+                            enabled = !isDownloadingUpdate
+                        ) {
+                            Text("Nanti Saja", color = MutedText)
+                        }
+                    }
+                },
+                containerColor = CardSurface
+            )
+        }
+
         Text(
             text = strings.offlineDisclaimer,
             color = MutedText,
@@ -312,6 +515,7 @@ fun SettingsScreen(
             modifier = Modifier.padding(bottom = 12.dp)
         )
     }
+}
 }
 
 @Composable

@@ -42,6 +42,12 @@ Aliran aplikasi adalah `UI → ViewModel → Repository → DB/platform`.
 - Katalog chord, pencarian, artist, version picker, Player, Favorites, dan Setlists harus tetap berfungsi offline.
 - Network hanya untuk layanan yang memang dinamis, seperti chart dan iklan. Kegagalan network tidak boleh merusak fungsi inti offline.
 
+## Aturan Instalasi APK ke Device (Kritis)
+- **DILARANG KERAS menginstal ke Private Space** (User ID 10 / work profile / secondary space).
+- Setiap kali mengeksekusi `adb install`, **WAJIB menggunakan argumen `--user 0`** (Main Profile / Owner).
+- Format baku: `adb -s <device_id> install --user 0 -r <path_apk>`.
+- Jika multi-user terdeteksi pada device Pixel / Android 15+, selalu targetkan `User 0` (Owner).
+
 ## Kontrak UI dan Navigasi
 - Gunakan istilah produk **Setlists**, bukan menggantinya dengan istilah lama.
 - Bottom navigation: `Home | Explore | Setlists | Favorites | Settings`.

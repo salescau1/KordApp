@@ -113,4 +113,20 @@ class SheetPaginatorTest {
             }
         }
     }
+
+    @Test
+    fun `dense page packing fills viewport evenly without empty trailing gaps`() {
+        val stream = javaClass.classLoader!!.getResourceAsStream("close_your_eyes.txt")!!
+        val content = stream.bufferedReader().readText()
+        val sheet = ChordParser.parse(content)
+        val pages = SheetPaginator.paginate(sheet.lines, capacity = 25, charsPerLine = 40)
+        
+        // Ensure no premature cutoffs: all full pages should have robust content count (>= 15 lines)
+        for (i in 0 until pages.size - 1) {
+            org.junit.Assert.assertTrue(
+                "Page ${i + 1} should be densely packed (has ${pages[i].size} lines)",
+                pages[i].size >= 15
+            )
+        }
+    }
 }

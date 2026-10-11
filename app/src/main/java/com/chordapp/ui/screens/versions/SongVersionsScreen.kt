@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import com.chordapp.catalog.CatalogSongEntity
 import com.chordapp.ui.components.AppBackButton
 import com.chordapp.ui.components.sourceLabel
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.chordapp.ui.theme.*
 import com.chordapp.viewmodels.SongVersionsViewModel
@@ -95,13 +96,14 @@ fun SongVersionsScreen(
         // Filters
         val filterOptions = listOf(
             "All Sources" to strings.allSources,
-            "Ultimate Guitar" to "Ultimate Guitar",
-            "GuitarTuna" to "GuitarTuna",
-            "ChordTela" to "ChordTela"
+            "UG" to "UG",
+            "GT" to "GT",
+            "CT" to "CT",
+            "CI" to "CI"
         )
         val counts = filterOptions.associate { (id, _) ->
             val count = if (id == "All Sources") versions.size
-            else versions.count { it.source == (if (id == "Ultimate Guitar") "UG" else if (id == "GuitarTuna") "GT" else "ChordTela") }
+            else versions.count { sourceLabel(it.source) == id }
             id to count
         }
 
@@ -181,27 +183,19 @@ fun VersionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (rankInSong == 1) {
-                        Box(
-                            modifier = Modifier
-                                .background(AccentGold, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text("BEST", color = Background, style = MaterialTheme.typography.labelSmall)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-
-                    val sourceBg = when(version.source) {
+                    val normSource = sourceLabel(version.source)
+                    val sourceBg = when(normSource) {
                         "UG" -> UgBg
                         "GT" -> GtBg
-                        "ChordTela" -> CtBg
+                        "CT" -> CtBg
+                        "CI" -> CiBg
                         else -> CardSurface
                     }
-                    val sourceTc = when(version.source) {
+                    val sourceTc = when(normSource) {
                         "UG" -> UgText
                         "GT" -> GtText
-                        "ChordTela" -> CtText
+                        "CT" -> CtText
+                        "CI" -> CiText
                         else -> PrimaryText
                     }
                     Box(
@@ -209,14 +203,17 @@ fun VersionCard(
                             .background(sourceBg, RoundedCornerShape(4.dp))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text(sourceLabel(version.source), color = sourceTc, style = MaterialTheme.typography.labelSmall)
+                        Text(normSource, color = sourceTc, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
-                    // version_name di katalog sebenarnya teks "about" dari situs
-                    // (mis. UG) — bukan nama versi. Jadi judul pakai nomor urut yang
-                    // rapi, dan teks about ditaruh sbagai catatan kecil di bawah.
-                    Text(text = "Ver. $rankInSong", color = PrimaryText, style = MaterialTheme.typography.titleMedium)
+                    val titleText = version.versionName?.takeIf { it.isNotBlank() } ?: "Ver. $rankInSong"
+                    Text(
+                        text = titleText,
+                        color = PrimaryText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
                 if (version.votes != null && version.votes > 0) {
@@ -226,19 +223,6 @@ fun VersionCard(
                         Text(text = "(${version.votes})", color = MutedText, style = MaterialTheme.typography.labelSmall)
                     }
                 }
-            }
-
-            // Catatan "about" dari situs sumber (disimpan di version_name). Tampilkan
-            // kecil & terpotong, bukan sebagai judul versi.
-            version.versionName?.takeIf { it.isNotBlank() }?.let { about ->
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = about,
-                    color = MutedText,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))

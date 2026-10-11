@@ -15,9 +15,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Search
@@ -26,6 +36,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,6 +49,8 @@ import com.chordapp.ui.components.RegionBadge
 import com.chordapp.ui.components.SourceBadge
 import com.chordapp.ui.theme.*
 import com.chordapp.viewmodels.ExploreViewModel
+
+private val DeleteRed = Color(0xFFE53935)
 
 @Composable
 fun ExploreScreen(
@@ -79,10 +92,24 @@ fun ExploreScreen(
         map
     }
 
-    val shownArtists = remember(artists, query, selectedLetter, selectedGenre) {
+    val artistSearchMap = remember(artists) {
+        artists.map { artist ->
+            artist to com.chordapp.catalog.foldDiacritics(artist.artistName).lowercase(java.util.Locale.ROOT)
+        }
+    }
+
+    val shownArtists = remember(artists, query, selectedLetter, selectedGenre, artistSearchMap) {
         when {
-            query.isNotBlank() -> artists.filter {
-                it.artistName.contains(query.trim(), ignoreCase = true)
+            query.isNotBlank() -> {
+                val q = query.trim()
+                val normQ = com.chordapp.catalog.foldDiacritics(q).lowercase(java.util.Locale.ROOT)
+                val matches = ArrayList<CatalogArtistInfo>()
+                for ((artist, normName) in artistSearchMap) {
+                    if (normName.contains(normQ)) {
+                        matches.add(artist)
+                    }
+                }
+                matches
             }
             selectedGenre != null && !selectedGenre!!.isSongs -> {
                 val slugs = selectedGenre!!.artistSlugs
@@ -91,12 +118,13 @@ fun ExploreScreen(
             selectedLetter != null -> {
                 if (selectedLetter == '#') {
                     artists.filter {
-                        val ch = it.artistName.trim().firstOrNull()?.uppercaseChar()
+                        val ch = com.chordapp.catalog.foldDiacritics(it.artistName.trim().take(1)).firstOrNull()?.uppercaseChar()
                         ch != null && ch !in 'A'..'Z'
                     }
                 } else {
                     artists.filter {
-                        it.artistName.trim().firstOrNull()?.uppercaseChar() == selectedLetter
+                        val ch = com.chordapp.catalog.foldDiacritics(it.artistName.trim().take(1)).firstOrNull()?.uppercaseChar()
+                        ch == selectedLetter
                     }
                 }
             }
@@ -104,141 +132,351 @@ fun ExploreScreen(
         }
     }
 
-    Column(
+    val isEditMode by viewModel.isEditMode.collectAsState()
+    val deletedArtists by viewModel.deletedArtistSlugs.collectAsState()
+    val deletedSongs by viewModel.deletedSongs.collectAsState()
+    val deletedVersions by viewModel.deletedVersionIds.collectAsState()
+    val editingArtist by viewModel.editingArtist.collectAsState()
+    val editingArtistSongs by viewModel.editingArtistSongs.collectAsState()
+    var showApplyDialog by remember { mutableStateOf(false) }
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    val hasPendingDeletions = (deletedArtists.size + deletedSongs.size + deletedVersions.size) > 0
+
+    BackHandler(enabled = isEditMode) {
+        if (editingArtist != null) {
+            viewModel.closeArtistInEditMode()
+        } else if (hasPendingDeletions) {
+            showDiscardDialog = true
+        } else {
+            viewModel.cancelEditMode()
+        }
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Background)
     ) {
-        // Header
-        val strings = com.chordapp.localization.LocalAppStrings.current
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Column {
-                Text(
-                    text = strings.exploreTitle,
-                    color = PrimaryText,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = strings.exploreSubtitle,
-                    color = MutedText,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            if (artists.isNotEmpty()) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = RaisedSurface,
-                    border = BorderStroke(1.dp, Border)
-                ) {
+            // Header
+            val strings = com.chordapp.localization.LocalAppStrings.current
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
                     Text(
-                        text = strings.artistsCount(artists.size),
-                        color = AccentGold,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        text = if (isEditMode) "EDIT MODE" else strings.exploreTitle,
+                        color = if (isEditMode) AccentGold else PrimaryText,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = if (isEditMode) "Customize Your Database" else strings.exploreSubtitle,
+                        color = MutedText,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                if (!isEditMode) {
+                    Surface(
+                        modifier = Modifier.clickable { viewModel.setEditMode(true) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = RaisedSurface,
+                        border = BorderStroke(1.dp, Border)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = "Edit Mode",
+                                tint = AccentGold,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                } else {
+                    Surface(
+                        modifier = Modifier.clickable {
+                            if (hasPendingDeletions) {
+                                showDiscardDialog = true
+                            } else {
+                                viewModel.cancelEditMode()
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        color = RaisedSurface,
+                        border = BorderStroke(1.dp, Border)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Clear,
+                                contentDescription = "Keluar Edit Mode",
+                                tint = AccentGold,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (editingArtist != null) {
+                // View: Artist song inspection in Edit Mode
+                EditModeArtistSongDetailView(
+                    artist = editingArtist!!,
+                    songs = editingArtistSongs,
+                    deletedSongs = deletedSongs,
+                    deletedVersions = deletedVersions,
+                    onToggleSong = viewModel::toggleSongDeletion,
+                    onToggleVersion = viewModel::toggleVersionDeletion,
+                    onBack = viewModel::closeArtistInEditMode
+                )
+            } else {
+                // Search Bar
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = viewModel::setQuery,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    singleLine = true,
+                    placeholder = { Text(strings.searchArtistPlaceholder, color = MutedText) },
+                    leadingIcon = {
+                        Icon(Icons.Filled.Search, contentDescription = null, tint = AccentGold)
+                    },
+                    trailingIcon = if (query.isNotEmpty()) {
+                        {
+                            IconButton(onClick = { viewModel.setQuery("") }) {
+                                Icon(Icons.Filled.Clear, contentDescription = strings.clearSearch, tint = MutedText)
+                            }
+                        }
+                    } else null,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = CardSurface,
+                        unfocusedContainerColor = CardSurface,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText,
+                        focusedBorderColor = AccentGold,
+                        unfocusedBorderColor = Border,
+                        cursorColor = AccentGold
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = AccentGold)
+                    }
+                } else if (query.isNotBlank()) {
+                    // View: Search Results
+                    SearchResultsView(
+                        query = query,
+                        results = shownArtists,
+                        isEditMode = isEditMode,
+                        deletedArtistSlugs = deletedArtists,
+                        onToggleArtistDelete = viewModel::toggleArtistDeletion,
+                        onArtistClick = { artist ->
+                            if (isEditMode) viewModel.openArtistInEditMode(artist) else onArtistClick(artist.artistSlug)
+                        }
+                    )
+                } else if (selectedGenre != null) {
+                    if (selectedGenre!!.isSongs) {
+                        // View: OST Franchise-based Architecture
+                        OstDetailView(
+                            franchises = OstCatalogData.FRANCHISES,
+                            selectedFranchise = selectedOstFranchise,
+                            selectedCategory = selectedOstCategory,
+                            searchQuery = ostSearchQuery,
+                            otherOstSongs = ostSongs,
+                            onCategorySelect = viewModel::setOstCategory,
+                            onSearchQueryChange = viewModel::setOstSearchQuery,
+                            onFranchiseSelect = viewModel::selectOstFranchise,
+                            onBackFranchise = viewModel::clearOstFranchise,
+                            onBackGenre = viewModel::clearGenre,
+                            onSongClick = onSongClick
+                        )
+                    } else {
+                        // View: Genre Artists
+                        GenreDetailView(
+                            genre = selectedGenre!!,
+                            artists = shownArtists,
+                            isEditMode = isEditMode,
+                            deletedArtistSlugs = deletedArtists,
+                            onToggleArtistDelete = viewModel::toggleArtistDeletion,
+                            onBack = { viewModel.clearGenre() },
+                            onArtistClick = { artist ->
+                                if (isEditMode) viewModel.openArtistInEditMode(artist) else onArtistClick(artist.artistSlug)
+                            }
+                        )
+                    }
+                } else if (selectedLetter != null) {
+                    // View: Letter Selected
+                    LetterDetailView(
+                        selectedLetter = selectedLetter!!,
+                        catalogItems = catalogItems,
+                        letterCountMap = letterCountMap,
+                        artists = shownArtists,
+                        isEditMode = isEditMode,
+                        deletedArtistSlugs = deletedArtists,
+                        onToggleArtistDelete = viewModel::toggleArtistDeletion,
+                        onSelectLetter = { item ->
+                            if (item == '★') viewModel.clearLetter() else viewModel.selectLetter(item)
+                        },
+                        onBack = { viewModel.clearLetter() },
+                        onArtistClick = { artist ->
+                            if (isEditMode) viewModel.openArtistInEditMode(artist) else onArtistClick(artist.artistSlug)
+                        }
+                    )
+                } else {
+                    // View: Main Explore Overview (Genres + 7-Column Compact Non-alphabetical to Z Grid)
+                    ExploreMainOverview(
+                        catalogItems = catalogItems,
+                        letterCountMap = letterCountMap,
+                        onGenreClick = { genre -> viewModel.selectGenre(genre) },
+                        onLetterClick = { item ->
+                            if (item != '★') viewModel.selectLetter(item)
+                        }
                     )
                 }
             }
         }
 
-        // Search Bar
-        OutlinedTextField(
-            value = query,
-            onValueChange = viewModel::setQuery,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            singleLine = true,
-            placeholder = { Text(strings.searchArtistPlaceholder, color = MutedText) },
-            leadingIcon = {
-                Icon(Icons.Filled.Search, contentDescription = null, tint = AccentGold)
-            },
-            trailingIcon = if (query.isNotEmpty()) {
-                {
-                    IconButton(onClick = { viewModel.setQuery("") }) {
-                        Icon(Icons.Filled.Clear, contentDescription = strings.clearSearch, tint = MutedText)
+        // Floating Action Bar in Edit Mode
+        AnimatedVisibility(
+            visible = isEditMode,
+            enter = fadeIn() + slideInVertically { it },
+            exit = fadeOut() + slideOutVertically { it },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to Color.Transparent,
+                            0.30f to Background.copy(alpha = 0.65f),
+                            0.65f to Background.copy(alpha = 0.90f),
+                            1.0f to Background
+                        )
+                    )
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 16.dp, bottom = 12.dp)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    color = CardSurface,
+                    border = BorderStroke(1.dp, Border)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "${deletedArtists.size} Artists • ${deletedSongs.size} Songs • ${deletedVersions.size} Versions",
+                            color = PrimaryText,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Button(
+                            onClick = { showApplyDialog = true },
+                            enabled = hasPendingDeletions,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = DeleteRed,
+                                disabledContainerColor = DeleteRed.copy(alpha = 0.25f)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "Apply",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
-            } else null,
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = CardSurface,
-                unfocusedContainerColor = CardSurface,
-                focusedTextColor = PrimaryText,
-                unfocusedTextColor = PrimaryText,
-                focusedBorderColor = AccentGold,
-                unfocusedBorderColor = Border,
-                cursorColor = AccentGold
-            )
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AccentGold)
             }
-        } else if (query.isNotBlank()) {
-            // View: Search Results
-            SearchResultsView(
-                query = query,
-                results = shownArtists,
-                onArtistClick = onArtistClick
-            )
-        } else if (selectedGenre != null) {
-            if (selectedGenre!!.isSongs) {
-                // View: OST Franchise-based Architecture
-                OstDetailView(
-                    franchises = OstCatalogData.FRANCHISES,
-                    selectedFranchise = selectedOstFranchise,
-                    selectedCategory = selectedOstCategory,
-                    searchQuery = ostSearchQuery,
-                    otherOstSongs = ostSongs,
-                    onCategorySelect = viewModel::setOstCategory,
-                    onSearchQueryChange = viewModel::setOstSearchQuery,
-                    onFranchiseSelect = viewModel::selectOstFranchise,
-                    onBackFranchise = viewModel::clearOstFranchise,
-                    onBackGenre = viewModel::clearGenre,
-                    onSongClick = onSongClick
-                )
-            } else {
-                // View: Genre Artists
-                GenreDetailView(
-                    genre = selectedGenre!!,
-                    artists = shownArtists,
-                    onBack = { viewModel.clearGenre() },
-                    onArtistClick = onArtistClick
-                )
-            }
-        } else if (selectedLetter != null) {
-            // View: Letter Selected
-            LetterDetailView(
-                selectedLetter = selectedLetter!!,
-                catalogItems = catalogItems,
-                letterCountMap = letterCountMap,
-                artists = shownArtists,
-                onSelectLetter = { item ->
-                    if (item == '★') viewModel.clearLetter() else viewModel.selectLetter(item)
+        }
+
+        // Dialog Konfirmasi Apply
+        if (showApplyDialog) {
+            AlertDialog(
+                onDismissRequest = { showApplyDialog = false },
+                title = {
+                    Text("Konfirmasi Hapus Database", color = PrimaryText, fontWeight = FontWeight.Bold)
                 },
-                onBack = { viewModel.clearLetter() },
-                onArtistClick = onArtistClick
+                text = {
+                    Text(
+                        "Tindakan ini akan menghapus ${deletedArtists.size} Artis, ${deletedSongs.size} Lagu, dan ${deletedVersions.size} Versi secara permanen dari database lokal perangkat.",
+                        color = MutedText
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showApplyDialog = false
+                            viewModel.applyDeletions()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = DeleteRed)
+                    ) {
+                        Text("Hapus Sekarang", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showApplyDialog = false }) {
+                        Text("Batal", color = AccentGold)
+                    }
+                },
+                containerColor = CardSurface
             )
-        } else {
-            // View: Main Explore Overview (Genres + 7-Column Compact Non-alphabetical to Z Grid)
-            ExploreMainOverview(
-                catalogItems = catalogItems,
-                letterCountMap = letterCountMap,
-                onGenreClick = { genre -> viewModel.selectGenre(genre) },
-                onLetterClick = { item ->
-                    if (item != '★') viewModel.selectLetter(item)
-                }
+        }
+
+        // Dialog Safeguard saat Batal / Keluar Edit Mode jika ada seleksi
+        if (showDiscardDialog) {
+            AlertDialog(
+                onDismissRequest = { showDiscardDialog = false },
+                title = {
+                    Text("Keluar dari Edit Mode?", color = PrimaryText, fontWeight = FontWeight.Bold)
+                },
+                text = {
+                    Text(
+                        "Pilihan penghapusan yang belum di-Apply tidak akan dihapus dari database.",
+                        color = MutedText
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDiscardDialog = false
+                            viewModel.cancelEditMode()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = RaisedSurface)
+                    ) {
+                        Text("Keluar", color = PrimaryText, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDiscardDialog = false }) {
+                        Text("Lanjut Edit", color = AccentGold)
+                    }
+                },
+                containerColor = CardSurface
             )
         }
     }
@@ -457,8 +695,11 @@ private fun GenreCard(
 private fun GenreDetailView(
     genre: ExploreGenre,
     artists: List<CatalogArtistInfo>,
+    isEditMode: Boolean = false,
+    deletedArtistSlugs: Set<String> = emptySet(),
+    onToggleArtistDelete: ((String) -> Unit)? = null,
     onBack: () -> Unit,
-    onArtistClick: (String) -> Unit
+    onArtistClick: (CatalogArtistInfo) -> Unit
 ) {
     val strings = com.chordapp.localization.LocalAppStrings.current
     Column(modifier = Modifier.fillMaxSize()) {
@@ -518,10 +759,16 @@ private fun GenreDetailView(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(bottom = 96.dp)
+            contentPadding = PaddingValues(bottom = if (isEditMode) 110.dp else 96.dp)
         ) {
             items(artists, key = { it.artistSlug }) { artist ->
-                ArtistCard(artist = artist, onClick = { onArtistClick(artist.artistSlug) })
+                ArtistCard(
+                    artist = artist,
+                    isEditMode = isEditMode,
+                    isDeleted = deletedArtistSlugs.contains(artist.artistSlug),
+                    onToggleDelete = { onToggleArtistDelete?.invoke(artist.artistSlug) },
+                    onClick = { onArtistClick(artist) }
+                )
             }
         }
     }
@@ -1044,9 +1291,12 @@ private fun LetterDetailView(
     catalogItems: List<Char>,
     letterCountMap: Map<Char, Int>,
     artists: List<CatalogArtistInfo>,
+    isEditMode: Boolean = false,
+    deletedArtistSlugs: Set<String> = emptySet(),
+    onToggleArtistDelete: ((String) -> Unit)? = null,
     onSelectLetter: (Char) -> Unit,
     onBack: () -> Unit,
-    onArtistClick: (String) -> Unit
+    onArtistClick: (CatalogArtistInfo) -> Unit
 ) {
     val strings = com.chordapp.localization.LocalAppStrings.current
     Column(modifier = Modifier.fillMaxSize()) {
@@ -1128,10 +1378,16 @@ private fun LetterDetailView(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(bottom = 96.dp)
+            contentPadding = PaddingValues(bottom = if (isEditMode) 110.dp else 96.dp)
         ) {
             items(artists, key = { it.artistSlug }) { artist ->
-                ArtistCard(artist = artist, onClick = { onArtistClick(artist.artistSlug) })
+                ArtistCard(
+                    artist = artist,
+                    isEditMode = isEditMode,
+                    isDeleted = deletedArtistSlugs.contains(artist.artistSlug),
+                    onToggleDelete = { onToggleArtistDelete?.invoke(artist.artistSlug) },
+                    onClick = { onArtistClick(artist) }
+                )
             }
         }
     }
@@ -1141,7 +1397,10 @@ private fun LetterDetailView(
 private fun SearchResultsView(
     query: String,
     results: List<CatalogArtistInfo>,
-    onArtistClick: (String) -> Unit
+    isEditMode: Boolean = false,
+    deletedArtistSlugs: Set<String> = emptySet(),
+    onToggleArtistDelete: ((String) -> Unit)? = null,
+    onArtistClick: (CatalogArtistInfo) -> Unit
 ) {
     val strings = com.chordapp.localization.LocalAppStrings.current
     Column(modifier = Modifier.fillMaxSize()) {
@@ -1203,10 +1462,16 @@ private fun SearchResultsView(
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 96.dp)
+                contentPadding = PaddingValues(bottom = if (isEditMode) 110.dp else 96.dp)
             ) {
                 items(results, key = { it.artistSlug }) { artist ->
-                    ArtistCard(artist = artist, onClick = { onArtistClick(artist.artistSlug) })
+                    ArtistCard(
+                        artist = artist,
+                        isEditMode = isEditMode,
+                        isDeleted = deletedArtistSlugs.contains(artist.artistSlug),
+                        onToggleDelete = { onToggleArtistDelete?.invoke(artist.artistSlug) },
+                        onClick = { onArtistClick(artist) }
+                    )
                 }
             }
         }
@@ -1216,17 +1481,25 @@ private fun SearchResultsView(
 @Composable
 private fun ArtistCard(
     artist: CatalogArtistInfo,
+    isEditMode: Boolean = false,
+    isDeleted: Boolean = false,
+    onToggleDelete: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
     val strings = com.chordapp.localization.LocalAppStrings.current
     val shape = RoundedCornerShape(14.dp)
+    val cardAlpha = if (isEditMode && isDeleted) 0.55f else 1.0f
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .clickable(enabled = !(isEditMode && isDeleted)) { onClick() },
         shape = shape,
-        color = CardSurface,
-        border = BorderStroke(1.dp, Border)
+        color = CardSurface.copy(alpha = cardAlpha),
+        border = BorderStroke(
+            1.dp,
+            if (isEditMode && isDeleted) Color(0xFFC62828).copy(alpha = 0.5f) else Border
+        )
     ) {
         Row(
             modifier = Modifier
@@ -1244,7 +1517,7 @@ private fun ArtistCard(
             ) {
                 Text(
                     text = initial,
-                    color = AccentGold,
+                    color = if (isEditMode && isDeleted) MutedText else AccentGold,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -1256,7 +1529,7 @@ private fun ArtistCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = artist.artistName,
-                        color = PrimaryText,
+                        color = if (isEditMode && isDeleted) MutedText else PrimaryText,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -1285,19 +1558,313 @@ private fun ArtistCard(
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .background(RaisedSurface, CircleShape)
-                    .border(1.dp, Border, CircleShape),
-                contentAlignment = Alignment.Center
+            if (isEditMode) {
+                ColorCircleSwitch(
+                    isKeep = !isDeleted,
+                    onToggle = { onToggleDelete?.invoke() }
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .background(RaisedSurface, CircleShape)
+                        .border(1.dp, Border, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "›",
+                        color = AccentGold,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Switcher geser kanan-kiri bulat sederhana:
+ * Hijau (Keep) = Bulatan di kanan, warna hijau terang.
+ * Merah (Hapus) = Bulatan di kiri, warna merah terang.
+ */
+@Composable
+private fun ColorCircleSwitch(
+    isKeep: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val trackBg by animateColorAsState(if (isKeep) Color(0xFF143823) else Color(0xFF3D1616), label = "trackBg")
+    val trackBorder by animateColorAsState(if (isKeep) Color(0xFF2E7D32) else Color(0xFFC62828), label = "trackBorder")
+    val knobColor by animateColorAsState(if (isKeep) Color(0xFF4CAF50) else Color(0xFFE53935), label = "knobColor")
+    val alignment = if (isKeep) Alignment.CenterEnd else Alignment.CenterStart
+
+    Box(
+        modifier = modifier
+            .width(46.dp)
+            .height(26.dp)
+            .background(trackBg, CircleShape)
+            .border(1.dp, trackBorder, CircleShape)
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 3.dp),
+        contentAlignment = alignment
+    ) {
+        Box(
+            modifier = Modifier
+                .size(20.dp)
+                .background(knobColor, CircleShape)
+        )
+    }
+}
+
+/**
+ * Level 2: Tampilan inspeksi dan pruning lagu artis dalam Edit Mode (Alphabetical A-Z).
+ */
+@Composable
+private fun EditModeArtistSongDetailView(
+    artist: CatalogArtistInfo,
+    songs: Map<CatalogSongGroup, List<com.chordapp.catalog.CatalogSongEntity>>,
+    deletedSongs: Set<Pair<String, String>>,
+    deletedVersions: Set<Long>,
+    onToggleSong: (artistSlug: String, titleSlug: String) -> Unit,
+    onToggleVersion: (versionId: Long) -> Unit,
+    onBack: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+    ) {
+        // Back Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.clickable { onBack() },
+                shape = RoundedCornerShape(10.dp),
+                color = RaisedSurface,
+                border = BorderStroke(1.dp, Border)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Kembali",
+                        tint = AccentGold,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Kembali ke Artis",
+                        color = PrimaryText,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = artist.artistName,
+                    color = PrimaryText,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "Pruning lagu & versi (A–Z)",
+                    color = MutedText,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = CardSurface,
+                border = BorderStroke(1.dp, Border)
             ) {
                 Text(
-                    text = "›",
+                    text = "${songs.size} Lagu",
                     color = AccentGold,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                 )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (songs.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = AccentGold)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 110.dp)
+            ) {
+                items(songs.entries.toList(), key = { it.key.titleSlug }) { entry ->
+                    val songGroup = entry.key
+                    val versions = entry.value
+                    EditModeSongRow(
+                        artistSlug = artist.artistSlug,
+                        songGroup = songGroup,
+                        versions = versions,
+                        isSongDeleted = deletedSongs.contains(Pair(artist.artistSlug, songGroup.titleSlug)),
+                        deletedVersions = deletedVersions,
+                        onToggleSong = { onToggleSong(artist.artistSlug, songGroup.titleSlug) },
+                        onToggleVersion = onToggleVersion
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditModeSongRow(
+    artistSlug: String,
+    songGroup: CatalogSongGroup,
+    versions: List<com.chordapp.catalog.CatalogSongEntity>,
+    isSongDeleted: Boolean,
+    deletedVersions: Set<Long>,
+    onToggleSong: () -> Unit,
+    onToggleVersion: (Long) -> Unit
+) {
+    val isMultiVersion = versions.size > 1
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = CardSurface.copy(alpha = if (isSongDeleted) 0.55f else 1.0f),
+        border = BorderStroke(
+            1.dp,
+            if (isSongDeleted) Color(0xFFC62828).copy(alpha = 0.5f) else Border
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            // Main Song Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.MusicNote,
+                    contentDescription = null,
+                    tint = if (isSongDeleted) MutedText else AccentGold,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = songGroup.title,
+                        color = if (isSongDeleted) MutedText else PrimaryText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = if (isMultiVersion) "${versions.size} Versi chord" else "${versions.firstOrNull()?.source ?: "Katalog"} • Key ${versions.firstOrNull()?.keyBase ?: "-"}",
+                        color = MutedText,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                if (isMultiVersion) {
+                    // Expand/Collapse Badge
+                    Surface(
+                        modifier = Modifier.clickable { isExpanded = !isExpanded },
+                        shape = RoundedCornerShape(8.dp),
+                        color = RaisedSurface,
+                        border = BorderStroke(1.dp, Border)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${versions.size} Versi",
+                                color = AccentGold,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Icon(
+                                imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = AccentGold,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
+                // Whole-song delete toggle
+                ColorCircleSwitch(
+                    isKeep = !isSongDeleted,
+                    onToggle = onToggleSong
+                )
+            }
+
+            // Expanded Sub-Versions List
+            if (isMultiVersion && isExpanded && !isSongDeleted) {
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = Border.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(6.dp))
+
+                versions.forEachIndexed { idx, ver ->
+                    val isVerDeleted = ver.id != null && deletedVersions.contains(ver.id)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "${ver.source} ${ver.versionName ?: "v${idx + 1}"}",
+                                    color = if (isVerDeleted) MutedText else PrimaryText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                SourceBadge(source = ver.source)
+                            }
+                            Text(
+                                text = "Key: ${ver.keyBase ?: "-"} • ⭐${ver.rating ?: 0f} (${ver.votes ?: 0} votes)",
+                                color = MutedText,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+
+                        // Version delete toggle
+                        ColorCircleSwitch(
+                            isKeep = !isVerDeleted,
+                            onToggle = { ver.id?.let { onToggleVersion(it) } }
+                        )
+                    }
+                    if (idx < versions.lastIndex) {
+                        HorizontalDivider(
+                            color = Border.copy(alpha = 0.3f),
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                    }
+                }
             }
         }
     }

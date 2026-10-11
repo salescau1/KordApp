@@ -49,14 +49,23 @@ class ArtistDirectoryViewModelSortingTest {
         votes = votes,
         keyBase = "C",
         difficulty = "novice",
-        content = "Test content",
+        category = null,
+        region = "EN",
+        chords = "C, G, Am, F",
         chordCount = 4,
         lineCount = 20,
-        category = null,
-        region = "EN"
+        content = "Test content",
+        contentHash = "hash123",
+        scrapedAt = "2026-10-08"
     )
 
     private val fakeDao = object : CatalogDao {
+        override suspend fun getTotalSongs(): Int = 4
+        override suspend fun getSourceCount(source: String): Int = 4
+        override suspend fun getBySourceUrl(sourceUrl: String): CatalogSongEntity? = null
+        override suspend fun deleteBySourceUrl(sourceUrl: String): Int = 0
+        override suspend fun getSongVersions(artistSlug: String, titleSlug: String): List<CatalogSongEntity> = emptyList()
+        override suspend fun getSongVersionsByPrefix(artistPrefix: String, titlePrefix: String): List<CatalogSongEntity> = emptyList()
         override suspend fun getArtistSongs(artistSlug: String): List<CatalogSongGroup> = emptyList()
 
         override suspend fun getArtistSongsRaw(artistSlug: String): List<CatalogSongEntity> {
@@ -69,15 +78,25 @@ class ArtistDirectoryViewModelSortingTest {
         }
 
         override suspend fun getAllArtists(): List<CatalogArtistInfo> = emptyList()
-        override suspend fun getArtistCount(): Int = 0
-        override suspend fun getUniqueSongCount(): Int = 0
+        override suspend fun getUniqueArtistCount(): Int = 1
+        override suspend fun getUniqueSongCount(): Int = 4
         override suspend fun getArtists(limit: Int, offset: Int): List<CatalogArtistInfo> = emptyList()
         override suspend fun searchArtists(query: String, limit: Int): List<CatalogArtistInfo> = emptyList()
+        override suspend fun searchArtistsVariants(q1: String, q2: String, q3: String, q4: String, q5: String, limit: Int): List<CatalogArtistInfo> = emptyList()
+        override suspend fun searchArtistsByGt(query: String, limit: Int): List<CatalogArtistInfo> = emptyList()
+        override suspend fun searchArtistsByGtVariants(q1: String, q2: String, q3: String, q4: String, q5: String, limit: Int): List<CatalogArtistInfo> = emptyList()
         override suspend fun searchSongs(query: String, limit: Int): List<CatalogSongGroup> = emptyList()
+        override suspend fun searchSongsVariants(q1: String, q2: String, q3: String, q4: String, q5: String, limit: Int): List<CatalogSongGroup> = emptyList()
+        override suspend fun searchSongsByGt(query: String, limit: Int): List<CatalogSongGroup> = emptyList()
+        override suspend fun searchSongsByGtVariants(q1: String, q2: String, q3: String, q4: String, q5: String, limit: Int): List<CatalogSongGroup> = emptyList()
         override suspend fun getArtistInfo(artistSlug: String): CatalogSongEntity? = createSong("Best Hit", "best-hit", 9999, 4.9f)
-        override suspend fun getSongsForArtistAndTitle(artistSlug: String, titleSlug: String): List<CatalogSongEntity> = emptyList()
-        override suspend fun getSongBySourceUrl(sourceUrl: String): CatalogSongEntity? = null
-        override suspend fun getSongBySlug(artistSlug: String, titleSlug: String): CatalogSongEntity? = null
+        override suspend fun getOstSongs(): List<CatalogSongGroup> = emptyList()
+        override suspend fun findSongByExact(artist: String, title: String): CatalogSongGroup? = null
+        override suspend fun insertSong(song: CatalogSongEntity): Long = 1L
+        override suspend fun insertSongs(songs: List<CatalogSongEntity>): List<Long> = emptyList()
+        override suspend fun deleteArtistsBySlugs(artistSlugs: List<String>): Int = 0
+        override suspend fun deleteSongBySlug(artistSlug: String, titleSlug: String): Int = 0
+        override suspend fun deleteSongsByIds(songIds: List<Long>): Int = 0
     }
 
     @Test

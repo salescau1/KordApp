@@ -26,20 +26,27 @@ Dokumen ringkas untuk mencatat pencapaian sesi **KordApp-Design** dan handoff ke
   - Warna chord menggunakan `ChordText` (Warm Amber `#FFB74D` di Dark Mode, Ochre `#B45309` di Light Mode).
   - Fitur Capo dibersihkan sepenuhnya dari Player Screen sesuai preferensi user.
 
-### B. Global Dark Mode & Light Mode
-- **Menu Pengaturan / Settings**:
-  - Section baru: **TAMPILAN / APPEARANCE** dengan pemilih tema:
-    1. `Mode Gelap (Dark Mode)` — default khas panggung.
-    2. `Mode Terang (Light Mode)` — latar kertas putih bersih, lirik hitam, chord kontras.
-    3. `Ikuti Sistem (System Default)` — otomatis sinkron dengan OS Android.
+### B. Tiga Mode Tampilan Panggung & Analog
+- **Menu Pengaturan / Settings (TAMPILAN / APPEARANCE)**:
+  1. `📜 Kertas Bertekstur (Parchment Paper)` — latar kertas gading hangat (`#F4EFE6`), teks tinta arang cetak (`#1E242B`), chord amber terbakar (`#B45309`).
+  2. `⬛ Blackboard (Papan Tulis Hitam)` — latar batu tulis gelap (`#13171A`), teks kapur putih (`#ECEFF4`), chord kapur emas menyala (`#FCD34D`).
+  3. `🟩 Green Board (Papan Tulis Hijau Vintage)` — latar papan hijau sekolah klasik (`#14241B`), teks kapur lembut (`#F0FDF4`), chord kapur kuning cerah (`#FDE047`).
 - **Sistem Tema Dinamis**:
   - Dikelola oleh `AppThemeManager` & tersimpan persisten di `PlayerPreferences`.
   - Terintegrasi global via `ChordAppTheme` dan `LocalChordAppColors`.
-  - Status bar & Navigation bar OS ikut berubah otomatis.
+  - Status bar & Navigation bar OS ikut berubah dinamis sesuai mode aktif.
+
+### C. Polishing UI/UX di Artist Directory Screen
+- **Segmented Pill Sort Control**:
+  - Mengganti tombol sort terpisah dengan satu kapsul segmented (`RoundedCornerShape(20.dp)`): `[ A–Z | 🔥 Populer ]`.
+  - Transisi state aktif mulus dengan latar `AccentGold` dan teks kontras tinggi, sedangkan tab tidak aktif berlatar transparan dengan `MutedText`.
+- **Card Song Rating & Votes Badge**:
+  - Menampilkan skor bintang `★ 4.8` dan jumlah vote `(1.2k)` dalam chip terstruktur (`RaisedSurface`, border halus) di samping badge source.
 
 ---
 
 ## 2. File yang Dimodifikasi
+- `app/src/main/java/com/chordapp/ui/screens/artist/ArtistDirectoryScreen.kt`
 - `app/src/main/java/com/chordapp/ui/screens/player/PlayerScreen.kt`
 - `app/src/main/java/com/chordapp/ui/screens/player/ChordLyricFlow.kt`
 - `app/src/main/java/com/chordapp/ui/screens/player/ChordDiagramDialog.kt`

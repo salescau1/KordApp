@@ -16,5 +16,9 @@ interface ChartRepository {
     /** Last valid local snapshot, returned without network access. */
     fun cached(platform: ChartPlatform): ChartSnapshot? = null
 
+    fun cachedResolved(platform: ChartPlatform): List<com.chordapp.viewmodels.ChartRowUi>? = null
+
+    fun saveCachedResolved(platform: ChartPlatform, rows: List<com.chordapp.viewmodels.ChartRowUi>) {}
+
     suspend fun load(platform: ChartPlatform): ChartResult
 }

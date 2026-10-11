@@ -14,6 +14,11 @@ class ChartRepositoryImpl(
 ) : ChartRepository {
 
     override fun cached(platform: ChartPlatform): ChartSnapshot? = cache.read(platform)
+    override fun cachedResolved(platform: ChartPlatform): List<com.chordapp.viewmodels.ChartRowUi>? =
+        cache.readResolved(platform)
+    override fun saveCachedResolved(platform: ChartPlatform, rows: List<com.chordapp.viewmodels.ChartRowUi>) {
+        cache.writeResolved(platform, rows)
+    }
 
     override suspend fun load(platform: ChartPlatform): ChartResult =
         withContext(Dispatchers.IO) {

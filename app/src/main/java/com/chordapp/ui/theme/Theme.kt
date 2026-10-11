@@ -39,14 +39,14 @@ fun ChordAppTheme(
     themeMode: AppThemeMode = AppThemeMode.DARK,
     content: @Composable () -> Unit
 ) {
-    val systemInDark = isSystemInDarkTheme()
-    val isDark = when (themeMode) {
-        AppThemeMode.DARK -> true
-        AppThemeMode.LIGHT -> false
-        AppThemeMode.SYSTEM -> systemInDark
+    val customColors = when (themeMode) {
+        AppThemeMode.DARK -> DarkColors
+        AppThemeMode.LIGHT -> LightColors
+        AppThemeMode.PAPER -> PaperColors
+        AppThemeMode.BLACKBOARD -> BlackboardColors
+        AppThemeMode.GREENBOARD -> GreenboardColors
     }
-
-    val customColors = if (isDark) DarkColors else LightColors
+    val isDark = customColors.isDark
     val colorScheme = if (isDark) createDarkColorScheme(customColors) else createLightColorScheme(customColors)
     val view = LocalView.current
     if (!view.isInEditMode) {

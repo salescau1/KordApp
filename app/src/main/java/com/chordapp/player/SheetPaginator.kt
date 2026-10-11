@@ -32,6 +32,55 @@ object SheetPaginator {
         return ceil(lineLen.toFloat() / charsPerLine.toFloat()).toInt().coerceAtLeast(1)
     }
 
+    /**
+     * Determines visual character length of a chord line, taking into account
+     * that chords attach to words in Compose rather than preserving
+     * raw whitespace padding from the source text.
+     */
+    internal fun visualLineLength(chordLine: SheetLine.Chords?, lyricLine: SheetLine.Lyric?): Int {
+        val lyricLen = lyricLine?.text?.trimEnd()?.length ?: 0
+        if (chordLine == null) return lyricLen
+        if (lyricLen == 0) {
+            return chordLine.tokens.sumOf { it.symbol.length + 3 }
+        }
+        val lastToken = chordLine.tokens.maxByOrNull { it.column }
+        val chordEnd = if (lastToken != null) lastToken.column + lastToken.symbol.length else 0
+        return maxOf(lyricLen, chordEnd)
+    }
+
+    /**
+     * Measures the slot height and the next index for the atomic content unit starting at [index].
+     */
+    private fun itemSlotHeight(
+        lines: List<SheetLine>,
+        index: Int,
+        charsPerLine: Int
+    ): Pair<Int, Int> {
+        val line = lines[index]
+        return when (line) {
+            is SheetLine.Blank -> 1 to (index + 1)
+            is SheetLine.Section -> 2 to (index + 1)
+            is SheetLine.Chords -> {
+                val next = index + 1
+                if (!line.isBarLine && next < lines.size && lines[next] is SheetLine.Lyric) {
+                    val lyric = lines[next] as SheetLine.Lyric
+                    val effLen = visualLineLength(line, lyric)
+                    val wrap = lineWrapCount(effLen, charsPerLine)
+                    (2 * wrap) to (next + 1)
+                } else {
+                    val effLen = visualLineLength(line, null)
+                    val wrap = lineWrapCount(effLen, charsPerLine)
+                    wrap to next
+                }
+            }
+            is SheetLine.Lyric -> {
+                val effLen = line.text.trimEnd().length
+                val wrap = lineWrapCount(effLen, charsPerLine)
+                wrap to (index + 1)
+            }
+        }
+    }
+
     fun paginate(
         lines: List<SheetLine>,
         capacity: Int,
@@ -52,83 +101,41 @@ object SheetPaginator {
                 continue
             }
 
-            // Build one atomic block.
-            var height: Int
-            var j = i + 1
+            val line = lines[i]
 
-            when (val line = lines[i]) {
-                is SheetLine.Blank -> {
-                    height = 1
+            // Orphan heading check for Section:
+            // If current page is not empty, ensure Section has enough headroom
+            // to include at least its first following content line.
+            if (line is SheetLine.Section && current.isNotEmpty()) {
+                var probe = i + 1
+                var sectionBudget = 2 // Section heading takes 2 slots
+                if (probe < lines.size && lines[probe] is SheetLine.Blank) {
+                    sectionBudget += 1
+                    probe++
                 }
-                is SheetLine.Section -> {
-                    // Section header: takes 2 slots.
-                    // Group with following blank (if any) and first content line to avoid orphan heading.
-                    var secHeight = 2
-                    var nextIdx = j
-                    if (nextIdx < lines.size && lines[nextIdx] is SheetLine.Blank) {
-                        secHeight += 1
-                        nextIdx++
-                    }
-                    if (nextIdx < lines.size) {
-                        val contentLine = lines[nextIdx]
-                        when (contentLine) {
-                            is SheetLine.Chords -> {
-                                var pairNext = nextIdx + 1
-                                if (!contentLine.isBarLine && pairNext < lines.size && lines[pairNext] is SheetLine.Lyric) {
-                                    val effLen = maxOf(
-                                        contentLine.originalText.trimEnd().length,
-                                        (lines[pairNext] as SheetLine.Lyric).text.trimEnd().length
-                                    )
-                                    val wrap = lineWrapCount(effLen, charsPerLine)
-                                    secHeight += 2 * wrap
-                                    pairNext++
-                                } else {
-                                    val effLen = contentLine.originalText.trimEnd().length
-                                    secHeight += lineWrapCount(effLen, charsPerLine)
-                                }
-                                j = pairNext
-                            }
-                            is SheetLine.Lyric -> {
-                                val effLen = contentLine.text.trimEnd().length
-                                secHeight += lineWrapCount(effLen, charsPerLine)
-                                j = nextIdx + 1
-                            }
-                            else -> {
-                                j = nextIdx
-                            }
-                        }
-                    }
-
-                    // If the grouped block cannot fit within the entire page capacity,
-                    // unbind to let Section stand on its own slot.
-                    if (secHeight > cap) {
-                        height = 2
-                        j = i + 1
-                    } else {
-                        height = secHeight
-                    }
+                if (probe < lines.size) {
+                    val (contentHeight, _) = itemSlotHeight(lines, probe, charsPerLine)
+                    sectionBudget += contentHeight
                 }
-                is SheetLine.Chords -> {
-                    if (!line.isBarLine && j < lines.size && lines[j] is SheetLine.Lyric) {
-                        val chordLen = line.originalText.trimEnd().length
-                        val lyricLen = (lines[j] as SheetLine.Lyric).text.trimEnd().length
-                        val effLen = maxOf(chordLen, lyricLen)
-                        val wrap = lineWrapCount(effLen, charsPerLine)
-                        height = 2 * wrap
-                        j++
-                    } else {
-                        val effLen = line.originalText.trimEnd().length
-                        height = lineWrapCount(effLen, charsPerLine)
+                // If it cannot fit Section + its first content line on the current page,
+                // push Section to a fresh page to avoid an orphan header.
+                if (used + sectionBudget > cap) {
+                    while (current.isNotEmpty() && current.last() is SheetLine.Blank) {
+                        current.removeAt(current.size - 1)
                     }
-                }
-                is SheetLine.Lyric -> {
-                    val effLen = line.text.trimEnd().length
-                    height = lineWrapCount(effLen, charsPerLine)
+                    if (current.isNotEmpty()) {
+                        pages.add(current.toList())
+                        current.clear()
+                        used = 0
+                    }
+                    continue
                 }
             }
 
+            val (height, nextIdx) = itemSlotHeight(lines, i, charsPerLine)
+
+            // If the item doesn't fit on the current page:
             if (current.isNotEmpty() && used + height > cap) {
-                // Trim trailing blank lines from current page before finalizing.
                 while (current.isNotEmpty() && current.last() is SheetLine.Blank) {
                     current.removeAt(current.size - 1)
                 }
@@ -137,21 +144,24 @@ object SheetPaginator {
                     current.clear()
                     used = 0
                 }
-                // Do not increment i; re-evaluate from i on the new clean page.
                 continue
             }
 
-            for (k in i until j) {
+            // Add the item (could be 1 line or a paired Chord+Lyric)
+            for (k in i until nextIdx) {
                 current.add(lines[k])
             }
             used += height
-            i = j
+            i = nextIdx
         }
 
         while (current.isNotEmpty() && current.last() is SheetLine.Blank) {
             current.removeAt(current.size - 1)
         }
-        if (current.isNotEmpty()) pages.add(current.toList())
+        if (current.isNotEmpty()) {
+            pages.add(current.toList())
+        }
+
         return pages
     }
 }

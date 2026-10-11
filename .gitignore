@@ -29,5 +29,9 @@ __pycache__/
 /Catalog/
 /gradle_bin/
 *.tmp
+*.orig
 *.png
+*.apk
+/catalog.db.xz
+app/src/main/assets/catalog.db
 

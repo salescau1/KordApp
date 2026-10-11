@@ -91,6 +91,7 @@ interface AppStrings {
 
     // Setlists Screen & Tracklist Screen
     val setlistsTitle: String
+    val setlistsSubtitle: String
     val sortSetlists: String
     val sortAZ: String
     val sortPopular: String
@@ -123,6 +124,7 @@ interface AppStrings {
     fun diagramNotAvailable(symbol: String): String
     val previousShape: String
     val nextShape: String
+    val addAnotherVersion: String
 
     // Song Versions Screen & Artist Directory
     val noVersionsFound: String
@@ -137,11 +139,15 @@ interface AppStrings {
 
     // Settings Screen
     val settingsTitle: String
+    val settingsSubtitle: String
     val themeSection: String
     val appThemeLabel: String
     val selectTheme: String
     val themeDark: String
     val themeLight: String
+    val themePaper: String
+    val themeBlackboard: String
+    val themeGreenboard: String
     val themeSystem: String
     val languageSection: String
     val appLanguageLabel: String

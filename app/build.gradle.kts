@@ -15,8 +15,8 @@ android {
         applicationId = "com.kekalclip.kordapp"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -77,6 +77,9 @@ dependencies {
     // Pull-to-refresh (Material2 pullRefresh) — API stabil lintas versi, dipakai Top 20.
     implementation("androidx.compose.material:material")
     implementation("androidx.navigation:navigation-compose:2.7.7")
+
+    // HTML DOM parser untuk GuitarTuna scraper (1:1 port dari BeautifulSoup di PC)
+    implementation("org.jsoup:jsoup:1.17.2")
 
     // Pemuat gambar untuk popup promo (dari jsDelivr). Ringan, Compose-native.
     implementation("io.coil-kt:coil-compose:2.6.0")

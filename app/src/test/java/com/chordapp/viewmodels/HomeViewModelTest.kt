@@ -184,6 +184,8 @@ class HomeViewModelTest {
             vm.chart.value is ChartState.Loaded
         }
 
+        vm.refresh()
+
         val state = vm.chart.value as ChartState.Loaded
         assertEquals("Cached Song", state.rows.single().title)
         assertTrue(state.fromCache)
@@ -218,6 +220,7 @@ class HomeViewModelTest {
         pumpUntil("cached rows should render before failed refresh completes") {
             vm.chart.value is ChartState.Loaded
         }
+        vm.refresh()
         refresh.complete(ChartResult.NoData)
         pumpUntil("cached chart should finish refreshing") {
             (vm.chart.value as? ChartState.Loaded)?.isRefreshing == false

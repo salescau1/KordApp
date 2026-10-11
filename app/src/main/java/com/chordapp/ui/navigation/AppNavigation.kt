@@ -1,5 +1,10 @@
 package com.chordapp.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -48,6 +53,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.chordapp.viewmodels.ExploreViewModel
 import com.chordapp.ui.screens.about.AboutScreen
 import com.chordapp.ui.screens.artist.ArtistDirectoryScreen
 import com.chordapp.ui.screens.explore.ExploreScreen
@@ -68,7 +74,8 @@ internal val ExpandedNavigationMinWidth = 840.dp
 
 internal fun usesNavigationRail(width: Dp): Boolean = width >= ExpandedNavigationMinWidth
 
-internal fun showsPrimaryNavigation(route: String?): Boolean = route != null &&
+internal fun showsPrimaryNavigation(route: String?, isEditMode: Boolean = false): Boolean = route != null &&
+    !(route == Screen.Explore.route && isEditMode) &&
     !route.startsWith("artist_directory") &&
     !route.startsWith("song_versions") &&
     !route.startsWith("player") &&
@@ -94,15 +101,19 @@ fun AppNavigation() {
     val currentRoute = navBackStackEntry?.destination?.route
     val currentDestination = navBackStackEntry?.destination
 
+    val exploreViewModel: ExploreViewModel = viewModel(factory = viewModelFactory)
+    val isEditMode by exploreViewModel.isEditMode.collectAsState()
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val expanded = usesNavigationRail(maxWidth)
-        val showPrimaryNavigation = showsPrimaryNavigation(currentRoute)
+        val showPrimaryNavigation = showsPrimaryNavigation(currentRoute, isEditMode)
 
         if (expanded) {
             Row(modifier = Modifier.fillMaxSize()) {
                 AppNavHost(
                     navController = navController,
                     viewModelFactory = viewModelFactory,
+                    exploreViewModel = exploreViewModel,
                     expandedHome = true,
                     modifier = Modifier.weight(1f)
                 )
@@ -122,14 +133,19 @@ fun AppNavigation() {
                 AppNavHost(
                     navController = navController,
                     viewModelFactory = viewModelFactory,
+                    exploreViewModel = exploreViewModel,
                     expandedHome = false,
                     modifier = Modifier.fillMaxSize()
                 )
 
-                if (showPrimaryNavigation) {
+                AnimatedVisibility(
+                    visible = showPrimaryNavigation,
+                    enter = fadeIn() + slideInVertically { it },
+                    exit = fadeOut() + slideOutVertically { it },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
                     Box(
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
                             .fillMaxWidth()
                             .background(
                                 Brush.verticalGradient(
@@ -233,6 +249,7 @@ private fun navigateToPrimary(navController: NavHostController, screen: Screen) 
 private fun AppNavHost(
     navController: NavHostController,
     viewModelFactory: ViewModelFactory,
+    exploreViewModel: ExploreViewModel,
     expandedHome: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -292,9 +309,41 @@ private fun AppNavHost(
                 )
             }
         }
-        composable(Screen.Search.route) {
+        composable(
+            route = Screen.Search.route,
+            arguments = listOf(
+                navArgument("query") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("source") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val queryArg = backStackEntry.arguments?.getString("query")
+            val sourceArg = backStackEntry.arguments?.getString("source")
+            val searchViewModel: com.chordapp.viewmodels.SearchViewModel = viewModel(factory = viewModelFactory)
+            androidx.compose.runtime.LaunchedEffect(queryArg, sourceArg) {
+                if (!sourceArg.isNullOrBlank()) {
+                    runCatching {
+                        val parsed = com.chordapp.viewmodels.SearchSource.valueOf(sourceArg.uppercase())
+                        searchViewModel.setSource(parsed)
+                    }
+                } else {
+                    searchViewModel.setSource(com.chordapp.viewmodels.SearchSource.LOCAL)
+                }
+                if (!queryArg.isNullOrBlank()) {
+                    runCatching {
+                        searchViewModel.onQueryChange(java.net.URLDecoder.decode(queryArg, "UTF-8"))
+                    }
+                }
+            }
             SearchScreen(
-                viewModel = viewModel(factory = viewModelFactory),
+                viewModel = searchViewModel,
                 onBackClick = { navController.popBackStack() },
                 onArtistClick = { artistSlug ->
                     navController.navigate(Screen.ArtistDirectory.createRoute(artistSlug))
@@ -322,7 +371,7 @@ private fun AppNavHost(
         }
         composable(Screen.Explore.route) {
             ExploreScreen(
-                viewModel = viewModel(factory = viewModelFactory),
+                viewModel = exploreViewModel,
                 onArtistClick = { artistSlug ->
                     navController.navigate(Screen.ArtistDirectory.createRoute(artistSlug))
                 },
@@ -426,7 +475,10 @@ private fun AppNavHost(
                 initialTranspose = initialTranspose,
                 initialCapo = initialCapo,
                 viewModel = viewModel(factory = viewModelFactory),
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onSearchClick = { query, source ->
+                    navController.navigate(Screen.Search.createRoute(query, source))
+                }
             )
         }
     }

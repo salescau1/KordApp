@@ -170,5 +170,49 @@ class ChordParserTest {
         assertEquals(1, chords.size)
         assertEquals(listOf("C", "Em", "F", "G"), chords[0].tokens.map { it.symbol })
     }
+
+    @Test
+    fun htmlEntitiesInLyricsAreUnescaped() {
+        val parsed = ChordParser.parse("slamin&#039; doors and you&#039;re lonely")
+        val lyrics = parsed.lines.filterIsInstance<SheetLine.Lyric>()
+        assertEquals(1, lyrics.size)
+        assertEquals("slamin' doors and you're lonely", lyrics[0].text)
+    }
+
+    @Test
+    fun chordIndonesiaSesiPotretParsesCorrectly() {
+        val sample = """
+            [Intro]
+            [C] [F] [C] [F] -[Fm]
+
+            [F]        [G]           [C]
+             tahun lalu berjuta alasanku..
+            [F]         [G]
+             maaf tak bisa pulang
+                [C]
+            penghasilanku pas-pasan
+            [F]      [G]          [C]
+             kali ini sudah lumayan..
+
+            [Interlude]
+            [C] [D] [F] [Em]
+            [G] [D] [Dm] -[G] [C]..
+        """.trimIndent()
+
+        val parsed = ChordParser.parse(sample)
+        val sections = parsed.lines.filterIsInstance<SheetLine.Section>()
+        val chords = parsed.lines.filterIsInstance<SheetLine.Chords>()
+        val lyrics = parsed.lines.filterIsInstance<SheetLine.Lyric>()
+
+        assertEquals(2, sections.size)
+        assertEquals("[Intro]", sections[0].text)
+        assertEquals("[Interlude]", sections[1].text)
+        assertTrue(parsed.distinctChords.contains("C"))
+        assertTrue(parsed.distinctChords.contains("Fm"))
+        assertTrue(parsed.distinctChords.contains("G"))
+        assertTrue(chords.isNotEmpty())
+        assertTrue(lyrics.isNotEmpty())
+    }
 }
+
 

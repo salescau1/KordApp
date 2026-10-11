@@ -44,7 +44,49 @@ class SettingsViewModel(
         com.chordapp.ui.theme.AppThemeManager.setTheme(appContext, theme)
     }
 
-    init {
+    private val _isDownloadingCatalog = MutableStateFlow(false)
+    val isDownloadingCatalog: StateFlow<Boolean> = _isDownloadingCatalog.asStateFlow()
+
+    private val _catalogDownloadProgress = MutableStateFlow(0)
+    val catalogDownloadProgress: StateFlow<Int> = _catalogDownloadProgress.asStateFlow()
+
+    private val _catalogDownloadStatus = MutableStateFlow("")
+    val catalogDownloadStatus: StateFlow<String> = _catalogDownloadStatus.asStateFlow()
+
+    private val _catalogDownloadError = MutableStateFlow<String?>(null)
+    val catalogDownloadError: StateFlow<String?> = _catalogDownloadError.asStateFlow()
+
+    fun downloadCatalog() {
+        if (_isDownloadingCatalog.value) return
+        viewModelScope.launch {
+            _isDownloadingCatalog.value = true
+            _catalogDownloadError.value = null
+            _catalogDownloadProgress.value = 0
+            _catalogDownloadStatus.value = "Menghubungkan..."
+
+            val result = com.chordapp.repositories.UpdateRepository.downloadAndInstallCatalog(
+                context = appContext,
+                onProgress = { percent, status ->
+                    _catalogDownloadProgress.value = percent
+                    _catalogDownloadStatus.value = status
+                }
+            )
+
+            result.onSuccess {
+                refreshCatalogStats()
+            }.onFailure { err ->
+                _catalogDownloadError.value = err.localizedMessage ?: "Gagal mengunduh katalog"
+            }
+
+            _isDownloadingCatalog.value = false
+        }
+    }
+
+    fun dismissCatalogError() {
+        _catalogDownloadError.value = null
+    }
+
+    fun refreshCatalogStats() {
         viewModelScope.launch {
             _catalogStats.value = CatalogStats(
                 artists = repository.getUniqueArtistCount(),
@@ -53,5 +95,9 @@ class SettingsViewModel(
                 appBytes = File(appContext.applicationInfo.sourceDir).length()
             )
         }
+    }
+
+    init {
+        refreshCatalogStats()
     }
 }

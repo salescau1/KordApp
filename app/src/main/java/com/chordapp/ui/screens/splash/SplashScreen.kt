@@ -63,6 +63,10 @@ private object Timing {
     const val EXIT_HOLD_MS = 250L
 }
 
+object SplashSession {
+    var hasShownSplash: Boolean = false
+}
+
 @Composable
 fun SplashScreen(navController: NavHostController) {
     val iconAlpha = remember { Animatable(0f) }
@@ -75,6 +79,16 @@ fun SplashScreen(navController: NavHostController) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(Unit) {
+        if (SplashSession.hasShownSplash) {
+            val isLicensed = com.chordapp.repositories.LicenseRepository.isLicensed(context)
+            val destination = if (isLicensed) Screen.Home.route else Screen.Activation.route
+            navController.navigate(destination) {
+                popUpTo(Screen.Splash.route) { inclusive = true }
+            }
+            return@LaunchedEffect
+        }
+        SplashSession.hasShownSplash = true
+
         // Lapor device di background
         launch { com.chordapp.repositories.LicenseRepository.recordDevice(context) }
 

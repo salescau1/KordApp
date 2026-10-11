@@ -18,6 +18,24 @@ enum class ArtistSongSortOrder {
     POPULAR
 }
 
+/**
+ * Custom Map wrapper that considers iteration order and sortOrder for equals(),
+ * ensuring StateFlow and Compose recompose when sort order changes.
+ */
+class OrderedSongMap(
+    private val delegate: Map<CatalogSongGroup, List<CatalogSongEntity>>,
+    val sortOrder: ArtistSongSortOrder
+) : Map<CatalogSongGroup, List<CatalogSongEntity>> by delegate {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is OrderedSongMap) return false
+        if (sortOrder != other.sortOrder) return false
+        return delegate.keys.toList() == other.delegate.keys.toList()
+    }
+
+    override fun hashCode(): Int = 31 * delegate.keys.toList().hashCode() + sortOrder.hashCode()
+}
+
 class ArtistDirectoryViewModel(private val repository: CatalogRepository) : ViewModel() {
 
     private val _artistName = MutableStateFlow("")
@@ -33,7 +51,7 @@ class ArtistDirectoryViewModel(private val repository: CatalogRepository) : View
 
     val songs: StateFlow<Map<CatalogSongGroup, List<CatalogSongEntity>>> = combine(_rawSongs, _sortOrder) { rawMap, order ->
         sortSongs(rawMap, order)
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, OrderedSongMap(emptyMap(), ArtistSongSortOrder.ALPHABETICAL))
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -88,6 +106,6 @@ class ArtistDirectoryViewModel(private val repository: CatalogRepository) : View
         for (entry in sorted) {
             result[entry.key] = entry.value
         }
-        return result
+        return OrderedSongMap(result, order)
     }
 }

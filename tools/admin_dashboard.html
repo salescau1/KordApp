@@ -3,35 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KordApp - Admin & License Monitor</title>
+    <title>KordApp - License Manager & Monitoring</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0E1117; color: #F5F8FF; }
-        .card-surface { background-color: #161B22; border: 1px solid #242C3D; }
-        .accent-gold { color: #E5A93C; }
-        .bg-gold { background-color: #E5A93C; }
-        .border-custom { border-color: #242C3D; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0B0E14; color: #F0F4FC; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .card-surface { background-color: #121722; border: 1px solid #1E2638; }
+        .border-custom { border-color: #1E2638; }
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #242C3D; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #263248; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
     </style>
 </head>
-<body class="p-4 md:p-8 min-h-screen">
+<body class="p-4 md:p-8 min-h-screen custom-scroll">
 
-    <!-- Top Header -->
+    <!-- Top Navigation Header -->
     <div class="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-custom pb-6">
         <div>
             <div class="flex items-center gap-2">
-                <span class="text-3xl font-extrabold text-white">Kord</span>
-                <span class="text-3xl font-extrabold accent-gold">App</span>
-                <span class="text-xs px-2.5 py-1 rounded-full bg-yellow-500/10 text-yellow-400 font-semibold border border-yellow-500/20 ml-2">ADMIN MONITOR</span>
+                <span class="text-3xl font-extrabold text-white tracking-tight">Kord</span>
+                <span class="text-3xl font-extrabold text-amber-400 tracking-tight">App</span>
+                <span class="text-xs px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-400 font-semibold border border-amber-400/20 ml-2">OPS MANAGER</span>
             </div>
-            <p class="text-sm text-gray-400 mt-1">Sistem Pemantau Pengguna & Generator Lisensi KordApp by kekalclip</p>
+            <p class="text-sm text-slate-400 mt-1">Kelola Lisensi Jualan, Lisensi Custom, serta Monitor HP yang Aktif</p>
         </div>
         <div class="flex items-center gap-3">
-            <button onclick="fetchAllData()" class="px-4 py-2 rounded-xl card-surface hover:bg-gray-800 text-sm font-medium transition flex items-center gap-2 text-gray-200">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                Refresh Data
+            <button onclick="fetchAllData()" id="btnRefresh" class="px-4 py-2.5 rounded-xl card-surface hover:bg-slate-800 text-sm font-medium transition flex items-center gap-2 text-slate-200 shadow-sm">
+                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                <span>Refresh Data</span>
             </button>
         </div>
     </div>
@@ -40,115 +40,267 @@
     <div class="max-w-7xl mx-auto space-y-8">
 
         <!-- Stat Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="card-surface p-5 rounded-2xl">
-                <p class="text-xs text-gray-400 font-medium">TOTAL DEVICE TERDETEKSI</p>
-                <h3 id="statTotalDevices" class="text-3xl font-bold mt-2 text-white">-</h3>
-                <p class="text-xs text-gray-500 mt-1">Perangkat yang pernah buka app</p>
+                <p class="text-xs text-slate-400 font-medium">TOTAL KODE DIBUAT</p>
+                <h3 id="statTotalLicenses" class="text-3xl font-bold mt-2 text-white">-</h3>
+                <p class="text-xs text-slate-500 mt-1">Semua kategori</p>
             </div>
-            <div class="card-surface p-5 rounded-2xl">
-                <p class="text-xs text-gray-400 font-medium">TOTAL KODE DIBUAT</p>
-                <h3 id="statTotalLicenses" class="text-3xl font-bold mt-2 accent-gold">-</h3>
-                <p class="text-xs text-gray-500 mt-1">Seluruh voucher lisensi</p>
-            </div>
-            <div class="card-surface p-5 rounded-2xl">
-                <p class="text-xs text-gray-400 font-medium">LISENSI TERPAKAI (AKTIF)</p>
+            <div class="card-surface p-5 rounded-2xl border-l-4 border-l-emerald-500">
+                <p class="text-xs text-emerald-400 font-medium">SEDANG DIPAKAI (AKTIF)</p>
                 <h3 id="statUsedLicenses" class="text-3xl font-bold mt-2 text-emerald-400">-</h3>
-                <p class="text-xs text-gray-500 mt-1">Pengguna aktif berbayar</p>
+                <p class="text-xs text-slate-500 mt-1">Terikat di perangkat pengguna</p>
+            </div>
+            <div class="card-surface p-5 rounded-2xl border-l-4 border-l-amber-500">
+                <p class="text-xs text-amber-400 font-medium">TERSEDIA (READY STOK)</p>
+                <h3 id="statAvailableLicenses" class="text-3xl font-bold mt-2 text-amber-400">-</h3>
+                <p class="text-xs text-slate-500 mt-1">Siap dikirim ke pembeli/rekan</p>
             </div>
             <div class="card-surface p-5 rounded-2xl">
-                <p class="text-xs text-gray-400 font-medium">SISA STOK KODE</p>
-                <h3 id="statAvailableLicenses" class="text-3xl font-bold mt-2 text-cyan-400">-</h3>
-                <p class="text-xs text-gray-500 mt-1">Siap dijual ke pembeli</p>
+                <p class="text-xs text-slate-400 font-medium">TOTAL DEVICE TERDETEKSI</p>
+                <h3 id="statTotalDevices" class="text-3xl font-bold mt-2 text-cyan-400">-</h3>
+                <p class="text-xs text-slate-500 mt-1">HP yang pernah buka app</p>
             </div>
         </div>
 
-        <!-- License Generator Panel -->
-        <div class="card-surface p-6 rounded-2xl">
-            <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-gold"></span>
-                Buat Kode Lisensi Baru
-            </h2>
-            <p class="text-sm text-gray-400 mt-1">Generate kode acak baru yang langsung tersimpan di database Supabase kamu.</p>
-
-            <div class="mt-5 flex flex-wrap items-center gap-3">
-                <div class="flex items-center gap-2 bg-[#0E1117] border border-custom rounded-xl px-3 py-2">
-                    <span class="text-xs text-gray-400">Jumlah:</span>
-                    <select id="genCount" class="bg-transparent text-sm text-white font-medium focus:outline-none">
-                        <option value="1" class="bg-[#161B22]">1 Kode</option>
-                        <option value="5" class="bg-[#161B22]">5 Kode</option>
-                        <option value="10" class="bg-[#161B22]">10 Kode</option>
-                    </select>
+        <!-- License Generator Section (Hanya 2 Mode: Jualan vs Custom) -->
+        <div class="card-surface p-6 rounded-2xl shadow-lg border border-amber-500/20">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-custom pb-4 mb-5">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        Generator Lisensi
+                    </h2>
+                    <p class="text-sm text-slate-400 mt-0.5">Pilih mode: <strong>Jualan (Otomatis)</strong> untuk stok voucher atau <strong>Custom (Manual)</strong> untuk nama khusus/teman/influencer.</p>
                 </div>
-                <button onclick="generateLicenses()" id="btnGenerate" class="bg-gold hover:bg-yellow-500 text-black font-bold px-6 py-2.5 rounded-xl text-sm transition flex items-center gap-2 shadow-lg shadow-yellow-500/10">
-                    <span>⚡ Generate Sekarang</span>
+            </div>
+
+            <!-- 2 Tabs: Jualan vs Custom -->
+            <div class="flex items-center gap-2 mb-5">
+                <button onclick="switchTab('jualan')" id="tabBtnJualan" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 transition flex items-center gap-2 shadow-sm">
+                    <span>💰 Lisensi Jualan (Auto Random)</span>
+                </button>
+                <button onclick="switchTab('custom')" id="tabBtnCustom" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2">
+                    <span>✍️ Lisensi Custom (Manual)</span>
                 </button>
             </div>
 
+            <!-- Form: Jualan (Auto) -->
+            <div id="panelJualan" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">FORMAT KODE</label>
+                    <div class="w-full bg-[#0B0E14] border border-custom rounded-xl px-3.5 py-2.5 text-sm text-amber-400 font-mono font-bold">
+                        KORD-PRO-XXXX-XXXX
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">JUMLAH VOUCHER</label>
+                    <select id="selJualanCount" class="w-full bg-[#0B0E14] border border-custom rounded-xl px-3.5 py-2.5 text-sm text-white font-medium focus:outline-none focus:border-amber-400 transition">
+                        <option value="1">1 Kode (Langsung Copy)</option>
+                        <option value="3">3 Kode</option>
+                        <option value="5">5 Kode (Batch)</option>
+                        <option value="10">10 Kode (Stok)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <button onclick="handleGenerateJualan()" id="btnGenJualan" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-[0.98]">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <span>⚡ Generate Kode Jualan</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Form: Custom (Manual: <custom1>-<custom2>-<custom3><random>) -->
+            <div id="panelCustom" class="hidden space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
+                    <!-- custom1: KORD Permanent -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">&lt;custom1&gt; TETAP</label>
+                        <div class="w-full bg-[#0B0E14] border border-cyan-500/30 rounded-xl px-3 py-2.5 text-xs text-cyan-300 font-mono font-bold flex items-center justify-between">
+                            <span>KORD</span>
+                            <span class="text-[10px] text-slate-500 uppercase">Permanent</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1.5">Prefix paten aplikasi</p>
+                    </div>
+
+                    <!-- custom2: Manual -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">&lt;custom2&gt; MANUAL</label>
+                        <input type="text" id="inputCustomPart2" oninput="updateCustomPreview()" placeholder="TEMAN / DEDE / VIP" class="w-full font-mono uppercase bg-[#0B0E14] border border-custom rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 transition" />
+                        <div class="flex gap-1 mt-1.5">
+                            <button type="button" onclick="setQuickCustom2('TEMAN')" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">TEMAN</button>
+                            <button type="button" onclick="setQuickCustom2('INFL')" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">INFL</button>
+                            <button type="button" onclick="setQuickCustom2('TESTER')" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">TESTER</button>
+                        </div>
+                    </div>
+
+                    <!-- custom3: Nomor Tiket Mulai -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">&lt;custom3&gt; NOMOR TIKET MULAI</label>
+                        <input type="number" id="inputStartTicket" oninput="updateCustomPreview()" value="1" min="1" class="w-full font-mono bg-[#0B0E14] border border-custom rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 transition" />
+                        <p class="text-[10px] text-slate-500 mt-1.5">Mulai dari no: 1 (format 0001)</p>
+                    </div>
+
+                    <!-- Jumlah / Max Generate -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">JUMLAH KODE DIBUAT</label>
+                        <input type="number" id="inputTicketCount" oninput="updateCustomPreview()" value="1" min="1" max="500" class="w-full font-mono bg-[#0B0E14] border border-custom rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 transition" />
+                        <div class="flex gap-1 mt-1.5">
+                            <button type="button" onclick="setQuickCount(1)" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">1x</button>
+                            <button type="button" onclick="setQuickCount(10)" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">10x</button>
+                            <button type="button" onclick="setQuickCount(100)" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">100x</button>
+                        </div>
+                    </div>
+
+                    <!-- Action Button -->
+                    <div>
+                        <button onclick="handleSaveCustom()" id="btnSaveCustom" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-500/20 active:scale-[0.98]">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                            <span>💾 Generate & Simpan</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Preview Bar -->
+                <div class="p-3 rounded-xl bg-[#0B0E14] border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div class="text-xs text-slate-400 flex items-center gap-2">
+                        <span>Preview Format:</span>
+                        <span class="font-mono text-cyan-300 font-bold bg-cyan-950/60 px-2.5 py-1 rounded-lg border border-cyan-500/40" id="previewCustomCode">KORD-&lt;custom2&gt;-0001-ABCD</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400" id="previewRangeInfo">Tiket: 0001 (1 kode)</span>
+                </div>
+            </div>
+
             <!-- Newly Generated Box -->
-            <div id="newCodesContainer" class="hidden mt-4 p-4 rounded-xl bg-[#0E1117] border border-yellow-500/30">
-                <p class="text-xs text-yellow-400 font-semibold mb-2">KODE BARU BERHASIL DIBUAT (Klik untuk copy):</p>
-                <div id="newCodesList" class="flex flex-wrap gap-2"></div>
+            <div id="newCodesContainer" class="hidden mt-5 p-4 rounded-xl bg-[#0B0E14] border border-amber-500/40">
+                <div class="flex items-center justify-between mb-2.5">
+                    <p class="text-xs text-amber-400 font-bold flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        KODE BERHASIL TERSIMPAN KE SUPABASE (Klik untuk copy):
+                    </p>
+                    <button onclick="copyAllNewCodes()" class="text-xs text-slate-400 hover:text-white underline">Salin Semua</button>
+                </div>
+                <div id="newCodesList" class="flex flex-wrap gap-2.5"></div>
             </div>
         </div>
 
-        <!-- Tables Section: 2 Columns on desktop -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-            <!-- Devices Table -->
-            <div class="card-surface p-6 rounded-2xl">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                        <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                        Monitor Perangkat (Devices)
-                    </h2>
-                    <span id="deviceCountBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">0 HP</span>
+        <!-- SECTION 1: KODE YANG SEDANG DIPAKAI (AKTIF DI HP USER) -->
+        <div class="card-surface p-6 rounded-2xl border-t-4 border-t-emerald-500 shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-custom">
+                <div>
+                    <h3 class="text-lg font-bold text-emerald-400 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                        Lisensi Sedang Dipakai (Aktif di HP)
+                        <span id="badgeActiveCount" class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-semibold border border-emerald-500/20">0 Aktif</span>
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Daftar kode yang sudah diaktivasi oleh user dan terikat dengan ID perangkat HP.</p>
                 </div>
-                <div class="overflow-x-auto custom-scroll max-h-[420px]">
-                    <table class="w-full text-left text-xs">
-                        <thead class="text-gray-400 border-b border-custom sticky top-0 bg-[#161B22]">
-                            <tr>
-                                <th class="py-2.5 px-3">Model HP</th>
-                                <th class="py-2.5 px-3">OS</th>
-                                <th class="py-2.5 px-3">App</th>
-                                <th class="py-2.5 px-3">Terakhir Aktif</th>
-                            </tr>
-                        </thead>
-                        <tbody id="devicesTableBody" class="divide-y divide-custom text-gray-300">
-                            <tr><td colspan="4" class="text-center py-6 text-gray-500">Memuat data perangkat...</td></tr>
-                        </tbody>
-                    </table>
+
+                <div class="flex items-center gap-2">
+                    <input type="text" id="searchUsed" oninput="renderUsedTable()" placeholder="Cari kode / device..." class="bg-[#0B0E14] border border-custom rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-400 w-48" />
+                    <select id="filterTypeUsed" onchange="renderUsedTable()" class="bg-[#0B0E14] border border-custom rounded-xl px-2.5 py-1.5 text-xs text-white font-medium focus:outline-none">
+                        <option value="ALL">Semua Kategori</option>
+                        <option value="JUALAN">💰 Jualan</option>
+                        <option value="CUSTOM">✍️ Custom</option>
+                    </select>
                 </div>
             </div>
 
-            <!-- Licenses Table -->
-            <div class="card-surface p-6 rounded-2xl">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                        <svg class="w-5 h-5 accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
-                        Daftar Lisensi (Licenses)
-                    </h2>
-                    <span id="licenseCountBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-yellow-500/10 accent-gold border border-yellow-500/20">0 Kode</span>
-                </div>
-                <div class="overflow-x-auto custom-scroll max-h-[420px]">
-                    <table class="w-full text-left text-xs">
-                        <thead class="text-gray-400 border-b border-custom sticky top-0 bg-[#161B22]">
-                            <tr>
-                                <th class="py-2.5 px-3">Kode Lisensi</th>
-                                <th class="py-2.5 px-3">Status</th>
-                                <th class="py-2.5 px-3">Device ID</th>
-                                <th class="py-2.5 px-3 text-right">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="licensesTableBody" class="divide-y divide-custom text-gray-300">
-                            <tr><td colspan="4" class="text-center py-6 text-gray-500">Memuat data lisensi...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+            <div class="overflow-x-auto max-h-[360px] custom-scroll">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="sticky top-0 bg-[#121722] text-slate-400 uppercase border-b border-custom">
+                        <tr>
+                            <th class="py-3 px-3">Kode Lisensi</th>
+                            <th class="py-3 px-3">Kategori</th>
+                            <th class="py-3 px-3">Device ID Terikat</th>
+                            <th class="py-3 px-3">Model HP (Jika Ada)</th>
+                            <th class="py-3 px-3">Waktu Aktivasi</th>
+                            <th class="py-3 px-3 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBodyUsed" class="divide-y divide-custom text-slate-300">
+                        <tr><td colspan="6" class="text-center py-6 text-slate-500">Memuat data lisensi aktif...</td></tr>
+                    </tbody>
+                </table>
             </div>
-
         </div>
 
+        <!-- SECTION 2: KODE TERSEDIA / BELUM DIPAKAI (STOK SIAP PAKAI) -->
+        <div class="card-surface p-6 rounded-2xl border-t-4 border-t-amber-500 shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-custom">
+                <div>
+                    <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+                        Stok Lisensi Tersedia (Belum Terpakai)
+                        <span id="badgeAvailableCount" class="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 font-semibold border border-amber-500/20">0 Stok</span>
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Voucher siap dikirimkan ke pembeli atau teman. Klik ikon salin untuk copy kode.</p>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <input type="text" id="searchAvailable" oninput="renderAvailableTable()" placeholder="Cari kode..." class="bg-[#0B0E14] border border-custom rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400 w-48" />
+                    <select id="filterTypeAvailable" onchange="renderAvailableTable()" class="bg-[#0B0E14] border border-custom rounded-xl px-2.5 py-1.5 text-xs text-white font-medium focus:outline-none">
+                        <option value="ALL">Semua Kategori</option>
+                        <option value="JUALAN">💰 Jualan</option>
+                        <option value="CUSTOM">✍️ Custom</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto max-h-[360px] custom-scroll">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="sticky top-0 bg-[#121722] text-slate-400 uppercase border-b border-custom">
+                        <tr>
+                            <th class="py-3 px-3">Kode Lisensi</th>
+                            <th class="py-3 px-3">Kategori</th>
+                            <th class="py-3 px-3">Status</th>
+                            <th class="py-3 px-3">Dibuat Pada</th>
+                            <th class="py-3 px-3 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBodyAvailable" class="divide-y divide-custom text-slate-300">
+                        <tr><td colspan="5" class="text-center py-6 text-slate-500">Memuat stok lisensi...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Devices Log Table -->
+        <div class="card-surface p-6 rounded-2xl">
+            <div class="flex items-center justify-between mb-4 pb-4 border-b border-custom">
+                <div>
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        Perangkat Terdeteksi (Devices Log)
+                        <span id="deviceCountBadge" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-semibold border border-custom">0 HP</span>
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Perangkat pengguna yang pernah membuka aplikasi KordApp.</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto max-h-60 custom-scroll">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="sticky top-0 bg-[#121722] text-slate-400 uppercase border-b border-custom">
+                        <tr>
+                            <th class="py-2.5 px-3">Model HP</th>
+                            <th class="py-2.5 px-3">Device ID</th>
+                            <th class="py-2.5 px-3">OS Version</th>
+                            <th class="py-2.5 px-3">App Ver</th>
+                            <th class="py-2.5 px-3">Terakhir Online</th>
+                        </tr>
+                    </thead>
+                    <tbody id="devicesTableBody" class="divide-y divide-custom text-slate-300">
+                        <tr><td colspan="5" class="text-center py-6 text-slate-500">Memuat data perangkat...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 border border-amber-400/40 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-xs font-semibold">
+        <span id="toastIcon">✨</span>
+        <span id="toastMsg">Notifikasi</span>
     </div>
 
     <script>
@@ -162,6 +314,80 @@
             "Prefer": "return=representation"
         };
 
+        let rawLicenses = [];
+        let rawDevices = [];
+        let newlyGeneratedKeys = [];
+        let deviceMap = {};
+
+        function showToast(message, icon = "✨") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = message;
+            document.getElementById('toastIcon').innerText = icon;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function switchTab(tab) {
+            const pJualan = document.getElementById('panelJualan');
+            const pCustom = document.getElementById('panelCustom');
+            const btnJ = document.getElementById('tabBtnJualan');
+            const btnC = document.getElementById('tabBtnCustom');
+
+            if (tab === 'jualan') {
+                pJualan.classList.remove('hidden');
+                pCustom.classList.add('hidden');
+                btnJ.className = "px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 transition flex items-center gap-2 shadow-sm";
+                btnC.className = "px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2";
+            } else {
+                pJualan.classList.add('hidden');
+                pCustom.classList.remove('hidden');
+                btnC.className = "px-4 py-2 rounded-xl text-xs font-bold bg-cyan-500 text-slate-950 transition flex items-center gap-2 shadow-sm";
+                btnJ.className = "px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2";
+                updateCustomPreview();
+                document.getElementById('inputCustomPart2').focus();
+            }
+        }
+
+        function setQuickCustom2(val) {
+            document.getElementById('inputCustomPart2').value = val;
+            updateCustomPreview();
+        }
+
+        function setQuickCount(count) {
+            document.getElementById('inputTicketCount').value = count;
+            updateCustomPreview();
+        }
+
+        function cleanBlock(text) {
+            return (text || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        }
+
+        function formatTicketNumber(num) {
+            return String(num).padStart(4, '0');
+        }
+
+        function updateCustomPreview() {
+            const part2 = cleanBlock(document.getElementById('inputCustomPart2').value) || 'LABEL';
+            const startNum = parseInt(document.getElementById('inputStartTicket').value) || 1;
+            const count = parseInt(document.getElementById('inputTicketCount').value) || 1;
+            const endNum = startNum + count - 1;
+
+            const preview = document.getElementById('previewCustomCode');
+            const rangeInfo = document.getElementById('previewRangeInfo');
+
+            const formattedStart = formatTicketNumber(startNum);
+            preview.innerText = `KORD-${part2}-${formattedStart}-ABCD`;
+
+            if (count > 1) {
+                const formattedEnd = formatTicketNumber(endNum);
+                rangeInfo.innerText = `Rentang Tiket: ${formattedStart} s/d ${formattedEnd} (${count} kode unik)`;
+            } else {
+                rangeInfo.innerText = `Tiket: ${formattedStart} (1 kode unik)`;
+            }
+        }
+
         async function fetchAllData() {
             await Promise.all([loadDevices(), loadLicenses()]);
         }
@@ -169,87 +395,225 @@
         async function loadDevices() {
             try {
                 const res = await fetch(`${SUPABASE_URL}/devices?select=*&order=last_seen.desc`, { headers });
-                const data = await res.json();
-                document.getElementById('statTotalDevices').innerText = data.length || 0;
-                document.getElementById('deviceCountBadge').innerText = `${data.length || 0} HP`;
+                rawDevices = await res.json();
+                deviceMap = {};
+                rawDevices.forEach(d => {
+                    if (d.device_id) deviceMap[d.device_id] = d;
+                });
+
+                document.getElementById('statTotalDevices').innerText = rawDevices.length || 0;
+                document.getElementById('deviceCountBadge').innerText = `${rawDevices.length || 0} HP`;
 
                 const tbody = document.getElementById('devicesTableBody');
-                if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-500">Belum ada perangkat terdaftar.</td></tr>';
+                if (!rawDevices || rawDevices.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-slate-500">Belum ada perangkat terdaftar.</td></tr>';
                     return;
                 }
 
-                tbody.innerHTML = data.map(d => `
-                    <tr class="hover:bg-gray-800/40 transition">
-                        <td class="py-3 px-3 font-semibold text-white">${escapeHtml(d.device_model || 'Unknown')}</td>
-                        <td class="py-3 px-3 text-gray-400">${escapeHtml(d.os_version || '-')}</td>
-                        <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-gray-800 text-gray-300 text-[10px]">v${escapeHtml(d.app_version || '1.0')}</span></td>
-                        <td class="py-3 px-3 text-gray-400">${formatDate(d.last_seen)}</td>
+                tbody.innerHTML = rawDevices.map(d => `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="py-2.5 px-3 font-semibold text-white">${escapeHtml(d.device_model || 'Unknown')}</td>
+                        <td class="py-2.5 px-3 font-mono text-[11px] text-slate-400 select-all">${escapeHtml(d.device_id || '-')}</td>
+                        <td class="py-2.5 px-3 text-slate-400">${escapeHtml(d.os_version || '-')}</td>
+                        <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">v${escapeHtml(d.app_version || '1.0')}</span></td>
+                        <td class="py-2.5 px-3 text-slate-400">${formatDate(d.last_seen)}</td>
                     </tr>
                 `).join('');
             } catch (err) {
                 console.error(err);
-                document.getElementById('devicesTableBody').innerHTML = '<tr><td colspan="4" class="text-center py-6 text-red-400">Gagal memuat data perangkat.</td></tr>';
+                document.getElementById('devicesTableBody').innerHTML = '<tr><td colspan="5" class="text-center py-6 text-rose-400">Gagal memuat perangkat.</td></tr>';
             }
         }
 
         async function loadLicenses() {
             try {
                 const res = await fetch(`${SUPABASE_URL}/licenses?select=*&order=created_at.desc`, { headers });
-                const data = await res.json();
+                rawLicenses = await res.json();
 
-                const total = data.length || 0;
-                const used = data.filter(l => l.is_used).length;
+                const total = rawLicenses.length || 0;
+                const used = rawLicenses.filter(l => l.is_used).length;
                 const available = total - used;
 
                 document.getElementById('statTotalLicenses').innerText = total;
                 document.getElementById('statUsedLicenses').innerText = used;
                 document.getElementById('statAvailableLicenses').innerText = available;
-                document.getElementById('licenseCountBadge').innerText = `${total} Kode`;
 
-                const tbody = document.getElementById('licensesTableBody');
-                if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-500">Belum ada kode lisensi dibuat.</td></tr>';
-                    return;
-                }
-
-                tbody.innerHTML = data.map(l => `
-                    <tr class="hover:bg-gray-800/40 transition">
-                        <td class="py-3 px-3 font-mono font-bold text-white select-all">${escapeHtml(l.license_key)}</td>
-                        <td class="py-3 px-3">
-                            ${l.is_used 
-                                ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">TERPAKAI</span>'
-                                : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">TERSEDIA</span>'
-                            }
-                        </td>
-                        <td class="py-3 px-3 text-gray-400 font-mono text-[11px]">${l.device_id ? escapeHtml(l.device_id) : '<span class="text-gray-600">-</span>'}</td>
-                        <td class="py-3 px-3 text-right">
-                            ${l.is_used ? `
-                                <button onclick="resetLicense('${l.id}')" class="text-yellow-400 hover:text-yellow-300 text-[11px] font-semibold underline">
-                                    Reset HP
-                                </button>
-                            ` : '<span class="text-gray-600 text-[11px]">Siap pakai</span>'}
-                        </td>
-                    </tr>
-                `).join('');
+                renderUsedTable();
+                renderAvailableTable();
             } catch (err) {
                 console.error(err);
-                document.getElementById('licensesTableBody').innerHTML = '<tr><td colspan="4" class="text-center py-6 text-red-400">Gagal memuat data lisensi.</td></tr>';
+                document.getElementById('tableBodyUsed').innerHTML = '<tr><td colspan="6" class="text-center py-6 text-rose-400">Gagal memuat data lisensi.</td></tr>';
+                document.getElementById('tableBodyAvailable').innerHTML = '<tr><td colspan="5" class="text-center py-6 text-rose-400">Gagal memuat data lisensi.</td></tr>';
             }
         }
 
-        async function generateLicenses() {
-            const count = parseInt(document.getElementById('genCount').value) || 1;
-            const btn = document.getElementById('btnGenerate');
-            btn.disabled = true;
-            btn.innerText = "Menyimpan...";
+        // Klasifikasi kategori: Hanya 2 (Jualan vs Custom)
+        function getCategoryMeta(key) {
+            if (key.includes('-PRO-')) {
+                return { isJualan: true, label: 'Jualan', tag: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
+            }
+            let sub = 'Custom';
+            if (key.includes('-FRND-')) sub = 'Teman';
+            else if (key.includes('-INFL-')) sub = 'Influencer';
+            else if (key.includes('-BETA-')) sub = 'Tester';
+            else if (key.includes('-VIP-')) sub = 'VIP';
+            return { isJualan: false, label: sub, tag: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' };
+        }
 
-            const newKeys = [];
+        // Render Tabel: Lisensi yang Sedang Dipakai
+        function renderUsedTable() {
+            const tbody = document.getElementById('tableBodyUsed');
+            const search = (document.getElementById('searchUsed').value || '').trim().toLowerCase();
+            const filterType = document.getElementById('filterTypeUsed').value;
+
+            const usedList = rawLicenses.filter(l => l.is_used);
+            document.getElementById('badgeActiveCount').innerText = `${usedList.length} Aktif`;
+
+            let filtered = usedList.filter(l => {
+                const meta = getCategoryMeta(l.license_key);
+                if (filterType === 'JUALAN' && !meta.isJualan) return false;
+                if (filterType === 'CUSTOM' && meta.isJualan) return false;
+
+                if (search) {
+                    const matchKey = (l.license_key || '').toLowerCase().includes(search);
+                    const matchDev = (l.device_id || '').toLowerCase().includes(search);
+                    if (!matchKey && !matchDev) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500">Tidak ada lisensi terpakai yang sesuai.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(l => {
+                const meta = getCategoryMeta(l.license_key);
+                const dev = deviceMap[l.device_id] || null;
+                const devModel = dev ? dev.device_model : 'Model tidak terdata';
+
+                return `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="py-3 px-3">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-mono font-bold text-white tracking-wider select-all">${escapeHtml(l.license_key)}</span>
+                                <button onclick="copyToClipboard('${l.license_key}')" title="Salin kode" class="text-slate-500 hover:text-emerald-400 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                </button>
+                            </div>
+                        </td>
+                        <td class="py-3 px-3">
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold border ${meta.tag}">${meta.label}</span>
+                        </td>
+                        <td class="py-3 px-3 font-mono text-[11px] text-slate-300">
+                            <span class="select-all">${escapeHtml(l.device_id || '-')}</span>
+                        </td>
+                        <td class="py-3 px-3 text-slate-300">
+                            ${escapeHtml(devModel)}
+                        </td>
+                        <td class="py-3 px-3 text-slate-400 text-[11px]">
+                            <div class="text-emerald-400 font-medium">${formatDate(l.activated_at || l.created_at)}</div>
+                        </td>
+                        <td class="py-3 px-3 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <button onclick="resetLicense('${l.id}', '${l.license_key}')" class="px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[11px] font-semibold border border-amber-500/30 transition" title="Lepas ikatan dari HP ini agar kodenya bisa dipakai di HP lain">
+                                    Reset HP
+                                </button>
+                                <button onclick="deleteLicense('${l.id}', '${l.license_key}')" class="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[11px] font-semibold border border-rose-500/30 transition" title="Hapus permanen">
+                                    Hapus
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Render Tabel: Lisensi Tersedia (Belum Terpakai)
+        function renderAvailableTable() {
+            const tbody = document.getElementById('tableBodyAvailable');
+            const search = (document.getElementById('searchAvailable').value || '').trim().toLowerCase();
+            const filterType = document.getElementById('filterTypeAvailable').value;
+
+            const availList = rawLicenses.filter(l => !l.is_used);
+            document.getElementById('badgeAvailableCount').innerText = `${availList.length} Stok Ready`;
+
+            let filtered = availList.filter(l => {
+                const meta = getCategoryMeta(l.license_key);
+                if (filterType === 'JUALAN' && !meta.isJualan) return false;
+                if (filterType === 'CUSTOM' && meta.isJualan) return false;
+
+                if (search) {
+                    const matchKey = (l.license_key || '').toLowerCase().includes(search);
+                    if (!matchKey) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-slate-500">Tidak ada stok yang sesuai.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(l => {
+                const meta = getCategoryMeta(l.license_key);
+
+                return `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="py-3 px-3">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-mono font-bold text-white tracking-wider select-all">${escapeHtml(l.license_key)}</span>
+                                <button onclick="copyToClipboard('${l.license_key}')" title="Salin voucher" class="text-slate-500 hover:text-amber-400 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                </button>
+                            </div>
+                        </td>
+                        <td class="py-3 px-3">
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold border ${meta.tag}">${meta.label}</span>
+                        </td>
+                        <td class="py-3 px-3">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">READY</span>
+                        </td>
+                        <td class="py-3 px-3 text-slate-400 text-[11px]">
+                            ${formatDate(l.created_at)}
+                        </td>
+                        <td class="py-3 px-3 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <button onclick="copyToClipboard('${l.license_key}')" class="px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[11px] font-semibold border border-amber-500/30 transition">
+                                    Salin
+                                </button>
+                                <button onclick="deleteLicense('${l.id}', '${l.license_key}')" class="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[11px] font-semibold border border-rose-500/30 transition" title="Hapus voucher">
+                                    Hapus
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function generateRandomPart() {
+            const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+            let res = '';
+            for (let i = 0; i < 4; i++) {
+                res += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return res;
+        }
+
+        // Generate Jualan (KORD-PRO-XXXX-XXXX)
+        async function handleGenerateJualan() {
+            const count = parseInt(document.getElementById('selJualanCount').value) || 1;
+            const btn = document.getElementById('btnGenJualan');
+
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> <span>Menyimpan ke Supabase...</span>`;
+
+            newlyGeneratedKeys = [];
             const rows = [];
             for (let i = 0; i < count; i++) {
-                const rand = Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-                const key = `KORD-${rand}`;
-                newKeys.push(key);
+                const key = `KORD-PRO-${generateRandomPart()}-${generateRandomPart()}`;
+                newlyGeneratedKeys.push(key);
                 rows.push({ license_key: key });
             }
 
@@ -261,30 +625,102 @@
                 });
 
                 if (res.ok) {
-                    const box = document.getElementById('newCodesContainer');
-                    const list = document.getElementById('newCodesList');
-                    box.classList.remove('hidden');
-                    list.innerHTML = newKeys.map(k => `
-                        <button onclick="copyToClipboard('${k}')" title="Klik untuk salin" class="px-3 py-1.5 rounded-lg bg-yellow-500/20 text-yellow-300 font-mono text-xs font-bold border border-yellow-500/40 hover:bg-yellow-500/30 transition flex items-center gap-1.5">
-                            ${k}
-                            <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                        </button>
-                    `).join('');
-
+                    showNewCodesBox(newlyGeneratedKeys);
+                    if (newlyGeneratedKeys.length === 1) {
+                        navigator.clipboard.writeText(newlyGeneratedKeys[0]);
+                        showToast(`Kode Jualan disalin: ${newlyGeneratedKeys[0]}`, "💰");
+                    } else {
+                        showToast(`${newlyGeneratedKeys.length} voucher jualan berhasil dibuat!`, "💰");
+                    }
                     await loadLicenses();
                 } else {
-                    alert("Gagal menyimpan ke Supabase. Cek console.");
+                    const err = await res.text();
+                    alert("Gagal simpan ke Supabase: " + err);
+                }
+            } catch (err) {
+                alert("Error: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> <span>⚡ Generate Kode Jualan</span>`;
+            }
+        }
+
+        // Generate Custom (KORD-<custom2>-<custom3><random>)
+        async function handleSaveCustom() {
+            const part1 = "KORD";
+            const part2 = cleanBlock(document.getElementById('inputCustomPart2').value);
+            const startNum = parseInt(document.getElementById('inputStartTicket').value) || 1;
+            const count = parseInt(document.getElementById('inputTicketCount').value) || 1;
+
+            if (!part2) {
+                alert("Silakan isi bagian <custom2> (misal: TEMAN, INFL, DEDE, VIP)!");
+                document.getElementById('inputCustomPart2').focus();
+                return;
+            }
+
+            if (count < 1 || count > 500) {
+                alert("Jumlah kode harus antara 1 sampai 500!");
+                return;
+            }
+
+            const btn = document.getElementById('btnSaveCustom');
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> <span>Menyimpan ke Supabase...</span>`;
+
+            newlyGeneratedKeys = [];
+            const rows = [];
+            for (let i = 0; i < count; i++) {
+                const currentTicket = formatTicketNumber(startNum + i);
+                const randomUnique = generateRandomPart(); // 4 karakter unik acak
+                // Format: <custom1>-<custom2>-<custom3>-<random> -> KORD-<part2>-<0001>-<ABCD>
+                const fullKey = `${part1}-${part2}-${currentTicket}-${randomUnique}`;
+                newlyGeneratedKeys.push(fullKey);
+                rows.push({ license_key: fullKey });
+            }
+
+            try {
+                const res = await fetch(`${SUPABASE_URL}/licenses`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(rows)
+                });
+
+                if (res.ok) {
+                    showNewCodesBox(newlyGeneratedKeys);
+                    if (newlyGeneratedKeys.length === 1) {
+                        navigator.clipboard.writeText(newlyGeneratedKeys[0]);
+                        showToast(`Kode Custom disalin: ${newlyGeneratedKeys[0]}`, "✍️");
+                    } else {
+                        showToast(`${newlyGeneratedKeys.length} Kode Custom dibuat!`, "✍️");
+                    }
+                    await loadLicenses();
+                } else {
+                    const err = await res.text();
+                    alert("Gagal simpan ke Supabase: " + err);
                 }
             } catch (err) {
                 alert("Error koneksi: " + err.message);
             } finally {
                 btn.disabled = false;
-                btn.innerText = "⚡ Generate Sekarang";
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg> <span>💾 Simpan Kode</span>`;
             }
         }
 
-        async function resetLicense(id) {
-            if (!confirm("Yakin ingin mereset lisensi ini agar bisa dipakai di HP lain?")) return;
+        function showNewCodesBox(keys) {
+            const box = document.getElementById('newCodesContainer');
+            const list = document.getElementById('newCodesList');
+            box.classList.remove('hidden');
+
+            list.innerHTML = keys.map(k => `
+                <button onclick="copyToClipboard('${k}')" title="Klik untuk salin" class="px-3 py-1.5 rounded-lg bg-amber-400/20 text-amber-300 font-mono text-xs font-bold border border-amber-400/40 hover:bg-amber-400/30 transition flex items-center gap-1.5 shadow-sm active:scale-95">
+                    ${k}
+                    <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                </button>
+            `).join('');
+        }
+
+        async function resetLicense(id, key) {
+            if (!confirm(`Yakin ingin me-reset lisensi "${key}" agar bisa dipakai di HP lain?`)) return;
             try {
                 const res = await fetch(`${SUPABASE_URL}/licenses?id=eq.${id}`, {
                     method: 'PATCH',
@@ -292,9 +728,36 @@
                     body: JSON.stringify({ is_used: false, device_id: null, activated_at: null })
                 });
                 if (res.ok) {
+                    showToast(`Lisensi ${key} berhasil di-reset!`, "🔄");
                     await loadLicenses();
                 } else {
-                    alert("Gagal reset. Cek izin RLS di Supabase.");
+                    alert("Gagal reset lisensi. Periksa permissions Supabase.");
+                }
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
+        }
+
+        async function deleteLicense(id, key) {
+            if (!confirm(`⚠️ HAPUS PERMANEN KODE:\n"${key}"\n\nKode ini akan dihapus dari Supabase. Lanjutkan?`)) return;
+            try {
+                const res = await fetch(`${SUPABASE_URL}/licenses?id=eq.${id}`, {
+                    method: 'DELETE',
+                    headers: headers
+                });
+                
+                if (res.ok) {
+                    const deletedItems = await res.json().catch(() => []);
+                    if (Array.isArray(deletedItems) && deletedItems.length === 0) {
+                        alert("⚠️ HAPUS DITOLAK SUPABASE!\n\nSupabase melarang penghapusan karena Row-Level Security (RLS) DELETE belum diizinkan.\n\nSilakan jalankan script SQL yang sudah disediakan di SQL Editor Supabase kamu agar tombol Hapus bisa bekerja!");
+                        return;
+                    }
+
+                    showToast(`Kode ${key} berhasil dihapus!`, "🗑️");
+                    await loadLicenses();
+                } else {
+                    const err = await res.text();
+                    alert("Gagal menghapus kode dari database: " + err);
                 }
             } catch (err) {
                 alert("Error: " + err.message);
@@ -303,20 +766,25 @@
 
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text);
-            alert("Disalin ke clipboard: " + text);
+            showToast(`Tersalin ke clipboard: ${text}`, "📋");
+        }
+
+        function copyAllNewCodes() {
+            if (newlyGeneratedKeys.length === 0) return;
+            navigator.clipboard.writeText(newlyGeneratedKeys.join('\n'));
+            showToast(`Semua ${newlyGeneratedKeys.length} kode disalin!`, "📋");
         }
 
         function formatDate(str) {
             if (!str) return '-';
             const d = new Date(str);
-            return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+            return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
 
         function escapeHtml(str) {
             return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
-        // Initial fetch
         fetchAllData();
     </script>
 </body>

@@ -9,7 +9,9 @@ import kotlinx.coroutines.flow.asStateFlow
 enum class AppThemeMode(val code: String) {
     DARK("dark"),
     LIGHT("light"),
-    SYSTEM("system");
+    PAPER("paper"),
+    BLACKBOARD("blackboard"),
+    GREENBOARD("greenboard");
 
     companion object {
         fun fromCode(code: String): AppThemeMode {
@@ -19,7 +21,7 @@ enum class AppThemeMode(val code: String) {
 }
 
 object AppThemeManager {
-    private val _currentTheme = MutableStateFlow(AppThemeMode.DARK)
+    private val _currentTheme = MutableStateFlow(AppThemeMode.BLACKBOARD)
     val currentTheme: StateFlow<AppThemeMode> = _currentTheme.asStateFlow()
 
     fun initialize(context: Context) {

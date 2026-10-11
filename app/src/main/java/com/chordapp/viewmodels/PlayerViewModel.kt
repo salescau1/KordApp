@@ -3,6 +3,8 @@ package com.chordapp.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chordapp.catalog.CatalogSongEntity
+import com.chordapp.catalog.catalogSlug
+import com.chordapp.scraper.CiSongScraper
 import com.chordapp.player.ChordParser
 import com.chordapp.player.ChordSheet
 import com.chordapp.player.Transposer
@@ -91,6 +93,33 @@ class PlayerViewModel(
 
     private var favoriteObservation: Job? = null
 
+    private suspend fun sanitizeEntity(rawEntity: CatalogSongEntity): CatalogSongEntity {
+        if (!rawEntity.artist.equals("CI Artist", ignoreCase = true) && !rawEntity.artist.contains("(?i)\\bfeat".toRegex())) {
+            return rawEntity
+        }
+
+        val (fixedArtist, fixedTitle) = if (rawEntity.artist.equals("CI Artist", ignoreCase = true)) {
+            val (pArtist, pTitle) = CiSongScraper.parseArtistAndTitleFromText(rawEntity.title, fallbackArtist = "")
+            if (pArtist.isNotBlank()) CiSongScraper.normalizeFeatArtistAndTitle(pArtist, pTitle)
+            else Pair(rawEntity.artist, rawEntity.title)
+        } else {
+            CiSongScraper.normalizeFeatArtistAndTitle(rawEntity.artist, rawEntity.title)
+        }
+
+        return if (fixedArtist != rawEntity.artist || fixedTitle != rawEntity.title) {
+            val updated = rawEntity.copy(
+                artist = fixedArtist,
+                title = fixedTitle,
+                artistSlug = catalogSlug(fixedArtist),
+                titleSlug = catalogSlug(fixedTitle.replace("(?i)\\s*\\((?:feat\\.?|ft\\.?|featuring)\\s+[^)]+\\)".toRegex(), "").trim())
+            )
+            repository.insertSong(updated)
+            updated
+        } else {
+            rawEntity
+        }
+    }
+
     fun loadSong(
         sourceUrlHash: String,
         initialTranspose: Int = 0,
@@ -98,11 +127,15 @@ class PlayerViewModel(
     ): kotlinx.coroutines.Job {
         return viewModelScope.launch {
             _isLoading.value = true
+            val t0 = System.currentTimeMillis()
             _transposeDelta.value = initialTranspose.coerceIn(-11, 11)
             _capo.value = initialCapo.coerceIn(0, 12)
             val url = java.net.URLDecoder.decode(sourceUrlHash, "UTF-8")
-            val entity = repository.getBySourceUrl(url)
-            if (entity != null) {
+            val rawEntity = repository.getBySourceUrl(url)
+            val t1 = System.currentTimeMillis()
+            if (rawEntity != null) {
+                val entity = sanitizeEntity(rawEntity)
+                val t2 = System.currentTimeMillis()
                 _song.value = entity
                 _sheet.value = ChordParser.parse(entity.content)
                 observeFavorite(entity.sourceUrl)
@@ -110,8 +143,11 @@ class PlayerViewModel(
                 // Record this play so Home "Recently Played" reflects real history.
                 userdataRepository.recordPlay(entity)
 
-                // Fetch versions
-                _availableVersions.value = repository.getSongVersions(entity.artistSlug, entity.titleSlug)
+                // Fetch curated versions
+                val rawVersions = repository.getSongVersions(entity.artistSlug, entity.titleSlug)
+                val t3 = System.currentTimeMillis()
+                _availableVersions.value = com.chordapp.catalog.SongVersionCurator.curate(rawVersions)
+                android.util.Log.d("PlayerLoadPerf", "loadSong: getBySourceUrl=${t1-t0}ms, sanitize=${t2-t1}ms, getVersions=${t3-t2}ms, total=${System.currentTimeMillis()-t0}ms")
             }
             _isLoading.value = false
         }
@@ -119,8 +155,9 @@ class PlayerViewModel(
 
     fun switchVersion(newVersionUrl: String): kotlinx.coroutines.Job {
         return viewModelScope.launch {
-            val entity = repository.getBySourceUrl(newVersionUrl)
-            if (entity != null) {
+            val rawEntity = repository.getBySourceUrl(newVersionUrl)
+            if (rawEntity != null) {
+                val entity = sanitizeEntity(rawEntity)
                 _song.value = entity
                 _sheet.value = ChordParser.parse(entity.content)
                 observeFavorite(entity.sourceUrl)

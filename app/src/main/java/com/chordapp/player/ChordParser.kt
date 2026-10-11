@@ -74,8 +74,25 @@ object ChordParser {
     /** Any single `[...]` group; only those whose inner text is a chord count. */
     private val bracketGroupRegex = Regex("\\[([^\\[\\]\\r\\n]+)\\]")
 
+    fun unescapeHtml(text: String): String {
+        return text
+            .replace(Regex("&#0*39;"), "'")
+            .replace("&quot;", "\"")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&apos;", "'")
+            .replace("&#x27;", "'", ignoreCase = true)
+            .replace("&rsquo;", "'")
+            .replace("&lsquo;", "'")
+            .replace("&ldquo;", "\"")
+            .replace("&rdquo;", "\"")
+            .replace("&#x2F;", "/", ignoreCase = true)
+            .replace("&hellip;", "...")
+    }
+
     fun parse(content: String): ChordSheet {
-        val rawLines = content.lines()
+        val rawLines = unescapeHtml(content).lines()
         val sheetLines = mutableListOf<SheetLine>()
         val chordSet = mutableSetOf<String>()
         var sectionCount = 0

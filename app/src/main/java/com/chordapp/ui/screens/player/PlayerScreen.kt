@@ -9,6 +9,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.scrollBy
@@ -723,14 +726,15 @@ private fun FontSizeSegment(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun PlayerScreen(
     sourceUrlHash: String,
     initialTranspose: Int = 0,
     initialCapo: Int = 0,
     viewModel: PlayerViewModel,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onSearchClick: (query: String?, source: String?) -> Unit = { _, _ -> }
 ) {
     val song by viewModel.song.collectAsState()
     val sheet by viewModel.sheet.collectAsState()
@@ -1049,11 +1053,15 @@ fun PlayerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(44.dp)
-                        .clickable {
-                            if (availableVersions.isNotEmpty()) {
+                        .clip(RoundedCornerShape(22.dp))
+                        .combinedClickable(
+                            onClick = {
                                 showVersionMenu = true
+                            },
+                            onLongClick = {
+                                onSearchClick(null, "LOCAL")
                             }
-                        }
+                        )
                 ) {
                     Column(
                         modifier = Modifier
@@ -1104,7 +1112,7 @@ fun PlayerScreen(
                 ) {
                     availableVersions.forEachIndexed { index, v ->
                         val itemTag = if (v.source.contains("Ultimate Guitar", ignoreCase = true)) "UG" else v.source
-                        val label = v.versionName ?: "$itemTag v${index + 1}"
+                        val label = if (!v.versionName.isNullOrBlank()) "$itemTag ${v.versionName}" else "$itemTag v${index + 1}"
                         DropdownMenuItem(
                             text = {
                                 Text(
@@ -1121,6 +1129,29 @@ fun PlayerScreen(
                             }
                         )
                     }
+                    if (availableVersions.isNotEmpty()) {
+                        HorizontalDivider(color = Border)
+                    }
+                    DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = null,
+                                tint = AccentGold
+                            )
+                        },
+                        text = {
+                            Text(
+                                strings.addAnotherVersion,
+                                color = AccentGold,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        },
+                        onClick = {
+                            showVersionMenu = false
+                            onSearchClick("${currentSong.artist} ${currentSong.title}", "UG")
+                        }
+                    )
                 }
             }
 

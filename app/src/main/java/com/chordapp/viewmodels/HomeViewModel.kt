@@ -10,7 +10,11 @@ import com.chordapp.charts.ChartResult
 import com.chordapp.catalog.catalogSlug
 import com.chordapp.repositories.CatalogRepository
 import com.chordapp.repositories.UserdataRepository
+import com.chordapp.scraper.UgSongScraper
 import com.chordapp.userdata.PlayHistoryEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -101,6 +105,9 @@ class HomeViewModel(
     private val _chart = MutableStateFlow<ChartState>(
         resolvedRows[initialPlatform]?.let { rows ->
             ChartState.Loaded(rows = rows, fromCache = true, isRefreshing = false)
+        } ?: chartRepository.cachedResolved(initialPlatform)?.let { rows ->
+            resolvedRows[initialPlatform] = rows
+            ChartState.Loaded(rows = rows, fromCache = true, isRefreshing = false)
         } ?: ChartState.Loading
     )
     val chart: StateFlow<ChartState> = _chart.asStateFlow()
@@ -164,19 +171,55 @@ class HomeViewModel(
         }
     }
 
+    fun downloadSong(row: ChartRowUi) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val scraped = UgSongScraper.searchAndScrapeSong(
+                artist = row.artist,
+                title = row.title
+            )
+            if (scraped != null) {
+                catalogRepository.insertSong(scraped)
+                val updated = toRowUi(ChartEntry(row.rank, row.title, row.artist))
+                val currentLoaded = _chart.value as? ChartState.Loaded ?: return@launch
+                val platform = _platform.value
+                val updatedRows = currentLoaded.rows.map { r ->
+                    if (r.rank == row.rank && r.title == row.title) {
+                        updated.copy(isFavorite = updated.favoriteSourceUrl in favoriteUrls)
+                    } else {
+                        r
+                    }
+                }
+                resolvedRows[platform] = updatedRows
+                chartRepository.saveCachedResolved(platform, updatedRows)
+                _chart.value = currentLoaded.copy(rows = updatedRows)
+            }
+        }
+    }
+
     /**
      * Tampilkan cache SEGERA tanpa jaringan: rows in-memory sesi ini kalau ada,
-     * lalu cache disk. Tidak ada refresh jaringan otomatis selama cache tersedia
-     * (tidak ada kedip "Memperbarui..."). Hanya bila belum ada cache sama sekali
-     * (mis. pertama kali) satu kali ambil jaringan supaya Home tidak kosong.
+     * lalu cache disk resolved. Tampil seketika tanpa loading spinner atau jeda.
+     * Tidak ada background update: murni pull-to-refresh sesuai aksi pengguna.
      */
     private fun showCached(platform: ChartPlatform) {
         refreshJob?.cancel()
 
         val remembered = resolvedRows[platform]
         if (remembered != null) {
+            chartRepository.saveCachedResolved(platform, remembered)
             _chart.value = ChartState.Loaded(
                 rows = remembered.map { it.copy(isFavorite = it.favoriteSourceUrl in favoriteUrls) },
+                fromCache = true,
+                isRefreshing = false
+            )
+            return
+        }
+
+        val cachedResolved = chartRepository.cachedResolved(platform)
+        if (cachedResolved != null) {
+            resolvedRows[platform] = cachedResolved
+            _chart.value = ChartState.Loaded(
+                rows = cachedResolved.map { it.copy(isFavorite = it.favoriteSourceUrl in favoriteUrls) },
                 fromCache = true,
                 isRefreshing = false
             )
@@ -189,42 +232,17 @@ class HomeViewModel(
             return
         }
 
-        _chart.value = ChartState.Loading
-        refreshJob = viewModelScope.launch {
+        // Tampilkan data cache langsung tanpa jeda Loading spinner
+        refreshJob = viewModelScope.launch(Dispatchers.IO) {
             val cachedRows = cached.entries.map { toRowUi(it) }
             if (_platform.value != platform) return@launch
             resolvedRows[platform] = cachedRows
+            chartRepository.saveCachedResolved(platform, cachedRows)
             _chart.value = ChartState.Loaded(
-                rows = cachedRows,
+                rows = cachedRows.map { it.copy(isFavorite = it.favoriteSourceUrl in favoriteUrls) },
                 fromCache = true,
-                isRefreshing = true
+                isRefreshing = false
             )
-
-            when (val result = chartRepository.load(platform)) {
-                is ChartResult.Fresh -> {
-                    val rows = result.snapshot.entries.map { toRowUi(it) }
-                    resolvedRows[platform] = rows
-                    if (_platform.value == platform) {
-                        _chart.value = ChartState.Loaded(rows, fromCache = false, isRefreshing = false)
-                    }
-                }
-                is ChartResult.FromCache -> {
-                    val rows = result.snapshot.entries.map { toRowUi(it) }
-                    resolvedRows[platform] = rows
-                    if (_platform.value == platform) {
-                        _chart.value = ChartState.Loaded(rows, fromCache = true, isRefreshing = false)
-                    }
-                }
-                ChartResult.NoData -> {
-                    if (_platform.value == platform) {
-                        _chart.value = ChartState.Loaded(
-                            rows = cachedRows.map { it.copy(isFavorite = it.favoriteSourceUrl in favoriteUrls) },
-                            fromCache = true,
-                            isRefreshing = false
-                        )
-                    }
-                }
-            }
         }
     }
 
@@ -238,11 +256,12 @@ class HomeViewModel(
             else -> ChartState.Loading
         }
 
-        refreshJob = viewModelScope.launch {
+        refreshJob = viewModelScope.launch(Dispatchers.IO) {
             when (val result = chartRepository.load(platform)) {
                 is ChartResult.Fresh -> {
                     val rows = result.snapshot.entries.map { toRowUi(it) }
                     resolvedRows[platform] = rows
+                    chartRepository.saveCachedResolved(platform, rows)
                     if (_platform.value == platform) {
                         _chart.value = ChartState.Loaded(rows, fromCache = false, isRefreshing = false)
                     }
@@ -250,13 +269,14 @@ class HomeViewModel(
                 is ChartResult.FromCache -> {
                     val rows = result.snapshot.entries.map { toRowUi(it) }
                     resolvedRows[platform] = rows
+                    chartRepository.saveCachedResolved(platform, rows)
                     if (_platform.value == platform) {
                         _chart.value = ChartState.Loaded(rows, fromCache = true, isRefreshing = false)
                     }
                 }
                 ChartResult.NoData -> {
                     if (_platform.value != platform) return@launch
-                    val fallback = resolvedRows[platform]
+                    val fallback = resolvedRows[platform] ?: chartRepository.cachedResolved(platform)
                     _chart.value = if (fallback != null) {
                         ChartState.Loaded(
                             rows = fallback.map { it.copy(isFavorite = it.favoriteSourceUrl in favoriteUrls) },

@@ -33,11 +33,7 @@ class SongVersionsViewModel(private val repository: CatalogRepository) : ViewMod
         return viewModelScope.launch {
             _isLoading.value = true
             val rawVersions = repository.getSongVersions(artistSlug, titleSlug)
-        println("LOAD_VERSIONS: $artistSlug / $titleSlug -> size: ${rawVersions.size}")
-
-            // Sort versions neutrally: source ASC, versionName ASC
-            val sortedVersions = rawVersions.sortedWith(compareBy<CatalogSongEntity> { it.source }
-                .thenBy { it.versionName ?: "" })
+            val sortedVersions = com.chordapp.catalog.SongVersionCurator.curate(rawVersions)
 
             if (sortedVersions.size == 1) {
                 _navigateToPlayer.value = sortedVersions.first().sourceUrl
@@ -53,19 +49,25 @@ class SongVersionsViewModel(private val repository: CatalogRepository) : ViewMod
         applyFilter(filter)
     }
 
+    private fun normalizeSource(source: String): String = when {
+        source.equals("All Sources", ignoreCase = true) -> "All Sources"
+        source.contains("Ultimate", ignoreCase = true) || source == "UG" -> "UG"
+        source.contains("GuitarTuna", ignoreCase = true) || source.contains("Guitar Tuna", ignoreCase = true) || source == "GT" -> "GT"
+        source.contains("ChordTela", ignoreCase = true) || source == "CT" -> "CT"
+        source.contains("ChordIndonesia", ignoreCase = true) || source.contains("Chord Indonesia", ignoreCase = true) || source == "CI" -> "CI"
+        else -> source
+    }
+
     private fun applyFilter(filter: String) {
         _sourceFilter.value = filter
         val currentVersions = _versions.value
-        val dbSource = when (filter) {
-            "Ultimate Guitar" -> "UG"
-            "GuitarTuna" -> "GT"
-            "ChordTela" -> "ChordTela"
-            else -> filter
-        }
-        val filtered = if (dbSource == "All Sources") {
+        val normalizedFilter = normalizeSource(filter)
+        val filtered = if (normalizedFilter == "All Sources") {
             currentVersions
         } else {
-            currentVersions.filter { it.source == dbSource }
+            currentVersions.filter {
+                normalizeSource(it.source) == normalizedFilter
+            }
         }
         _filteredVersions.value = filtered
 

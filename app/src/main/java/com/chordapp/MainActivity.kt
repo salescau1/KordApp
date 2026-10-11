@@ -1,5 +1,6 @@
 package com.chordapp
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -18,6 +19,10 @@ import com.chordapp.ui.theme.ChordAppTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!isTaskRoot && intent.hasCategory(Intent.CATEGORY_LAUNCHER) && Intent.ACTION_MAIN == intent.action) {
+            finish()
+            return
+        }
         optimizeRefreshRate()
         AppLanguageManager.initialize(this)
         AppThemeManager.initialize(this)
@@ -36,25 +41,37 @@ class MainActivity : ComponentActivity() {
 
     private fun optimizeRefreshRate() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val currentDisplay = display
-            if (currentDisplay != null) {
-                val maxMode = currentDisplay.supportedModes.maxByOrNull { it.refreshRate }
-                if (maxMode != null && maxMode.refreshRate > 60f) {
-                    val params = window.attributes
-                    params.preferredDisplayModeId = maxMode.modeId
-                    window.attributes = params
+            val currentDisplay = display ?: return
+            val currentMode = currentDisplay.mode ?: return
+            // Pastikan hanya memilih mode dengan resolusi yang SAMA persis dengan resolusi aktif saat ini
+            // agar TIDAK memaksa layar berpindah resolusi (misal dari 1080p ke 1440p di Google Pixel / Samsung)
+            val bestMode = currentDisplay.supportedModes
+                .filter { mode ->
+                    (mode.physicalWidth == currentMode.physicalWidth && mode.physicalHeight == currentMode.physicalHeight) ||
+                    (mode.physicalWidth == currentMode.physicalHeight && mode.physicalHeight == currentMode.physicalWidth)
                 }
+                .maxByOrNull { it.refreshRate }
+
+            if (bestMode != null && bestMode.refreshRate > currentMode.refreshRate) {
+                val params = window.attributes
+                params.preferredDisplayModeId = bestMode.modeId
+                window.attributes = params
             }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             @Suppress("DEPRECATION")
-            val defaultDisplay = windowManager.defaultDisplay
-            if (defaultDisplay != null) {
-                val maxMode = defaultDisplay.supportedModes.maxByOrNull { it.refreshRate }
-                if (maxMode != null && maxMode.refreshRate > 60f) {
-                    val params = window.attributes
-                    params.preferredDisplayModeId = maxMode.modeId
-                    window.attributes = params
+            val defaultDisplay = windowManager.defaultDisplay ?: return
+            val currentMode = defaultDisplay.mode ?: return
+            val bestMode = defaultDisplay.supportedModes
+                .filter { mode ->
+                    (mode.physicalWidth == currentMode.physicalWidth && mode.physicalHeight == currentMode.physicalHeight) ||
+                    (mode.physicalWidth == currentMode.physicalHeight && mode.physicalHeight == currentMode.physicalWidth)
                 }
+                .maxByOrNull { it.refreshRate }
+
+            if (bestMode != null && bestMode.refreshRate > currentMode.refreshRate) {
+                val params = window.attributes
+                params.preferredDisplayModeId = bestMode.modeId
+                window.attributes = params
             }
         }
     }

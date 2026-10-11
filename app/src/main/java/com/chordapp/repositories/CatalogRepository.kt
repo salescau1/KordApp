@@ -8,13 +8,51 @@ import com.chordapp.catalog.CatalogSongGroup
 class CatalogRepository(private val dao: CatalogDao) {
 
     suspend fun searchSongs(query: String, limit: Int = 50): List<CatalogSongGroup> {
-        if (query.isBlank()) return emptyList()
-        return dao.searchSongs(query, limit = limit)
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) return emptyList()
+        val vars = com.chordapp.catalog.generateSearchVariants(trimmed)
+        val q1 = vars.getOrElse(0) { "" }
+        val q2 = vars.getOrElse(1) { "" }
+        val q3 = vars.getOrElse(2) { "" }
+        val q4 = vars.getOrElse(3) { "" }
+        val q5 = vars.getOrElse(4) { "" }
+        return dao.searchSongsVariants(q1, q2, q3, q4, q5, limit = limit)
+    }
+
+    suspend fun searchSongsByGt(query: String, limit: Int = 50): List<CatalogSongGroup> {
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) return emptyList()
+        val vars = com.chordapp.catalog.generateSearchVariants(trimmed)
+        val q1 = vars.getOrElse(0) { "" }
+        val q2 = vars.getOrElse(1) { "" }
+        val q3 = vars.getOrElse(2) { "" }
+        val q4 = vars.getOrElse(3) { "" }
+        val q5 = vars.getOrElse(4) { "" }
+        return dao.searchSongsByGtVariants(q1, q2, q3, q4, q5, limit = limit)
     }
 
     suspend fun searchArtists(query: String, limit: Int = 5): List<CatalogArtistInfo> {
-        if (query.isBlank()) return emptyList()
-        return dao.searchArtists(query, limit = limit)
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) return emptyList()
+        val vars = com.chordapp.catalog.generateSearchVariants(trimmed)
+        val q1 = vars.getOrElse(0) { "" }
+        val q2 = vars.getOrElse(1) { "" }
+        val q3 = vars.getOrElse(2) { "" }
+        val q4 = vars.getOrElse(3) { "" }
+        val q5 = vars.getOrElse(4) { "" }
+        return dao.searchArtistsVariants(q1, q2, q3, q4, q5, limit = limit)
+    }
+
+    suspend fun searchArtistsByGt(query: String, limit: Int = 5): List<CatalogArtistInfo> {
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) return emptyList()
+        val vars = com.chordapp.catalog.generateSearchVariants(trimmed)
+        val q1 = vars.getOrElse(0) { "" }
+        val q2 = vars.getOrElse(1) { "" }
+        val q3 = vars.getOrElse(2) { "" }
+        val q4 = vars.getOrElse(3) { "" }
+        val q5 = vars.getOrElse(4) { "" }
+        return dao.searchArtistsByGtVariants(q1, q2, q3, q4, q5, limit = limit)
     }
     
     suspend fun getArtistInfo(artistSlug: String): CatalogSongEntity? {
@@ -75,6 +113,37 @@ class CatalogRepository(private val dao: CatalogDao) {
     /** Exact (trimmed, case-insensitive) lookup of one logical song by its displayed name. */
     suspend fun findSongByExact(artist: String, title: String): CatalogSongGroup? {
         return dao.findSongByExact(artist, title)
+    }
+
+    suspend fun insertSong(song: CatalogSongEntity): Long {
+        cachedArtists = null
+        dao.deleteBySourceUrl(song.sourceUrl)
+        return dao.insertSong(song)
+    }
+
+    suspend fun insertSongs(songs: List<CatalogSongEntity>): List<Long> {
+        cachedArtists = null
+        for (song in songs) {
+            dao.deleteBySourceUrl(song.sourceUrl)
+        }
+        return dao.insertSongs(songs)
+    }
+
+    suspend fun pruneDatabase(
+        artistSlugs: List<String>,
+        songKeys: List<Pair<String, String>>,
+        versionIds: List<Long>
+    ) {
+        cachedArtists = null
+        if (artistSlugs.isNotEmpty()) {
+            dao.deleteArtistsBySlugs(artistSlugs)
+        }
+        for ((artistSlug, titleSlug) in songKeys) {
+            dao.deleteSongBySlug(artistSlug, titleSlug)
+        }
+        if (versionIds.isNotEmpty()) {
+            dao.deleteSongsByIds(versionIds)
+        }
     }
 
     companion object {

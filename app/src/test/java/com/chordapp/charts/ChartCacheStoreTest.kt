@@ -57,4 +57,24 @@ class ChartCacheStoreTest {
 
         assertNull(corrupt.read(ChartPlatform.SPOTIFY))
     }
+
+    @Test
+    fun `writeResolved then readResolved preserves rows`() {
+        val rows = listOf(
+            com.chordapp.viewmodels.ChartRowUi(
+                rank = 1,
+                title = "Kirana",
+                artist = "Dewa 19",
+                available = true,
+                artistSlug = "dewa-19",
+                titleSlug = "kirana",
+                sources = listOf("UG", "CI"),
+                favoriteSourceUrl = "https://example.com/kirana",
+                isFavorite = false
+            )
+        )
+        cache.writeResolved(ChartPlatform.SPOTIFY, rows)
+        val back = cache.readResolved(ChartPlatform.SPOTIFY)
+        assertEquals(rows, back)
+    }
 }

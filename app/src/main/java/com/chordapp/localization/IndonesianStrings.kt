@@ -91,6 +91,7 @@ object IndonesianStrings : AppStrings {
 
     // Setlists Screen & Tracklist Screen
     override val setlistsTitle = "SETLIST"
+    override val setlistsSubtitle = "Kelola dan susun daftar putar lagu Anda"
     override val sortSetlists = "Urutkan setlist"
     override val sortAZ = "A–Z"
     override val sortPopular = "Terpopuler"
@@ -123,6 +124,7 @@ object IndonesianStrings : AppStrings {
     override fun diagramNotAvailable(symbol: String) = "Diagram belum tersedia untuk $symbol di data fingering."
     override val previousShape = "Bentuk sebelumnya"
     override val nextShape = "Bentuk berikutnya"
+    override val addAnotherVersion = "Tambah versi lain"
 
     // Song Versions Screen & Artist Directory
     override val noVersionsFound = "Versi tidak ditemukan"
@@ -137,11 +139,15 @@ object IndonesianStrings : AppStrings {
 
     // Settings Screen
     override val settingsTitle = "PENGATURAN"
+    override val settingsSubtitle = "Pengaturan preferensi dan sistem aplikasi"
     override val themeSection = "TAMPILAN"
     override val appThemeLabel = "Tema"
     override val selectTheme = "Pilih Tema"
     override val themeDark = "Mode Gelap (Dark)"
     override val themeLight = "Mode Terang (Light)"
+    override val themePaper = "Kertas (Sepia)"
+    override val themeBlackboard = "Papan Tulis Hitam"
+    override val themeGreenboard = "Papan Tulis Hijau"
     override val themeSystem = "Ikuti Sistem"
     override val languageSection = "BAHASA"
     override val appLanguageLabel = "Bahasa Aplikasi"

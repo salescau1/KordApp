@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Search
@@ -111,7 +112,8 @@ fun HomeScreen(
                 onSelectPlatform = viewModel::selectPlatform,
                 onRetry = viewModel::retry,
                 onRefresh = viewModel::refresh,
-                onToggleFavorite = viewModel::toggleFavorite
+                onToggleFavorite = viewModel::toggleFavorite,
+                onDownloadSong = viewModel::downloadSong
             )
         } else {
             CompactHome(
@@ -123,7 +125,8 @@ fun HomeScreen(
                 onSelectPlatform = viewModel::selectPlatform,
                 onRetry = viewModel::retry,
                 onRefresh = viewModel::refresh,
-                onToggleFavorite = viewModel::toggleFavorite
+                onToggleFavorite = viewModel::toggleFavorite,
+                onDownloadSong = viewModel::downloadSong
             )
         }
     }
@@ -139,7 +142,8 @@ private fun CompactHome(
     onSelectPlatform: (ChartPlatform) -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
-    onToggleFavorite: (ChartRowUi) -> Unit
+    onToggleFavorite: (ChartRowUi) -> Unit,
+    onDownloadSong: (ChartRowUi) -> Unit
 ) {
     var headerHeightPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
@@ -155,7 +159,8 @@ private fun CompactHome(
             onRetry = onRetry,
             onRefresh = onRefresh,
             onSongClick = onSongClick,
-            onToggleFavorite = onToggleFavorite
+            onToggleFavorite = onToggleFavorite,
+            onDownloadSong = onDownloadSong
         )
 
         // Frosted floating header at top: blur effect when list scrolls underneath
@@ -230,7 +235,8 @@ private fun ExpandedHome(
     onSelectPlatform: (ChartPlatform) -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
-    onToggleFavorite: (ChartRowUi) -> Unit
+    onToggleFavorite: (ChartRowUi) -> Unit,
+    onDownloadSong: (ChartRowUi) -> Unit
 ) {
     Row(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -270,7 +276,8 @@ private fun ExpandedHome(
                 onRetry = onRetry,
                 onRefresh = onRefresh,
                 onSongClick = onSongClick,
-                onToggleFavorite = onToggleFavorite
+                onToggleFavorite = onToggleFavorite,
+                onDownloadSong = onDownloadSong
             )
         }
     }
@@ -692,7 +699,8 @@ private fun ChartBody(
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
     onSongClick: (artistSlug: String, titleSlug: String) -> Unit,
-    onToggleFavorite: (ChartRowUi) -> Unit
+    onToggleFavorite: (ChartRowUi) -> Unit,
+    onDownloadSong: (ChartRowUi) -> Unit = {}
 ) {
     when (state) {
         ChartState.Loading -> {
@@ -751,7 +759,8 @@ private fun ChartBody(
                             is RowItem -> ChartRow(
                                 row = item.row,
                                 onSongClick = onSongClick,
-                                onToggleFavorite = onToggleFavorite
+                                onToggleFavorite = onToggleFavorite,
+                                onDownloadSong = onDownloadSong
                             )
                             AdItem -> NativeAdSlot()
                         }
@@ -787,7 +796,8 @@ private fun NativeAdSlot(adContent: (@Composable () -> Unit)? = null) {
 private fun ChartRow(
     row: ChartRowUi,
     onSongClick: (artistSlug: String, titleSlug: String) -> Unit,
-    onToggleFavorite: (ChartRowUi) -> Unit
+    onToggleFavorite: (ChartRowUi) -> Unit,
+    onDownloadSong: (ChartRowUi) -> Unit
 ) {
     val strings = com.chordapp.localization.LocalAppStrings.current
     val shape = RoundedCornerShape(12.dp)
@@ -797,8 +807,12 @@ private fun ChartRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = canOpen) {
-                onSongClick(row.artistSlug!!, row.titleSlug!!)
+            .clickable {
+                if (canOpen) {
+                    onSongClick(row.artistSlug!!, row.titleSlug!!)
+                } else {
+                    onDownloadSong(row)
+                }
             },
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = CardSurface),
@@ -863,21 +877,35 @@ private fun ChartRow(
             }
 
             Spacer(modifier = Modifier.width(6.dp))
-            IconButton(
-                onClick = { onToggleFavorite(row) },
-                enabled = row.favoriteSourceUrl != null,
-                modifier = Modifier.size(44.dp)
-            ) {
-                Icon(
-                    imageVector = if (row.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    contentDescription = if (row.isFavorite) strings.removeFromFavorites else strings.addToFavorites,
-                    tint = when {
-                        row.isFavorite -> ActiveHeart
-                        row.favoriteSourceUrl != null -> PrimaryText
-                        else -> MutedText
-                    },
-                    modifier = Modifier.size(28.dp)
-                )
+            if (row.available) {
+                IconButton(
+                    onClick = { onToggleFavorite(row) },
+                    enabled = row.favoriteSourceUrl != null,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = if (row.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = if (row.isFavorite) strings.removeFromFavorites else strings.addToFavorites,
+                        tint = when {
+                            row.isFavorite -> ActiveHeart
+                            row.favoriteSourceUrl != null -> PrimaryText
+                            else -> MutedText
+                        },
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            } else {
+                IconButton(
+                    onClick = { onDownloadSong(row) },
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Download,
+                        contentDescription = "Unduh Chord",
+                        tint = AccentGold,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }

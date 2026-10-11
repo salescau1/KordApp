@@ -42,15 +42,27 @@ fun FavoritesScreen(
         containerColor = Background,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(strings.favoritesTitle, color = PrimaryText, fontWeight = FontWeight.Bold)
-                        Text(strings.savedSongsCount(stored.size), color = MutedText, style = MaterialTheme.typography.bodySmall)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Background)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = strings.favoritesTitle,
+                        color = PrimaryText,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = strings.savedSongsCount(stored.size),
+                        color = MutedText,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).background(Background)) {
@@ -141,8 +153,6 @@ fun FavoritesScreen(
                             }) {
                                 Icon(Icons.Filled.Favorite, strings.removeFromFavorites, tint = ActiveHeart)
                             }
-                            Icon(Icons.Filled.PlayArrow, contentDescription = if (item.available) strings.play else null,
-                                tint = if (item.available) AccentGold else MutedText)
                         }
                         HorizontalDivider(color = Border)
                     }

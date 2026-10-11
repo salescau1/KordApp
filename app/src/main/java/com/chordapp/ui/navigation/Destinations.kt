@@ -28,8 +28,14 @@ sealed class Screen(val route: String) {
     }
     
     // Dedicated Search
-    object Search : Screen("search") {
+    object Search : Screen("search?query={query}&source={source}") {
         override fun title(strings: AppStrings) = strings.navSearch
+        fun createRoute(query: String? = null, source: String? = null): String {
+            val q = if (!query.isNullOrBlank()) "query=${java.net.URLEncoder.encode(query, "UTF-8")}" else null
+            val s = if (!source.isNullOrBlank()) "source=${java.net.URLEncoder.encode(source, "UTF-8")}" else null
+            val params = listOfNotNull(q, s).joinToString("&")
+            return if (params.isNotEmpty()) "search?$params" else "search"
+        }
     }
     
     // Activation screen

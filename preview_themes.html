@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KordApp - 5 Pilihan Tema Tampilan</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    body {
+      background: #0b0e14;
+      color: #e2e8f0;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.subtitle {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-bottom: 24px;
+      text-align: center;
+      max-width: 650px;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      width: 100%;
+      max-width: 1650px;
+    }
+
+    .phone-mockup {
+      border-radius: 32px;
+      padding: 16px;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.5), inset 0 0 0 1.5px rgba(255,255,255,0.08);
+      display: flex;
+      flex-direction: column;
+      min-height: 600px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s ease;
+    }
+    .phone-mockup:hover {
+      transform: translateY(-4px);
+    }
+
+    /* 1. DARK MODE */
+    .theme-dark {
+      background-color: #0E1117;
+      color: #F5F8FF;
+      border: 2px solid #242C3D;
+    }
+    .theme-dark .header-btn {
+      background: #161B22;
+      border: 1px solid #242C3D;
+      color: #F5F8FF;
+    }
+    .theme-dark .version-capsule {
+      background: #161B22;
+      border: 1px solid #242C3D;
+      color: #F5F8FF;
+    }
+    .theme-dark .chord {
+      color: #FFB74D;
+      font-weight: 800;
+    }
+    .theme-dark .lyric {
+      color: #F5F8FF;
+      font-weight: 500;
+    }
+    .theme-dark .dock {
+      background: rgba(22, 27, 34, 0.95);
+      border: 1px solid #242C3D;
+    }
+    .theme-dark .dock-btn {
+      background: #1A202C;
+      color: #F5F8FF;
+    }
+    .theme-dark .dock-btn.active {
+      background: #E5A93C;
+      color: #0E1117;
+    }
+    .theme-dark .tag {
+      background: #1A202C;
+      color: #E5A93C;
+    }
+
+    /* 2. LIGHT MODE */
+    .theme-light {
+      background-color: #F8F9FA;
+      color: #0F172A;
+      border: 2px solid #E2E8F0;
+    }
+    .theme-light .header-btn {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      color: #0F172A;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    }
+    .theme-light .version-capsule {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      color: #0F172A;
+    }
+    .theme-light .chord {
+      color: #B45309;
+      font-weight: 800;
+    }
+    .theme-light .lyric {
+      color: #0F172A;
+      font-weight: 500;
+    }
+    .theme-light .dock {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #E2E8F0;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+    .theme-light .dock-btn {
+      background: #F1F3F5;
+      color: #0F172A;
+    }
+    .theme-light .dock-btn.active {
+      background: #D97706;
+      color: #FFFFFF;
+    }
+    .theme-light .tag {
+      background: #F1F3F5;
+      color: #D97706;
+    }
+
+    /* 3. PAPER MODE */
+    .theme-paper {
+      background-color: #F4EFE6;
+      background-image: radial-gradient(#E5DAC8 0.8px, transparent 0.8px), radial-gradient(#E5DAC8 0.8px, #F4EFE6 0.8px);
+      background-size: 16px 16px;
+      background-position: 0 0, 8px 8px;
+      color: #1E242B;
+      border: 2px solid #D5C9B3;
+    }
+    .theme-paper .header-btn {
+      background: #FAF6F0;
+      border: 1px solid #DED5C4;
+      color: #1E242B;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .theme-paper .version-capsule {
+      background: #FAF6F0;
+      border: 1px solid #DED5C4;
+      color: #1E242B;
+    }
+    .theme-paper .chord {
+      color: #B45309;
+      font-weight: 800;
+    }
+    .theme-paper .lyric {
+      color: #1E242B;
+      font-weight: 500;
+    }
+    .theme-paper .dock {
+      background: rgba(250, 246, 240, 0.95);
+      border: 1px solid #DED5C4;
+      box-shadow: 0 6px 20px rgba(60, 45, 20, 0.1);
+    }
+    .theme-paper .dock-btn {
+      background: #EAE3D5;
+      color: #1E242B;
+    }
+    .theme-paper .dock-btn.active {
+      background: #B45309;
+      color: #FFFFFF;
+    }
+    .theme-paper .tag {
+      background: #EAE3D5;
+      color: #78350F;
+    }
+
+    /* 4. BLACKBOARD */
+    .theme-blackboard {
+      background-color: #13171A;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      background-size: 20px 20px;
+      color: #ECEFF4;
+      border: 2px solid #2B333B;
+    }
+    .theme-blackboard .header-btn {
+      background: #1C2228;
+      border: 1px solid #2D3742;
+      color: #ECEFF4;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    .theme-blackboard .version-capsule {
+      background: #1C2228;
+      border: 1px solid #2D3742;
+      color: #ECEFF4;
+    }
+    .theme-blackboard .chord {
+      color: #FCD34D;
+      font-weight: 800;
+    }
+    .theme-blackboard .lyric {
+      color: #ECEFF4;
+      font-weight: 500;
+    }
+    .theme-blackboard .dock {
+      background: rgba(28, 34, 40, 0.95);
+      border: 1px solid #2D3742;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+    .theme-blackboard .dock-btn {
+      background: #242C35;
+      color: #ECEFF4;
+    }
+    .theme-blackboard .dock-btn.active {
+      background: #F59E0B;
+      color: #0F172A;
+    }
+    .theme-blackboard .tag {
+      background: #242C35;
+      color: #FCD34D;
+    }
+
+    /* 5. GREENBOARD */
+    .theme-greenboard {
+      background-color: #14241B;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      background-size: 20px 20px;
+      color: #F0FDF4;
+      border: 2px solid #2A4635;
+    }
+    .theme-greenboard .header-btn {
+      background: #1D3527;
+      border: 1px solid #2E533E;
+      color: #F0FDF4;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    .theme-greenboard .version-capsule {
+      background: #1D3527;
+      border: 1px solid #2E533E;
+      color: #F0FDF4;
+    }
+    .theme-greenboard .chord {
+      color: #FDE047;
+      font-weight: 800;
+    }
+    .theme-greenboard .lyric {
+      color: #F0FDF4;
+      font-weight: 500;
+    }
+    .theme-greenboard .dock {
+      background: rgba(29, 53, 39, 0.95);
+      border: 1px solid #2E533E;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+    .theme-greenboard .dock-btn {
+      background: #264634;
+      color: #F0FDF4;
+    }
+    .theme-greenboard .dock-btn.active {
+      background: #EAB308;
+      color: #0F172A;
+    }
+    .theme-greenboard .tag {
+      background: #264634;
+      color: #FDE047;
+    }
+
+    /* INNER UI */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .circle-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .capsule {
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .heart-btn {
+      color: #ef4444 !important;
+    }
+
+    .song-content {
+      flex: 1;
+      padding: 10px 8px;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 14px;
+      line-height: 1.75;
+    }
+    .line-block {
+      margin-bottom: 12px;
+    }
+
+    .dock-container {
+      margin-top: auto;
+      display: flex;
+      justify-content: center;
+      padding-top: 14px;
+    }
+    .dock {
+      display: flex;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      backdrop-filter: blur(12px);
+    }
+    .dock-btn {
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .theme-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      align-self: flex-start;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>KordApp - 5 Mode Tampilan</h1>
+  <p class="subtitle">Pilihan tema lengkap untuk pemain gitar di berbagai kondisi pencahayaan: Dark, Light, Paper (Kertas Bertekstur), BlackBoard, dan GreenBoard.</p>
+
+  <div class="cards-grid">
+
+    <!-- 1. DARK -->
+    <div class="phone-mockup theme-dark">
+      <span class="theme-badge tag">🌙 1. Dark</span>
+      <div class="top-bar">
+        <div class="circle-btn header-btn">‹</div>
+        <div class="capsule version-capsule">Perfect • UG v1 ▾</div>
+        <div style="display:flex; gap:6px;">
+          <div class="circle-btn header-btn heart-btn">♥</div>
+          <div class="circle-btn header-btn">+</div>
+        </div>
+      </div>
+      <div class="song-content">
+        <div class="line-block">
+          <div class="chord">G                 Em</div>
+          <div class="lyric">I found a love for me</div>
+        </div>
+        <div class="line-block">
+          <div class="chord">             C                    D</div>
+          <div class="lyric">Darling, just dive right in and follow my lead</div>
+        </div>
+      </div>
+      <div class="dock-container">
+        <div class="dock">
+          <div class="dock-btn active">▶ 1.0×</div>
+          <div class="dock-btn">📖</div>
+          <div class="dock-btn">− 0 +</div>
+          <div class="dock-btn">a 0 A</div>
+          <div class="dock-btn">💡</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. LIGHT -->
+    <div class="phone-mockup theme-light">
+      <span class="theme-badge tag">☀️ 2. Light</span>
+      <div class="top-bar">
+        <div class="circle-btn header-btn">‹</div>
+        <div class="capsule version-capsule">Perfect • UG v1 ▾</div>
+        <div style="display:flex; gap:6px;">
+          <div class="circle-btn header-btn heart-btn">♥</div>
+          <div class="circle-btn header-btn">+</div>
+        </div>
+      </div>
+      <div class="song-content">
+        <div class="line-block">
+          <div class="chord">G                 Em</div>
+          <div class="lyric">I found a love for me</div>
+        </div>
+        <div class="line-block">
+          <div class="chord">             C                    D</div>
+          <div class="lyric">Darling, just dive right in and follow my lead</div>
+        </div>
+      </div>
+      <div class="dock-container">
+        <div class="dock">
+          <div class="dock-btn active">▶ 1.0×</div>
+          <div class="dock-btn">📖</div>
+          <div class="dock-btn">− 0 +</div>
+          <div class="dock-btn">a 0 A</div>
+          <div class="dock-btn">💡</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. PAPER -->
+    <div class="phone-mockup theme-paper">
+      <span class="theme-badge tag">📜 3. Paper</span>
+      <div class="top-bar">
+        <div class="circle-btn header-btn">‹</div>
+        <div class="capsule version-capsule">Perfect • UG v1 ▾</div>
+        <div style="display:flex; gap:6px;">
+          <div class="circle-btn header-btn heart-btn">♥</div>
+          <div class="circle-btn header-btn">+</div>
+        </div>
+      </div>
+      <div class="song-content">
+        <div class="line-block">
+          <div class="chord">G                 Em</div>
+          <div class="lyric">I found a love for me</div>
+        </div>
+        <div class="line-block">
+          <div class="chord">             C                    D</div>
+          <div class="lyric">Darling, just dive right in and follow my lead</div>
+        </div>
+      </div>
+      <div class="dock-container">
+        <div class="dock">
+          <div class="dock-btn active">▶ 1.0×</div>
+          <div class="dock-btn">📖</div>
+          <div class="dock-btn">− 0 +</div>
+          <div class="dock-btn">a 0 A</div>
+          <div class="dock-btn">💡</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. BLACKBOARD -->
+    <div class="phone-mockup theme-blackboard">
+      <span class="theme-badge tag">⬛ 4. BlackBoard</span>
+      <div class="top-bar">
+        <div class="circle-btn header-btn">‹</div>
+        <div class="capsule version-capsule">Perfect • UG v1 ▾</div>
+        <div style="display:flex; gap:6px;">
+          <div class="circle-btn header-btn heart-btn">♥</div>
+          <div class="circle-btn header-btn">+</div>
+        </div>
+      </div>
+      <div class="song-content">
+        <div class="line-block">
+          <div class="chord">G                 Em</div>
+          <div class="lyric">I found a love for me</div>
+        </div>
+        <div class="line-block">
+          <div class="chord">             C                    D</div>
+          <div class="lyric">Darling, just dive right in and follow my lead</div>
+        </div>
+      </div>
+      <div class="dock-container">
+        <div class="dock">
+          <div class="dock-btn active">▶ 1.0×</div>
+          <div class="dock-btn">📖</div>
+          <div class="dock-btn">− 0 +</div>
+          <div class="dock-btn">a 0 A</div>
+          <div class="dock-btn">💡</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. GREENBOARD -->
+    <div class="phone-mockup theme-greenboard">
+      <span class="theme-badge tag">🟩 5. GreenBoard</span>
+      <div class="top-bar">
+        <div class="circle-btn header-btn">‹</div>
+        <div class="capsule version-capsule">Perfect • UG v1 ▾</div>
+        <div style="display:flex; gap:6px;">
+          <div class="circle-btn header-btn heart-btn">♥</div>
+          <div class="circle-btn header-btn">+</div>
+        </div>
+      </div>
+      <div class="song-content">
+        <div class="line-block">
+          <div class="chord">G                 Em</div>
+          <div class="lyric">I found a love for me</div>
+        </div>
+        <div class="line-block">
+          <div class="chord">             C                    D</div>
+          <div class="lyric">Darling, just dive right in and follow my lead</div>
+        </div>
+      </div>
+      <div class="dock-container">
+        <div class="dock">
+          <div class="dock-btn active">▶ 1.0×</div>
+          <div class="dock-btn">📖</div>
+          <div class="dock-btn">− 0 +</div>
+          <div class="dock-btn">a 0 A</div>
+          <div class="dock-btn">💡</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
