@@ -189,4 +189,28 @@ object EnglishStrings : AppStrings {
     override val unableToOpenBrowserOrWa = "Unable to open browser or WhatsApp"
     override fun waOrderMessage(deviceId: String) =
         "Hello KordApp Admin, I would like to purchase a KordApp license. My Device ID is: $deviceId"
+
+    // Band Live Sync (P2P Mode)
+    override val bandSection = "BAND MODE (LIVE SYNC)"
+    override val bandModeServer = "Server"
+    override val bandModeNormal = "Normal"
+    override val bandModeClient = "Client"
+    override val bandServerName = "Device / Leader Name"
+    override val bandPinProtection = "PIN Protection (4 Digits)"
+    override val bandPinPlaceholder = "Example: 1234"
+    override val bandServerActive = "Server Active (Broadcasting)"
+    override fun bandConnectedCount(count: Int) = "$count Clients Connected"
+    override val bandSearchingServers = "Searching for servers on Wi-Fi / Hotspot..."
+    override val bandNoServersFound = "No servers found yet."
+    override val bandConnect = "Connect"
+    override val bandDisconnect = "Disconnect"
+    override fun bandConnectedTo(name: String) = "Connected to $name"
+    override val bandStandbyTitle = "STAGE STANDBY"
+    override val bandWaitingForLeader = "Waiting for songs from Leader..."
+    override val bandEnterPinTitle = "Enter Session PIN"
+    override val bandEnterPinPrompt = "This session is protected by a security PIN:"
+    override val bandInvalidPin = "Invalid PIN entered."
+    override val bandOpenStandby = "Open Standby Screen"
+    override val bandLiveBadge = "LIVE"
+    override val bandSyncBadge = "SYNC"
 }

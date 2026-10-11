@@ -57,4 +57,8 @@ sealed class Screen(val route: String) {
         fun createRoute(sourceUrlHash: String, transpose: Int = 0, capo: Int = 0) =
             "player/$sourceUrlHash?transpose=$transpose&capo=$capo"
     }
+
+    object BandStandby : Screen("band_standby") {
+        override fun title(strings: AppStrings) = strings.bandStandbyTitle
+    }
 }

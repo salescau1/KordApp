@@ -5,6 +5,6 @@ import android.app.Application
 class ChordApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Initialization here
+        com.chordapp.p2p.BandSessionManager.initialize(this)
     }
 }

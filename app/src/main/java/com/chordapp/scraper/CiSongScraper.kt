@@ -220,11 +220,12 @@ object CiSongScraper {
                 if (finalContent.length < 50) return@withContext null
 
                 // 1. Try to extract artist from category link in HTML
-                val categoryArtist = doc.select("a[href*='/chord/']").firstOrNull { a ->
+                val rawCategoryArtist = doc.select("a[href*='/chord/']").firstOrNull { a ->
                     val href = a.attr("href")
                     !href.contains("/page/") && !href.contains("?") && !href.contains("#") &&
                         a.text().isNotBlank() && !a.text().contains("Daftar", ignoreCase = true)
                 }?.text()?.trim() ?: ""
+                val categoryArtist = rawCategoryArtist.replace("(?i)^Kumpulan\\s+Chord\\s+".toRegex(), "").trim()
 
                 // 2. Parse Title & Artist from H1
                 val h1Text = doc.selectFirst("h1")?.text()?.trim() ?: ""
@@ -238,8 +239,8 @@ object CiSongScraper {
 
                 val rawArtist = when {
                     artistHint.isNotBlank() && !artistHint.equals("CI Artist", ignoreCase = true) -> artistHint
-                    categoryArtist.isNotBlank() -> categoryArtist
                     parsedArtist.isNotBlank() && !parsedArtist.equals("CI Artist", ignoreCase = true) -> parsedArtist
+                    categoryArtist.isNotBlank() -> categoryArtist
                     else -> "CI Artist"
                 }
 

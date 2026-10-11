@@ -131,7 +131,34 @@ class PlayerViewModel(
             _transposeDelta.value = initialTranspose.coerceIn(-11, 11)
             _capo.value = initialCapo.coerceIn(0, 12)
             val url = java.net.URLDecoder.decode(sourceUrlHash, "UTF-8")
-            val rawEntity = repository.getBySourceUrl(url)
+            var rawEntity = repository.getBySourceUrl(url)
+            if (rawEntity == null) {
+                val cached = com.chordapp.p2p.BandSessionManager.getCachedRawSheet(url)
+                if (!cached.isNullOrBlank()) {
+                    rawEntity = CatalogSongEntity(
+                        id = null,
+                        source = "P2P",
+                        sourceUrl = url,
+                        title = "Live Song",
+                        artist = "Band Live",
+                        titleSlug = "live-song",
+                        artistSlug = "band-live",
+                        versionName = null,
+                        rating = null,
+                        votes = null,
+                        keyBase = null,
+                        difficulty = null,
+                        category = null,
+                        region = "ID",
+                        chords = "",
+                        chordCount = 0,
+                        lineCount = cached.lines().size,
+                        content = cached,
+                        contentHash = "",
+                        scrapedAt = ""
+                    )
+                }
+            }
             val t1 = System.currentTimeMillis()
             if (rawEntity != null) {
                 val entity = sanitizeEntity(rawEntity)
@@ -151,6 +178,10 @@ class PlayerViewModel(
             }
             _isLoading.value = false
         }
+    }
+
+    fun setTranspose(delta: Int) {
+        _transposeDelta.value = delta.coerceIn(-11, 11)
     }
 
     fun switchVersion(newVersionUrl: String): kotlinx.coroutines.Job {

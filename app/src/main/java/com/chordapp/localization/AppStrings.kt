@@ -187,4 +187,28 @@ interface AppStrings {
     val verifying: String
     val unableToOpenBrowserOrWa: String
     fun waOrderMessage(deviceId: String): String
+
+    // Band Live Sync (P2P Mode)
+    val bandSection: String
+    val bandModeServer: String
+    val bandModeNormal: String
+    val bandModeClient: String
+    val bandServerName: String
+    val bandPinProtection: String
+    val bandPinPlaceholder: String
+    val bandServerActive: String
+    fun bandConnectedCount(count: Int): String
+    val bandSearchingServers: String
+    val bandNoServersFound: String
+    val bandConnect: String
+    val bandDisconnect: String
+    fun bandConnectedTo(name: String): String
+    val bandStandbyTitle: String
+    val bandWaitingForLeader: String
+    val bandEnterPinTitle: String
+    val bandEnterPinPrompt: String
+    val bandInvalidPin: String
+    val bandOpenStandby: String
+    val bandLiveBadge: String
+    val bandSyncBadge: String
 }

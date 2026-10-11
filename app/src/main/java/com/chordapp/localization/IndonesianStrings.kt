@@ -189,4 +189,28 @@ object IndonesianStrings : AppStrings {
     override val unableToOpenBrowserOrWa = "Tidak dapat membuka browser/WhatsApp"
     override fun waOrderMessage(deviceId: String) =
         "Halo Admin KordApp, saya ingin beli lisensi KordApp. Device ID saya: $deviceId"
+
+    // Band Live Sync (P2P Mode)
+    override val bandSection = "MODE BAND (LIVE SYNC)"
+    override val bandModeServer = "Server"
+    override val bandModeNormal = "Normal"
+    override val bandModeClient = "Client"
+    override val bandServerName = "Nama Perangkat / Leader"
+    override val bandPinProtection = "Proteksi PIN (4 Digit)"
+    override val bandPinPlaceholder = "Contoh: 1234"
+    override val bandServerActive = "Server Aktif (Menyiarkan Sesi)"
+    override fun bandConnectedCount(count: Int) = "$count Client Terhubung"
+    override val bandSearchingServers = "Mencari server di Wi-Fi / Hotspot..."
+    override val bandNoServersFound = "Belum ada server yang ditemukan."
+    override val bandConnect = "Hubungkan"
+    override val bandDisconnect = "Putuskan"
+    override fun bandConnectedTo(name: String) = "Terhubung ke $name"
+    override val bandStandbyTitle = "STANDBY PANGGUNG"
+    override val bandWaitingForLeader = "Menunggu lagu dari Leader..."
+    override val bandEnterPinTitle = "Masukkan PIN Sesi"
+    override val bandEnterPinPrompt = "Server ini dilindungi oleh PIN keamanan:"
+    override val bandInvalidPin = "PIN yang Anda masukkan salah."
+    override val bandOpenStandby = "Buka Layar Standby"
+    override val bandLiveBadge = "LIVE"
+    override val bandSyncBadge = "SYNC"
 }

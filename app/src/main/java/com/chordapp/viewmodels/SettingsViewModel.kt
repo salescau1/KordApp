@@ -97,6 +97,22 @@ class SettingsViewModel(
         }
     }
 
+    val bandMode = com.chordapp.p2p.BandSessionManager.currentMode
+    val deviceName = com.chordapp.p2p.BandSessionManager.deviceName
+    val serverPin = com.chordapp.p2p.BandSessionManager.serverPin
+    val isPinEnabled = com.chordapp.p2p.BandSessionManager.isPinEnabled
+    val connectedClients = com.chordapp.p2p.BandSessionManager.connectedClients
+    val discoveredServers = com.chordapp.p2p.BandSessionManager.discoveredServers
+    val connectionState = com.chordapp.p2p.BandSessionManager.connectionState
+
+    fun setBandMode(mode: com.chordapp.p2p.BandMode) = com.chordapp.p2p.BandSessionManager.setMode(mode)
+    fun setDeviceName(name: String) = com.chordapp.p2p.BandSessionManager.setDeviceName(name)
+    fun setServerPin(pin: String) = com.chordapp.p2p.BandSessionManager.setPin(pin)
+    fun setPinEnabled(enabled: Boolean) = com.chordapp.p2p.BandSessionManager.setPinEnabled(enabled)
+    fun connectToBandServer(server: com.chordapp.p2p.DiscoveredServer, pin: String? = null, onFailed: (String) -> Unit = {}) =
+        com.chordapp.p2p.BandSessionManager.connectToServer(server, pin, onFailed)
+    fun disconnectBandClient() = com.chordapp.p2p.BandSessionManager.disconnectClient()
+
     init {
         refreshCatalogStats()
     }

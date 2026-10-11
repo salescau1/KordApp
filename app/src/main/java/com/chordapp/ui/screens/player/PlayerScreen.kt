@@ -740,6 +740,7 @@ fun PlayerScreen(
     val sheet by viewModel.sheet.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val transposeDelta by viewModel.transposeDelta.collectAsState()
+    val capo by viewModel.capo.collectAsState()
     val fontSize by viewModel.fontSize.collectAsState()
     val isPageFlip by viewModel.isPageFlip.collectAsState()
     val autoScrollSpeed by viewModel.autoScrollSpeed.collectAsState()
@@ -873,6 +874,49 @@ fun PlayerScreen(
     val versionIndex = availableVersions.indexOfFirst { it.sourceUrl == currentSong.sourceUrl }
     val sourceTag = if (currentSong.source.contains("Ultimate Guitar", ignoreCase = true)) "UG" else currentSong.source
     val versionLabel = if (versionIndex >= 0) "$sourceTag v${versionIndex + 1} ▾" else "$sourceTag ▾"
+
+    val bandMode by com.chordapp.p2p.BandSessionManager.currentMode.collectAsState()
+    val connectedClients by com.chordapp.p2p.BandSessionManager.connectedClients.collectAsState()
+    val isBroadcastPaused by com.chordapp.p2p.BandSessionManager.isBroadcastPaused.collectAsState()
+
+    // Server Mode: Broadcast current song
+    LaunchedEffect(currentSong.sourceUrl, currentSheet, transposeDelta, capo, isBroadcastPaused) {
+        if (bandMode == com.chordapp.p2p.BandMode.SERVER && hasContent && !isBroadcastPaused) {
+            val rawContent = currentSong.content.ifBlank {
+                com.chordapp.p2p.BandSessionManager.getCachedRawSheet(currentSong.sourceUrl) ?: ""
+            }
+            val payload = com.chordapp.p2p.LiveSongPayload(
+                title = currentSong.title,
+                artist = currentSong.artist,
+                artistSlug = currentSong.artistSlug,
+                titleSlug = currentSong.titleSlug,
+                source = currentSong.source,
+                sourceUrl = currentSong.sourceUrl,
+                versionName = currentSong.versionName,
+                effectiveKey = effectiveKey,
+                transpose = transposeDelta,
+                capo = capo,
+                rawContent = rawContent
+            )
+            com.chordapp.p2p.BandSessionManager.broadcastSong(payload)
+        }
+    }
+
+    // Server Mode: Broadcast transpose changes
+    LaunchedEffect(transposeDelta) {
+        if (bandMode == com.chordapp.p2p.BandMode.SERVER) {
+            com.chordapp.p2p.BandSessionManager.broadcastTranspose(transposeDelta)
+        }
+    }
+
+    // Client Mode: Follow server transpose
+    LaunchedEffect(bandMode) {
+        if (bandMode == com.chordapp.p2p.BandMode.CLIENT) {
+            com.chordapp.p2p.BandSessionManager.incomingTranspose.collect { delta ->
+                viewModel.setTranspose(delta)
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(Background)) {
         // Sheet reading area
@@ -1091,6 +1135,44 @@ fun PlayerScreen(
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1
                             )
+                            if (bandMode == com.chordapp.p2p.BandMode.SERVER) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isBroadcastPaused) Color(0xFFFF9800).copy(alpha = 0.25f) else Color(0xFF4CAF50).copy(alpha = 0.25f))
+                                        .clickable {
+                                            com.chordapp.p2p.BandSessionManager.toggleBroadcastPause()
+                                            val msg = if (!isBroadcastPaused) "Siaran ke band di-pause" else "Siaran ke band aktif"
+                                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = if (isBroadcastPaused) "PAUSED" else "LIVE (${connectedClients.size})",
+                                        color = if (isBroadcastPaused) Color(0xFFFF9800) else Color(0xFF4CAF50),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            } else if (bandMode == com.chordapp.p2p.BandMode.CLIENT) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(AccentGold.copy(alpha = 0.2f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "SYNC",
+                                        color = AccentGold,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            }
                         }
                         val subtitle = buildString {
                             append(currentSong.artist)

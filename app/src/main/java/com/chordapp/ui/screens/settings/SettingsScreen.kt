@@ -41,7 +41,21 @@ import com.chordapp.ui.theme.Background
 import com.chordapp.ui.theme.Border
 import com.chordapp.ui.theme.CardSurface
 import com.chordapp.ui.theme.MutedText
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material.icons.filled.Podcasts
+import androidx.compose.material.icons.filled.Lock
 import com.chordapp.ui.theme.PrimaryText
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material.icons.filled.Check
+import com.chordapp.ui.theme.RaisedSurface
+import com.chordapp.p2p.BandMode
+import com.chordapp.p2p.ClientConnectionState
+import com.chordapp.p2p.DiscoveredServer
 import com.chordapp.viewmodels.SettingsViewModel
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -50,7 +64,8 @@ import java.util.Locale
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onAboutClick: () -> Unit,
-    onLicenseTransferred: () -> Unit = {}
+    onLicenseTransferred: () -> Unit = {},
+    onNavigateToStandby: () -> Unit = {}
 ) {
     val strings = LocalAppStrings.current
     val currentLanguage by viewModel.currentLanguage.collectAsState()
@@ -68,6 +83,20 @@ fun SettingsScreen(
     var updateInfo by remember { mutableStateOf<com.chordapp.repositories.AppUpdateInfo?>(null) }
     var showUpdateDialog by remember { mutableStateOf(false) }
     var isDownloadingUpdate by remember { mutableStateOf(false) }
+
+    val bandMode by viewModel.bandMode.collectAsState()
+    val deviceName by viewModel.deviceName.collectAsState()
+    val serverPin by viewModel.serverPin.collectAsState()
+    val isPinEnabled by viewModel.isPinEnabled.collectAsState()
+    val connectedClients by viewModel.connectedClients.collectAsState()
+    val discoveredServers by viewModel.discoveredServers.collectAsState()
+    val connectionState by viewModel.connectionState.collectAsState()
+
+    var editingDeviceName by remember(deviceName) { mutableStateOf(deviceName) }
+    var editingPin by remember(serverPin) { mutableStateOf(serverPin) }
+    var showPinDialogForServer by remember { mutableStateOf<DiscoveredServer?>(null) }
+    var pinDialogInput by remember { mutableStateOf("") }
+    var pinDialogError by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -104,6 +133,303 @@ fun SettingsScreen(
                 .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
+        // Band Mode (Live Sync) Section
+        SettingsSection(strings.bandSection) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // 3-way Segmented Switcher [ Server | Normal | Client ]
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp)
+                        .background(RaisedSurface, RoundedCornerShape(23.dp))
+                        .border(1.dp, Border, RoundedCornerShape(23.dp))
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val modes = listOf(
+                        BandMode.SERVER to strings.bandModeServer,
+                        BandMode.NORMAL to strings.bandModeNormal,
+                        BandMode.CLIENT to strings.bandModeClient
+                    )
+                    modes.forEach { (mode, label) ->
+                        val selected = bandMode == mode
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(19.dp))
+                                .background(if (selected) AccentGold else Color.Transparent)
+                                .clickable { viewModel.setBandMode(mode) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (selected) Background else PrimaryText,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+
+                when (bandMode) {
+                    BandMode.SERVER -> {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            // Status Pill
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(RaisedSurface, RoundedCornerShape(12.dp))
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .background(Color(0xFF4CAF50), CircleShape)
+                                    )
+                                    Text(
+                                        text = strings.bandServerActive,
+                                        color = PrimaryText,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                                Text(
+                                    text = strings.bandConnectedCount(connectedClients.size),
+                                    color = AccentGold,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            if (connectedClients.isNotEmpty()) {
+                                Text(
+                                    text = "Anggota: ${connectedClients.joinToString(", ")}",
+                                    color = MutedText,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+
+                            // Device Name
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    text = strings.bandServerName,
+                                    color = MutedText,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                                OutlinedTextField(
+                                    value = editingDeviceName,
+                                    onValueChange = {
+                                        editingDeviceName = it
+                                        viewModel.setDeviceName(it)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = AccentGold,
+                                        unfocusedBorderColor = Border
+                                    )
+                                )
+                            }
+
+                            // PIN Protection Toggle & Input
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = strings.bandPinProtection, color = PrimaryText)
+                                Switch(
+                                    checked = isPinEnabled,
+                                    onCheckedChange = { viewModel.setPinEnabled(it) },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = AccentGold,
+                                        checkedTrackColor = AccentGold.copy(alpha = 0.4f)
+                                    )
+                                )
+                            }
+
+                            if (isPinEnabled) {
+                                OutlinedTextField(
+                                    value = editingPin,
+                                    onValueChange = {
+                                        if (it.length <= 4) {
+                                            editingPin = it
+                                            viewModel.setServerPin(it)
+                                        }
+                                    },
+                                    placeholder = { Text(strings.bandPinPlaceholder) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = AccentGold,
+                                        unfocusedBorderColor = Border
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    BandMode.CLIENT -> {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            when (val state = connectionState) {
+                                is ClientConnectionState.Connected -> {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(RaisedSurface, RoundedCornerShape(12.dp))
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(10.dp)
+                                                    .background(Color(0xFF4CAF50), CircleShape)
+                                            )
+                                            Text(
+                                                text = strings.bandConnectedTo(state.serverName),
+                                                color = PrimaryText,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                        TextButton(onClick = { viewModel.disconnectBandClient() }) {
+                                            Text(strings.bandDisconnect, color = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+
+                                    Button(
+                                        onClick = onNavigateToStandby,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = AccentGold,
+                                            contentColor = Background
+                                        ),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text(strings.bandOpenStandby, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                                else -> {
+                                    Text(
+                                        text = strings.bandSearchingServers,
+                                        color = MutedText,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+
+                                    if (discoveredServers.isEmpty()) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 12.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = strings.bandNoServersFound,
+                                                color = MutedText,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                    } else {
+                                        discoveredServers.forEach { server ->
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(RaisedSurface, RoundedCornerShape(12.dp))
+                                                    .border(1.dp, Border, RoundedCornerShape(12.dp))
+                                                    .padding(12.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = server.name,
+                                                            color = PrimaryText,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                        if (server.requiresPin) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Lock,
+                                                                contentDescription = null,
+                                                                tint = AccentGold,
+                                                                modifier = Modifier.size(14.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                    Text(
+                                                        text = "${server.host}:${server.port}",
+                                                        color = MutedText,
+                                                        style = MaterialTheme.typography.labelSmall
+                                                    )
+                                                }
+
+                                                Button(
+                                                    onClick = {
+                                                        if (server.requiresPin) {
+                                                            pinDialogInput = ""
+                                                            pinDialogError = null
+                                                            showPinDialogForServer = server
+                                                        } else {
+                                                            viewModel.connectToBandServer(server)
+                                                            onNavigateToStandby()
+                                                        }
+                                                    },
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = AccentGold,
+                                                        contentColor = Background
+                                                    ),
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                                                ) {
+                                                    Text(strings.bandConnect, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = onNavigateToStandby,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text(strings.bandOpenStandby, color = PrimaryText)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    BandMode.NORMAL -> {
+                        Text(
+                            text = "Mode mandiri (solo). Pilih Server jika HP ini memimpin sesi lagu, atau Client jika ingin mengikuti lagu dari pemandu band.",
+                            color = MutedText,
+                            style = MaterialTheme.typography.bodySmall,
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+        }
 
         // Appearance / Theme Section
         SettingsSection(strings.themeSection) {
@@ -502,6 +828,53 @@ fun SettingsScreen(
                         ) {
                             Text("Nanti Saja", color = MutedText)
                         }
+                    }
+                },
+                containerColor = CardSurface
+            )
+        }
+
+        if (showPinDialogForServer != null) {
+            val srv = showPinDialogForServer!!
+            AlertDialog(
+                onDismissRequest = { showPinDialogForServer = null },
+                title = { Text(strings.bandEnterPinTitle) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(strings.bandEnterPinPrompt)
+                        OutlinedTextField(
+                            value = pinDialogInput,
+                            onValueChange = { if (it.length <= 4) pinDialogInput = it },
+                            placeholder = { Text(strings.bandPinPlaceholder) },
+                            singleLine = true,
+                            isError = pinDialogError != null
+                        )
+                        if (pinDialogError != null) {
+                            Text(
+                                pinDialogError!!,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.connectToBandServer(srv, pinDialogInput) { err ->
+                                pinDialogError = err
+                            }
+                            showPinDialogForServer = null
+                            onNavigateToStandby()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Background)
+                    ) {
+                        Text(strings.bandConnect, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showPinDialogForServer = null }) {
+                        Text("Batal", color = MutedText)
                     }
                 },
                 containerColor = CardSurface
