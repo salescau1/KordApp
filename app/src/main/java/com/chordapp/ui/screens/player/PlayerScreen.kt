@@ -909,11 +909,39 @@ fun PlayerScreen(
         }
     }
 
+    // Server Mode: Broadcast standby when leaving PlayerScreen
+    DisposableEffect(bandMode) {
+        onDispose {
+            if (bandMode == com.chordapp.p2p.BandMode.SERVER) {
+                com.chordapp.p2p.BandSessionManager.broadcastStandby()
+            }
+        }
+    }
+
+    // Client Mode: Follow server song changes
+    LaunchedEffect(bandMode) {
+        if (bandMode == com.chordapp.p2p.BandMode.CLIENT) {
+            com.chordapp.p2p.BandSessionManager.incomingSong.collect { payload ->
+                val safeHash = java.net.URLEncoder.encode(payload.sourceUrl, "UTF-8")
+                viewModel.loadSong(safeHash, payload.transpose, payload.capo)
+            }
+        }
+    }
+
     // Client Mode: Follow server transpose
     LaunchedEffect(bandMode) {
         if (bandMode == com.chordapp.p2p.BandMode.CLIENT) {
             com.chordapp.p2p.BandSessionManager.incomingTranspose.collect { delta ->
                 viewModel.setTranspose(delta)
+            }
+        }
+    }
+
+    // Client Mode: Follow server standby
+    LaunchedEffect(bandMode) {
+        if (bandMode == com.chordapp.p2p.BandMode.CLIENT) {
+            com.chordapp.p2p.BandSessionManager.standbyTrigger.collect {
+                onBackClick()
             }
         }
     }

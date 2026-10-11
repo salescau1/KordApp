@@ -140,7 +140,7 @@ object BandSessionManager {
     private val _connectionState = MutableStateFlow<ClientConnectionState>(ClientConnectionState.Disconnected)
     val connectionState: StateFlow<ClientConnectionState> = _connectionState.asStateFlow()
 
-    private val _incomingSong = MutableSharedFlow<LiveSongPayload>(extraBufferCapacity = 1)
+    private val _incomingSong = MutableSharedFlow<LiveSongPayload>(replay = 1, extraBufferCapacity = 1)
     val incomingSong: SharedFlow<LiveSongPayload> = _incomingSong.asSharedFlow()
 
     private val _incomingTranspose = MutableSharedFlow<Int>(extraBufferCapacity = 1)
@@ -344,6 +344,7 @@ object BandSessionManager {
                 Log.d(TAG, "TCP Server listening on port $DEFAULT_TCP_PORT")
                 while (isActive) {
                     val sock = serverSocket?.accept() ?: break
+                    sock.tcpNoDelay = true
                     handleIncomingClient(sock)
                 }
             } catch (e: Exception) {
@@ -355,14 +356,24 @@ object BandSessionManager {
     private fun handleIncomingClient(sock: Socket) {
         scope.launch(Dispatchers.IO) {
             try {
+                sock.tcpNoDelay = true
+                val outputStream = sock.getOutputStream()
                 val reader = BufferedReader(InputStreamReader(sock.getInputStream(), Charsets.UTF_8))
-                val writer = PrintWriter(sock.getOutputStream(), true)
+
+                fun sendDirect(msg: String) {
+                    val line = msg.replace("\r", "").replace("\n", "") + "\n"
+                    val bytes = line.toByteArray(Charsets.UTF_8)
+                    synchronized(outputStream) {
+                        outputStream.write(bytes)
+                        outputStream.flush()
+                    }
+                }
 
                 // First line: Handshake AUTH|clientName|pin
                 val line = reader.readLine() ?: return@launch sock.close()
                 val parts = line.split("|")
                 if (parts.size < 2 || parts[0] != "AUTH") {
-                    writer.println("ERROR|INVALID_HANDSHAKE")
+                    sendDirect("ERROR|INVALID_HANDSHAKE")
                     return@launch sock.close()
                 }
 
@@ -371,20 +382,21 @@ object BandSessionManager {
 
                 if (_isPinEnabled.value && _serverPin.value.isNotBlank()) {
                     if (clientPin != _serverPin.value) {
-                        writer.println("ERROR|INVALID_PIN")
+                        sendDirect("ERROR|INVALID_PIN")
                         return@launch sock.close()
                     }
                 }
 
-                writer.println("AUTH_OK|${_deviceName.value}")
-                val session = ClientSession(clientName, sock, writer)
+                sendDirect("AUTH_OK|${_deviceName.value}")
+                val session = ClientSession(clientName, sock, outputStream)
                 serverClients.add(session)
                 updateConnectedClients()
 
                 // If a song is currently active and broadcast is not paused, push it immediately
                 val active = currentActiveSong
                 if (active != null && !_isBroadcastPaused.value) {
-                    session.send("SONG|" + active.toJson())
+                    val b64 = android.util.Base64.encodeToString(active.toJson().toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
+                    session.send("SONG|$b64")
                 }
 
                 // Listen for keep-alive or disconnect
@@ -413,8 +425,11 @@ object BandSessionManager {
     fun broadcastSong(payload: LiveSongPayload) {
         if (_currentMode.value != BandMode.SERVER || _isBroadcastPaused.value) return
         currentActiveSong = payload
-        val msg = "SONG|" + payload.toJson()
-        serverClients.forEach { it.send(msg) }
+        val b64 = android.util.Base64.encodeToString(payload.toJson().toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
+        val msg = "SONG|$b64"
+        scope.launch(Dispatchers.IO) {
+            serverClients.forEach { it.send(msg) }
+        }
     }
 
     /**
@@ -423,7 +438,9 @@ object BandSessionManager {
     fun broadcastTranspose(transpose: Int) {
         if (_currentMode.value != BandMode.SERVER || _isBroadcastPaused.value) return
         val msg = "TRANSPOSE|$transpose"
-        serverClients.forEach { it.send(msg) }
+        scope.launch(Dispatchers.IO) {
+            serverClients.forEach { it.send(msg) }
+        }
     }
 
     /**
@@ -433,14 +450,23 @@ object BandSessionManager {
         if (_currentMode.value != BandMode.SERVER || _isBroadcastPaused.value) return
         currentActiveSong = null
         val msg = "STANDBY|"
-        serverClients.forEach { it.send(msg) }
+        scope.launch(Dispatchers.IO) {
+            serverClients.forEach { it.send(msg) }
+        }
     }
 
-    private class ClientSession(val name: String, val socket: Socket, val writer: PrintWriter) {
+    private class ClientSession(val name: String, val socket: Socket, private val outputStream: java.io.OutputStream) {
         fun send(text: String) {
             try {
-                writer.println(text)
-            } catch (_: Exception) {}
+                val line = text.replace("\r", "").replace("\n", "") + "\n"
+                val bytes = line.toByteArray(Charsets.UTF_8)
+                synchronized(outputStream) {
+                    outputStream.write(bytes)
+                    outputStream.flush()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send to client $name", e)
+            }
         }
         fun close() {
             try { socket.close() } catch (_: Exception) {}
@@ -585,14 +611,24 @@ object BandSessionManager {
             try {
                 try { clientSocket?.close() } catch (_: Exception) {}
                 val sock = Socket()
+                sock.tcpNoDelay = true
                 sock.connect(InetSocketAddress(server.host, server.port), 5000)
                 clientSocket = sock
 
-                val writer = PrintWriter(sock.getOutputStream(), true)
+                val outputStream = sock.getOutputStream()
                 val reader = BufferedReader(InputStreamReader(sock.getInputStream(), Charsets.UTF_8))
 
+                fun sendClientMsg(msg: String) {
+                    val line = msg.replace("\r", "").replace("\n", "") + "\n"
+                    val bytes = line.toByteArray(Charsets.UTF_8)
+                    synchronized(outputStream) {
+                        outputStream.write(bytes)
+                        outputStream.flush()
+                    }
+                }
+
                 // Send Handshake
-                writer.println("AUTH|${_deviceName.value}|${pin ?: ""}")
+                sendClientMsg("AUTH|${_deviceName.value}|${pin ?: ""}")
                 val resp = reader.readLine() ?: throw Exception("Server closed connection")
 
                 if (resp.startsWith("AUTH_OK|")) {
@@ -605,7 +641,12 @@ object BandSessionManager {
                         val parts = line.split("|", limit = 2)
                         when (parts[0]) {
                             "SONG" -> {
-                                val json = parts.getOrNull(1) ?: continue
+                                val rawData = parts.getOrNull(1) ?: continue
+                                val json = if (rawData.startsWith("{")) {
+                                    rawData
+                                } else {
+                                    String(android.util.Base64.decode(rawData, android.util.Base64.DEFAULT), Charsets.UTF_8)
+                                }
                                 val payload = LiveSongPayload.fromJson(json)
                                 if (payload.rawContent.isNotBlank()) {
                                     cacheRawSheet(payload.sourceUrl, payload.rawContent)
