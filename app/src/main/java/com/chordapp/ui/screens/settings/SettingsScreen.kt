@@ -806,7 +806,7 @@ fun SettingsScreen(
                             )
                             android.widget.Toast.makeText(
                                 context,
-                                "Unduhan dimulai. Buka notifikasi setelah selesai untuk memasang.",
+                                "Unduhan dimulai. Cek panel notifikasi setelah selesai.",
                                 android.widget.Toast.LENGTH_LONG
                             ).show()
                             if (!info.isForceUpdate) {
@@ -817,16 +817,35 @@ fun SettingsScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = AccentGold),
                         enabled = !isDownloadingUpdate
                     ) {
-                        Text("Update Sekarang", color = Color.Black, fontWeight = FontWeight.Bold)
+                        Text("Update Otomatis", color = Color.Black, fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
-                    if (!info.isForceUpdate) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         TextButton(
-                            onClick = { showUpdateDialog = false },
-                            enabled = !isDownloadingUpdate
+                            onClick = {
+                                val browserIntent = android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(info.downloadUrl)
+                                ).apply {
+                                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(browserIntent)
+                                showUpdateDialog = false
+                            }
                         ) {
-                            Text("Nanti Saja", color = MutedText)
+                            Text("Unduh via Browser", color = AccentGold, fontSize = 12.sp)
+                        }
+                        if (!info.isForceUpdate) {
+                            TextButton(
+                                onClick = { showUpdateDialog = false },
+                                enabled = !isDownloadingUpdate
+                            ) {
+                                Text("Nanti", color = MutedText, fontSize = 12.sp)
+                            }
                         }
                     }
                 },

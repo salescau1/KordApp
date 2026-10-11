@@ -28,12 +28,27 @@ data class AppUpdateInfo(
 
 object UpdateRepository {
 
-    private const val SUPABASE_URL = "https://rhgcsgrdqbhimpdloxgo.supabase.co/rest/v1"
-    private const val SUPABASE_ANON_KEY =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZ2NzZ3JkcWJoaW1wZGxveGdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMDAzNjksImV4cCI6MjEwNjg3NjM2OX0.JKlFUjdom0M0WV62xYvCn9vCq23O9UPisXdPdCCHGtk"
+    private const val GITHUB_LATEST_RELEASE_URL =
+        "https://api.github.com/repos/salescau1/KordApp-Release/releases/latest"
 
     /**
-     * Memeriksa pembaruan versi APK ke tabel app_updates di Supabase.
+     * Membandingkan versi semver sederhana (misal 1.1.0 > 1.0, 1.1.1 > 1.1).
+     */
+    fun isNewerVersion(latest: String, current: String): Boolean {
+        val lParts = latest.trimStart('v', 'V').split('.').mapNotNull { it.toIntOrNull() }
+        val cParts = current.trimStart('v', 'V').split('.').mapNotNull { it.toIntOrNull() }
+        val maxLen = maxOf(lParts.size, cParts.size)
+        for (i in 0 until maxLen) {
+            val l = lParts.getOrElse(i) { 0 }
+            val c = cParts.getOrElse(i) { 0 }
+            if (l > c) return true
+            if (l < c) return false
+        }
+        return false
+    }
+
+    /**
+     * Memeriksa pembaruan versi APK ke GitHub Releases.
      */
     suspend fun checkAppUpdate(context: Context): Result<AppUpdateInfo> = withContext(Dispatchers.IO) {
         runCatching {
@@ -46,14 +61,14 @@ object UpdateRepository {
             }
             val currentName = pInfo.versionName ?: "1.0"
 
-            val url = URL("$SUPABASE_URL/app_updates?select=*&order=latest_app_version_code.desc&limit=1")
+            val url = URL(GITHUB_LATEST_RELEASE_URL)
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
-                setRequestProperty("apikey", SUPABASE_ANON_KEY)
-                setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
-                setRequestProperty("Accept", "application/json")
+                setRequestProperty("User-Agent", "KordApp-Android")
+                setRequestProperty("Accept", "application/vnd.github.v3+json")
                 connectTimeout = 8000
                 readTimeout = 8000
+                instanceFollowRedirects = true
             }
 
             if (conn.responseCode !in 200..299) {
@@ -68,34 +83,32 @@ object UpdateRepository {
             }
 
             val body = conn.inputStream.bufferedReader().use { it.readText() }
-            val array = JSONArray(body)
-            if (array.length() == 0) {
-                return@runCatching AppUpdateInfo(
-                    hasUpdate = false,
-                    latestVersionCode = currentCode,
-                    latestVersionName = currentName,
-                    downloadUrl = "",
-                    changelog = "",
-                    isForceUpdate = false
-                )
+            val releaseObj = JSONObject(body)
+
+            val tagName = releaseObj.optString("tag_name", "").trim()
+            val latestVersionName = tagName.trimStart('v', 'V').ifBlank { currentName }
+            val changelog = releaseObj.optString("body", "Peningkatan performa dan perbaikan bug.")
+
+            var downloadUrl = ""
+            val assetsArray = releaseObj.optJSONArray("assets") ?: JSONArray()
+            for (i in 0 until assetsArray.length()) {
+                val asset = assetsArray.getJSONObject(i)
+                val assetName = asset.optString("name", "")
+                if (assetName.endsWith(".apk", ignoreCase = true)) {
+                    downloadUrl = asset.optString("browser_download_url", "")
+                    break
+                }
             }
 
-            val item = array.getJSONObject(0)
-            val latestCode = item.optInt("latest_app_version_code", currentCode)
-            val latestName = item.optString("latest_app_version_name", currentName)
-            val downloadUrl = item.optString("app_download_url", "")
-            val changelog = item.optString("app_changelog", "Peningkatan performa dan perbaikan bug.")
-            val isForce = item.optBoolean("is_force_app_update", false)
-
-            val hasUpdate = latestCode > currentCode && downloadUrl.isNotBlank()
+            val hasUpdate = isNewerVersion(latestVersionName, currentName) && downloadUrl.isNotBlank()
 
             AppUpdateInfo(
                 hasUpdate = hasUpdate,
-                latestVersionCode = latestCode,
-                latestVersionName = latestName,
+                latestVersionCode = currentCode + (if (hasUpdate) 1 else 0),
+                latestVersionName = latestVersionName,
                 downloadUrl = downloadUrl,
                 changelog = changelog,
-                isForceUpdate = isForce
+                isForceUpdate = false
             )
         }
     }
@@ -104,49 +117,55 @@ object UpdateRepository {
      * Mendownload file APK pembaruan dan otomatis memicu intent instalasi bawaan Android setelah selesai.
      */
     fun startDownloadAndInstall(context: Context, downloadUrl: String, fileName: String = "KordApp-update.apk") {
-        val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val uri = Uri.parse(downloadUrl)
+        try {
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val uri = Uri.parse(downloadUrl)
 
-        // Hapus file lama jika ada di folder Download publik
-        val destFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
-        if (destFile.exists()) {
-            destFile.delete()
-        }
+            val destFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
+            if (destFile.exists()) {
+                destFile.delete()
+            }
 
-        val request = DownloadManager.Request(uri).apply {
-            setTitle("Mengunduh Pembaruan KordApp")
-            setDescription("Sedang mengunduh versi terbaru...")
-            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            setDestinationUri(Uri.fromFile(destFile))
-            setMimeType("application/vnd.android.package-archive")
-        }
+            val request = DownloadManager.Request(uri).apply {
+                setTitle("Mengunduh Pembaruan KordApp")
+                setDescription("Sedang mengunduh versi terbaru...")
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, fileName)
+                setMimeType("application/vnd.android.package-archive")
+            }
 
-        val downloadId = downloadManager.enqueue(request)
+            val downloadId = downloadManager.enqueue(request)
 
-        val onComplete = object : BroadcastReceiver() {
-            override fun onReceive(ctxt: Context, intent: Intent) {
-                val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-                if (id == downloadId) {
-                    try {
-                        ctxt.unregisterReceiver(this)
-                    } catch (_: Exception) {}
+            val onComplete = object : BroadcastReceiver() {
+                override fun onReceive(ctxt: Context, intent: Intent) {
+                    val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                    if (id == downloadId) {
+                        try {
+                            ctxt.unregisterReceiver(this)
+                        } catch (_: Exception) {}
 
-                    installApk(ctxt, destFile)
+                        installApk(ctxt, destFile)
+                    }
                 }
             }
-        }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(
-                onComplete,
-                IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-                Context.RECEIVER_EXPORTED
-            )
-        } else {
-            context.registerReceiver(
-                onComplete,
-                IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(
+                    onComplete,
+                    IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+                    Context.RECEIVER_EXPORTED
+                )
+            } else {
+                context.registerReceiver(
+                    onComplete,
+                    IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+                )
+            }
+        } catch (e: Exception) {
+            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(browserIntent)
         }
     }
 
