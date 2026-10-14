@@ -630,7 +630,7 @@ fun SettingsScreen(
                     ) {
                         Text(text = "Artists", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
                         Text(
-                            text = if (stats.artists > 0) String.format(Locale.GERMAN, "%,d", stats.artists) else "3.328",
+                            text = if (stats.artists > 0) String.format(Locale.GERMAN, "%,d", stats.artists) else "0",
                             color = AccentGold,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.5.sp
@@ -648,7 +648,7 @@ fun SettingsScreen(
                     ) {
                         Text(text = "Songs", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
                         Text(
-                            text = if (stats.songs > 0) String.format(Locale.GERMAN, "%,d", stats.songs) else "157.842",
+                            text = if (stats.songs > 0) String.format(Locale.GERMAN, "%,d", stats.songs) else "0",
                             color = AccentGold,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.5.sp
@@ -666,7 +666,7 @@ fun SettingsScreen(
                     ) {
                         Text(text = "Catalog Size", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
                         Text(
-                            text = formatBytes(stats.catalogBytes, "80 MB"),
+                            text = formatBytes(stats.catalogBytes, "0 MB"),
                             color = PrimaryText,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 13.5.sp
