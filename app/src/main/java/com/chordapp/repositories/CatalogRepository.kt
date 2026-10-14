@@ -4,8 +4,21 @@ import com.chordapp.catalog.CatalogArtistInfo
 import com.chordapp.catalog.CatalogDao
 import com.chordapp.catalog.CatalogSongEntity
 import com.chordapp.catalog.CatalogSongGroup
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
-class CatalogRepository(private val dao: CatalogDao) {
+class CatalogRepository(private val daoProvider: () -> CatalogDao) {
+
+    constructor(dao: CatalogDao) : this({ dao })
+
+    private val dao: CatalogDao get() = daoProvider()
+
+    val catalogUpdateFlow: SharedFlow<Long> get() = Companion.catalogUpdateFlow
+
+    fun notifyCatalogUpdated() {
+        Companion.notifyCatalogUpdated()
+    }
 
     suspend fun searchSongs(query: String, limit: Int = 50): List<CatalogSongGroup> {
         val trimmed = query.trim()
@@ -118,7 +131,9 @@ class CatalogRepository(private val dao: CatalogDao) {
     suspend fun insertSong(song: CatalogSongEntity): Long {
         cachedArtists = null
         dao.deleteBySourceUrl(song.sourceUrl)
-        return dao.insertSong(song)
+        val id = dao.insertSong(song)
+        notifyCatalogUpdated()
+        return id
     }
 
     suspend fun insertSongs(songs: List<CatalogSongEntity>): List<Long> {
@@ -126,7 +141,9 @@ class CatalogRepository(private val dao: CatalogDao) {
         for (song in songs) {
             dao.deleteBySourceUrl(song.sourceUrl)
         }
-        return dao.insertSongs(songs)
+        val ids = dao.insertSongs(songs)
+        notifyCatalogUpdated()
+        return ids
     }
 
     suspend fun pruneDatabase(
@@ -144,11 +161,29 @@ class CatalogRepository(private val dao: CatalogDao) {
         if (versionIds.isNotEmpty()) {
             dao.deleteSongsByIds(versionIds)
         }
+        notifyCatalogUpdated()
+    }
+
+    suspend fun getSongCountByTier(tier: String): Int = dao.getSongCountByTier(tier)
+
+    suspend fun deleteSongsByTier(tier: String): Int {
+        cachedArtists = null
+        val deleted = dao.deleteSongsByTier(tier)
+        notifyCatalogUpdated()
+        return deleted
     }
 
     companion object {
-        /** Cache proses daftar artis Explore. Reset saat proses mati (cold start). */
+        /** Cache proses daftar artis Explore. Reset saat proses mati (cold start) atau saat katalog di-update. */
         @Volatile
         private var cachedArtists: List<CatalogArtistInfo>? = null
+
+        private val _catalogUpdateFlow = MutableSharedFlow<Long>(replay = 0, extraBufferCapacity = 64)
+        val catalogUpdateFlow: SharedFlow<Long> = _catalogUpdateFlow.asSharedFlow()
+
+        fun notifyCatalogUpdated() {
+            cachedArtists = null
+            _catalogUpdateFlow.tryEmit(System.currentTimeMillis())
+        }
     }
 }

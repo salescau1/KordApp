@@ -97,6 +97,8 @@ class ArtistDirectoryViewModelSortingTest {
         override suspend fun deleteArtistsBySlugs(artistSlugs: List<String>): Int = 0
         override suspend fun deleteSongBySlug(artistSlug: String, titleSlug: String): Int = 0
         override suspend fun deleteSongsByIds(songIds: List<Long>): Int = 0
+        override suspend fun getSongCountByTier(tier: String): Int = 0
+        override suspend fun deleteSongsByTier(tier: String): Int = 0
     }
 
     @Test

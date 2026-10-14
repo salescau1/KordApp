@@ -34,4 +34,6 @@ __pycache__/
 *.apk
 /catalog.db.xz
 app/src/main/assets/catalog.db
+app/src/main/assets/catalog.db.xz
+Preview/
 

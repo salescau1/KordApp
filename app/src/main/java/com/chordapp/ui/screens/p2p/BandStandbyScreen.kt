@@ -5,43 +5,38 @@ import android.view.WindowManager
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Podcasts
-import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.chordapp.localization.LocalAppStrings
 import com.chordapp.p2p.BandSessionManager
 import com.chordapp.p2p.ClientConnectionState
-import com.chordapp.p2p.LiveSongPayload
 import com.chordapp.ui.theme.AccentGold
 import com.chordapp.ui.theme.Background
 import com.chordapp.ui.theme.Border
 import com.chordapp.ui.theme.CardSurface
 import com.chordapp.ui.theme.MutedText
 import com.chordapp.ui.theme.PrimaryText
-import kotlinx.coroutines.delay
-import java.text.SimpleDateFormat
-import java.util.*
+import com.chordapp.ui.theme.RaisedSurface
 
 @Composable
 fun BandStandbyScreen(
-    onDisconnectClick: () -> Unit
+    onCloseClick: () -> Unit = {},
+    @Suppress("UNUSED_PARAMETER") onDisconnectClick: () -> Unit = onCloseClick
 ) {
-    val strings = LocalAppStrings.current
     val connectionState by BandSessionManager.connectionState.collectAsState()
     val context = LocalContext.current
 
@@ -54,161 +49,264 @@ fun BandStandbyScreen(
         }
     }
 
-    // Live clock for stage timer
-    var currentTime by remember { mutableStateOf("") }
-    LaunchedEffect(Unit) {
-        val formatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-        while (true) {
-            currentTime = formatter.format(Date())
-            delay(1000)
-        }
-    }
-
-    // Pulsing radar animation
+    // Triple Radar Pulse concentric rings animation
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.9f,
-        targetValue = 1.15f,
+    val pulseScale1 by infiniteTransition.animateFloat(
+        initialValue = 0.7f,
+        targetValue = 1.35f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+            animation = tween(2400, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
         ),
-        label = "scale"
+        label = "scale1"
+    )
+    val pulseAlpha1 by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2400, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "alpha1"
     )
 
-    Box(
+    val pulseScale2 by infiniteTransition.animateFloat(
+        initialValue = 0.7f,
+        targetValue = 1.35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2400, delayMillis = 800, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "scale2"
+    )
+    val pulseAlpha2 by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2400, delayMillis = 800, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "alpha2"
+    )
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Background,
-                        CardSurface.copy(alpha = 0.5f),
-                        Background
-                    )
+                Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF151A24),
+                        Color(0xFF0C0E12)
+                    ),
+                    radius = 900f
                 )
             )
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(24.dp)
     ) {
-        // Digital Clock at top
-        Column(
+        // 1. Header 3 Kolom Sesuai Arahan Boss: [ ✕ Close ] [ Title ] [ Live Sync 🟢 ]
+        Row(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = currentTime,
-                color = AccentGold,
-                fontSize = 44.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-                letterSpacing = 2.sp
-            )
-            Text(
-                text = strings.bandStandbyTitle,
-                color = MutedText,
-                style = MaterialTheme.typography.labelMedium,
-                letterSpacing = 3.sp,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
-
-        // Center: Radar indicator & Connection info
-        Column(
-            modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+            // Kolom Kiri: [ ✕ Close ]
             Box(
                 modifier = Modifier
-                    .size(110.dp)
-                    .scale(pulseScale)
-                    .border(2.dp, AccentGold.copy(alpha = 0.6f), CircleShape)
-                    .background(AccentGold.copy(alpha = 0.12f), CircleShape),
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(CardSurface)
+                    .border(1.dp, Border, CircleShape)
+                    .clickable { onCloseClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Podcasts,
-                    contentDescription = null,
-                    tint = AccentGold,
-                    modifier = Modifier.size(54.dp)
+                Text(
+                    text = "✕",
+                    color = PrimaryText,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
 
-            Spacer(Modifier.height(8.dp))
+            // Kolom Tengah: Judul
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "Standby Panggung",
+                    color = PrimaryText,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
 
-            when (val state = connectionState) {
-                is ClientConnectionState.Connected -> {
-                    Text(
-                        text = strings.bandConnectedTo(state.serverName),
-                        color = PrimaryText,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = strings.bandWaitingForLeader,
-                        color = MutedText,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-                is ClientConnectionState.Connecting -> {
-                    Text(
-                        text = "Menyambungkan ke ${state.serverName}...",
-                        color = PrimaryText,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                is ClientConnectionState.Error -> {
-                    Text(
-                        text = "Koneksi terputus: ${state.message}",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = strings.bandSearchingServers,
-                        color = MutedText,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                ClientConnectionState.Disconnected -> {
-                    Text(
-                        text = strings.bandSearchingServers,
-                        color = MutedText,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+            // Kolom Kanan: [ 🟢 Live Sync ]
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0x1F22C55E))
+                    .border(1.dp, Color(0x6622C55E), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .background(Color(0xFF22C55E), CircleShape)
+                )
+                Text(
+                    text = "Live Sync",
+                    color = Color(0xFF22C55E),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.3.sp
+                )
             }
         }
 
-        // Bottom action button: Disconnect
-        Button(
-            onClick = onDisconnectClick,
+        // 2. Di Tengah Layar: Resonansi Not Balok Musik Ganda (♫) & Status Koneksi
+        Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
+                .weight(1f)
                 .fillMaxWidth()
-                .height(50.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = CardSurface,
-                contentColor = PrimaryText
-            ),
-            shape = RoundedCornerShape(14.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Border)
+                .padding(horizontal = 24.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.PowerSettingsNew,
-                contentDescription = null,
-                tint = MutedText,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = strings.bandDisconnect,
-                fontWeight = FontWeight.SemiBold
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(22.dp)
+            ) {
+                // Radar Rings & Double Musical Note Core (♫)
+                Box(
+                    modifier = Modifier.size(150.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Outer Ring 1
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .scale(pulseScale1)
+                            .border(1.5.dp, AccentGold.copy(alpha = pulseAlpha1), CircleShape)
+                    )
+                    // Outer Ring 2
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .scale(pulseScale2)
+                            .border(1.5.dp, AccentGold.copy(alpha = pulseAlpha2), CircleShape)
+                    )
+                    // Core Circle with Musical Note (♫)
+                    Box(
+                        modifier = Modifier
+                            .size(76.dp)
+                            .clip(CircleShape)
+                            .background(AccentGold.copy(alpha = 0.14f))
+                            .border(2.dp, AccentGold, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "♫",
+                            color = AccentGold,
+                            fontSize = 38.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                // Connection Status Text
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    when (val state = connectionState) {
+                        is ClientConnectionState.Connected -> {
+                            Text(
+                                text = "Connected to ${state.serverName}",
+                                color = PrimaryText,
+                                fontSize = 21.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "Waiting for lyrics from stage leader...",
+                                color = MutedText,
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        is ClientConnectionState.Connecting -> {
+                            Text(
+                                text = "Connecting to ${state.serverName}...",
+                                color = PrimaryText,
+                                fontSize = 19.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "Menyambungkan ke pemandu panggung...",
+                                color = MutedText,
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        is ClientConnectionState.Error -> {
+                            Text(
+                                text = "Koneksi Terputus",
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "Mencari pemandu musik kembali di panggung...",
+                                color = MutedText,
+                                fontSize = 13.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        ClientConnectionState.Disconnected -> {
+                            Text(
+                                text = "Standby Panggung",
+                                color = PrimaryText,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "Waiting for lyrics from stage leader...",
+                                color = MutedText,
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                // Sub-Indicator Pill
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(RaisedSurface)
+                        .border(1.dp, Border, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .background(Color(0xFF22C55E), CircleShape)
+                    )
+                    Text(
+                        text = "Standby Panggung (Dock Disembunyikan)",
+                        color = Color(0xFF22C55E),
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
         }
     }
 }

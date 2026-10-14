@@ -1,61 +1,39 @@
 package com.chordapp.ui.screens.settings
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chordapp.localization.AppLanguage
 import com.chordapp.localization.LocalAppStrings
-import com.chordapp.repositories.LicenseRepository
-import com.chordapp.ui.theme.AccentGold
-import com.chordapp.ui.theme.Background
-import com.chordapp.ui.theme.Border
-import com.chordapp.ui.theme.CardSurface
-import com.chordapp.ui.theme.MutedText
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.border
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material.icons.filled.Podcasts
-import androidx.compose.material.icons.filled.Lock
-import com.chordapp.ui.theme.PrimaryText
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material.icons.filled.Check
-import com.chordapp.ui.theme.RaisedSurface
 import com.chordapp.p2p.BandMode
+import com.chordapp.p2p.BandSessionManager
 import com.chordapp.p2p.ClientConnectionState
 import com.chordapp.p2p.DiscoveredServer
+import com.chordapp.repositories.LicenseRepository
+import com.chordapp.ui.theme.*
 import com.chordapp.viewmodels.SettingsViewModel
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -74,10 +52,10 @@ fun SettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var showLanguageDialog by remember { mutableStateOf(false) }
-    var showThemeDialog by remember { mutableStateOf(false) }
     var showTransferDialog by remember { mutableStateOf(false) }
     var isTransferring by remember { mutableStateOf(false) }
+    var isKeyRevealed by remember { mutableStateOf(false) }
+    var deleteTierTarget by remember { mutableStateOf<String?>(null) }
 
     var isCheckingUpdate by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<com.chordapp.repositories.AppUpdateInfo?>(null) }
@@ -89,6 +67,7 @@ fun SettingsScreen(
     val serverPin by viewModel.serverPin.collectAsState()
     val isPinEnabled by viewModel.isPinEnabled.collectAsState()
     val connectedClients by viewModel.connectedClients.collectAsState()
+    val webStageUrl by viewModel.webStageUrl.collectAsState()
     val discoveredServers by viewModel.discoveredServers.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
 
@@ -98,32 +77,30 @@ fun SettingsScreen(
     var pinDialogInput by remember { mutableStateOf("") }
     var pinDialogError by remember { mutableStateOf<String?>(null) }
 
+    val isLicensed = remember { LicenseRepository.isLicensed(context) }
+    val savedKey = remember { LicenseRepository.getSavedLicenseKey(context) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Background)
     ) {
-        // Unified Header
+        // App Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = strings.settingsTitle,
-                    color = PrimaryText,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = strings.settingsSubtitle,
-                    color = MutedText,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
+            Text(
+                text = strings.settingsTitle,
+                color = PrimaryText,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 24.sp,
+                letterSpacing = (-0.5).sp
+            )
         }
 
         Column(
@@ -131,808 +108,1285 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
 
-        // Band Mode (Live Sync) Section
-        SettingsSection(strings.bandSection) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                // 3-way Segmented Switcher [ Server | Normal | Client ]
-                Row(
+            // =========================================================================
+            // 1. MODE (Server | Normal | Client)
+            // =========================================================================
+            SettingsSection(title = "MODE") {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(46.dp)
-                        .background(RaisedSurface, RoundedCornerShape(23.dp))
-                        .border(1.dp, Border, RoundedCornerShape(23.dp))
-                        .padding(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        .padding(vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    val modes = listOf(
-                        BandMode.SERVER to strings.bandModeServer,
-                        BandMode.NORMAL to strings.bandModeNormal,
-                        BandMode.CLIENT to strings.bandModeClient
-                    )
-                    modes.forEach { (mode, label) ->
-                        val selected = bandMode == mode
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(19.dp))
-                                .background(if (selected) AccentGold else Color.Transparent)
-                                .clickable { viewModel.setBandMode(mode) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = label,
-                                color = if (selected) Background else PrimaryText,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                fontSize = 13.sp
-                            )
+                    // Segmented Switcher [ Server | Normal | Client ]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(RaisedSurface)
+                            .border(1.dp, Border, RoundedCornerShape(14.dp))
+                            .padding(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        val modes = listOf(
+                            BandMode.SERVER to "Server",
+                            BandMode.NORMAL to "Normal",
+                            BandMode.CLIENT to "Client"
+                        )
+                        modes.forEach { (mode, label) ->
+                            val selected = bandMode == mode
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (selected) AccentGold else Color.Transparent)
+                                    .clickable { viewModel.setBandMode(mode) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = if (selected) Color(0xFF0C0E12) else MutedText,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                                    fontSize = 13.sp
+                                )
+                            }
                         }
                     }
-                }
 
-                when (bandMode) {
-                    BandMode.SERVER -> {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            // Status Pill
-                            Row(
+                    when (bandMode) {
+                        BandMode.NORMAL -> {
+                            // Bersih tanpa subtitle / deskripsi tambahan
+                        }
+
+                        BandMode.SERVER -> {
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(RaisedSurface, RoundedCornerShape(12.dp))
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                    .padding(top = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
+                                // Status Server
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(10.dp)
-                                            .background(Color(0xFF4CAF50), CircleShape)
-                                    )
                                     Text(
-                                        text = strings.bandServerActive,
+                                        text = "Status Server",
                                         color = PrimaryText,
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontSize = 13.5.sp,
                                         fontWeight = FontWeight.SemiBold
                                     )
-                                }
-                                Text(
-                                    text = strings.bandConnectedCount(connectedClients.size),
-                                    color = AccentGold,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            if (connectedClients.isNotEmpty()) {
-                                Text(
-                                    text = "Anggota: ${connectedClients.joinToString(", ")}",
-                                    color = MutedText,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-
-                            // Device Name
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(
-                                    text = strings.bandServerName,
-                                    color = MutedText,
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                                OutlinedTextField(
-                                    value = editingDeviceName,
-                                    onValueChange = {
-                                        editingDeviceName = it
-                                        viewModel.setDeviceName(it)
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true,
-                                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = AccentGold,
-                                        unfocusedBorderColor = Border
-                                    )
-                                )
-                            }
-
-                            // PIN Protection Toggle & Input
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(text = strings.bandPinProtection, color = PrimaryText)
-                                Switch(
-                                    checked = isPinEnabled,
-                                    onCheckedChange = { viewModel.setPinEnabled(it) },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = AccentGold,
-                                        checkedTrackColor = AccentGold.copy(alpha = 0.4f)
-                                    )
-                                )
-                            }
-
-                            if (isPinEnabled) {
-                                OutlinedTextField(
-                                    value = editingPin,
-                                    onValueChange = {
-                                        if (it.length <= 4) {
-                                            editingPin = it
-                                            viewModel.setServerPin(it)
-                                        }
-                                    },
-                                    placeholder = { Text(strings.bandPinPlaceholder) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true,
-                                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = AccentGold,
-                                        unfocusedBorderColor = Border
-                                    )
-                                )
-                            }
-                        }
-                    }
-                    BandMode.CLIENT -> {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            when (val state = connectionState) {
-                                is ClientConnectionState.Connected -> {
                                     Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(RaisedSurface, RoundedCornerShape(12.dp))
-                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(Color(0xFF22C55E), CircleShape)
+                                        )
+                                        Text(
+                                            text = "Aktif (${connectedClients.size} Klien)",
+                                            color = Color(0xFF22C55E),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                // Nama Host
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        text = "Nama Host",
+                                        color = MutedText,
+                                        fontSize = 11.5.sp
+                                    )
+                                    OutlinedTextField(
+                                        value = editingDeviceName,
+                                        onValueChange = {
+                                            editingDeviceName = it
+                                            viewModel.setDeviceName(it)
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = AccentGold,
+                                            unfocusedBorderColor = Border
+                                        )
+                                    )
+                                }
+
+                                // Proteksi PIN
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(text = "Proteksi PIN", color = PrimaryText, fontSize = 13.5.sp)
+                                    Switch(
+                                        checked = isPinEnabled,
+                                        onCheckedChange = { viewModel.setPinEnabled(it) },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = AccentGold,
+                                            checkedTrackColor = AccentGold.copy(alpha = 0.4f)
+                                        )
+                                    )
+                                }
+
+                                if (isPinEnabled) {
+                                    OutlinedTextField(
+                                        value = editingPin,
+                                        onValueChange = {
+                                            if (it.length <= 4) {
+                                                editingPin = it
+                                                viewModel.setServerPin(it)
+                                            }
+                                        },
+                                        placeholder = { Text("Masukkan 4 digit PIN") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = AccentGold,
+                                            unfocusedBorderColor = Border
+                                        )
+                                    )
+                                }
+
+                                // Link Akses Web Browser (Stage Mirror)
+                                val resolvedIp = remember { BandSessionManager.getLocalIpAddress() ?: "192.168.43.1" }
+                                val displayWebUrl = webStageUrl ?: "http://$resolvedIp:8990"
+
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(RaisedSurface)
+                                        .border(1.dp, Border, RoundedCornerShape(12.dp))
+                                        .padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        Text(
+                                            text = "Akses Web Browser (Stage Mirror)",
+                                            color = PrimaryText,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.5.sp
+                                        )
+                                        Text(
+                                            text = "Port 8990",
+                                            color = AccentGold,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Text(
+                                        text = "Safari iPhone, Android lain, atau laptop di Wi-Fi / Hotspot:",
+                                        color = MutedText,
+                                        fontSize = 11.sp
+                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Background)
+                                            .border(1.dp, Border.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = displayWebUrl,
+                                            color = AccentGold,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(RaisedSurface)
+                                                .clickable {
+                                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                                    clipboard?.setPrimaryClip(ClipData.newPlainText("Stage Mirror URL", displayWebUrl))
+                                                    Toast.makeText(context, "Link disalin: $displayWebUrl", Toast.LENGTH_SHORT).show()
+                                                }
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
                                         ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(10.dp)
-                                                    .background(Color(0xFF4CAF50), CircleShape)
-                                            )
                                             Text(
-                                                text = strings.bandConnectedTo(state.serverName),
+                                                text = "Salin",
                                                 color = PrimaryText,
-                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontSize = 11.sp,
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                         }
-                                        TextButton(onClick = { viewModel.disconnectBandClient() }) {
-                                            Text(strings.bandDisconnect, color = MaterialTheme.colorScheme.error)
-                                        }
-                                    }
-
-                                    Button(
-                                        onClick = onNavigateToStandby,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = AccentGold,
-                                            contentColor = Background
-                                        ),
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Text(strings.bandOpenStandby, fontWeight = FontWeight.Bold)
                                     }
                                 }
-                                else -> {
-                                    Text(
-                                        text = strings.bandSearchingServers,
-                                        color = MutedText,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
+                            }
+                        }
 
-                                    if (discoveredServers.isEmpty()) {
-                                        Box(
+                        BandMode.CLIENT -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                when (val state = connectionState) {
+                                    is ClientConnectionState.Connected -> {
+                                        Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(vertical = 12.dp),
-                                            contentAlignment = Alignment.Center
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(RaisedSurface)
+                                                .border(1.dp, Border, RoundedCornerShape(12.dp))
+                                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text(
-                                                text = strings.bandNoServersFound,
-                                                color = MutedText,
-                                                style = MaterialTheme.typography.bodySmall
-                                            )
-                                        }
-                                    } else {
-                                        discoveredServers.forEach { server ->
                                             Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .background(RaisedSurface, RoundedCornerShape(12.dp))
-                                                    .border(1.dp, Border, RoundedCornerShape(12.dp))
-                                                    .padding(12.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                                             ) {
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Row(
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                                    ) {
-                                                        Text(
-                                                            text = server.name,
-                                                            color = PrimaryText,
-                                                            fontWeight = FontWeight.Bold
-                                                        )
-                                                        if (server.requiresPin) {
-                                                            Icon(
-                                                                imageVector = Icons.Default.Lock,
-                                                                contentDescription = null,
-                                                                tint = AccentGold,
-                                                                modifier = Modifier.size(14.dp)
-                                                            )
-                                                        }
-                                                    }
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(8.dp)
+                                                        .background(Color(0xFF22C55E), CircleShape)
+                                                )
+                                                Column {
                                                     Text(
-                                                        text = "${server.host}:${server.port}",
+                                                        text = state.serverName,
+                                                        color = PrimaryText,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 13.sp
+                                                    )
+                                                    Text(
+                                                        text = state.host,
                                                         color = MutedText,
-                                                        style = MaterialTheme.typography.labelSmall
+                                                        fontFamily = FontFamily.Monospace,
+                                                        fontSize = 11.sp
                                                     )
                                                 }
-
-                                                Button(
-                                                    onClick = {
-                                                        if (server.requiresPin) {
-                                                            pinDialogInput = ""
-                                                            pinDialogError = null
-                                                            showPinDialogForServer = server
-                                                        } else {
-                                                            viewModel.connectToBandServer(server)
-                                                            onNavigateToStandby()
-                                                        }
-                                                    },
-                                                    colors = ButtonDefaults.buttonColors(
-                                                        containerColor = AccentGold,
-                                                        contentColor = Background
-                                                    ),
-                                                    shape = RoundedCornerShape(8.dp),
-                                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                                                ) {
-                                                    Text(strings.bandConnect, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                                }
+                                            }
+                                            TextButton(
+                                                onClick = { viewModel.disconnectBandClient() },
+                                                colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFEF4444))
+                                            ) {
+                                                Text("Disconnect", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                             }
                                         }
                                     }
 
-                                    OutlinedButton(
-                                        onClick = onNavigateToStandby,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Text(strings.bandOpenStandby, color = PrimaryText)
+                                    else -> {
+                                        Text(
+                                            text = "HOST TERDETEKSI:",
+                                            color = MutedText,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+
+                                        if (discoveredServers.isEmpty()) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 12.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = strings.bandNoServersFound,
+                                                    color = MutedText,
+                                                    fontSize = 12.sp
+                                                )
+                                            }
+                                        } else {
+                                            discoveredServers.forEach { srv ->
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clip(RoundedCornerShape(12.dp))
+                                                        .background(RaisedSurface)
+                                                        .border(1.dp, Border, RoundedCornerShape(12.dp))
+                                                        .padding(12.dp),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Column(modifier = Modifier.weight(1f)) {
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = srv.name,
+                                                                color = PrimaryText,
+                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = 13.sp
+                                                            )
+                                                            if (srv.requiresPin) {
+                                                                Icon(
+                                                                    imageVector = Icons.Default.Lock,
+                                                                    contentDescription = null,
+                                                                    tint = AccentGold,
+                                                                    modifier = Modifier.size(13.dp)
+                                                                )
+                                                            }
+                                                        }
+                                                        Text(
+                                                            text = "${srv.host}:${srv.port}",
+                                                            color = MutedText,
+                                                            fontFamily = FontFamily.Monospace,
+                                                            fontSize = 11.sp
+                                                        )
+                                                    }
+
+                                                    Button(
+                                                        onClick = {
+                                                            if (srv.requiresPin) {
+                                                                pinDialogInput = ""
+                                                                pinDialogError = null
+                                                                showPinDialogForServer = srv
+                                                            } else {
+                                                                viewModel.connectToBandServer(srv)
+                                                                onNavigateToStandby()
+                                                            }
+                                                        },
+                                                        colors = ButtonDefaults.buttonColors(
+                                                            containerColor = AccentGold,
+                                                            contentColor = Color(0xFF0C0E12)
+                                                        ),
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                                                    ) {
+                                                        Text("Connect", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Tombol Buka Layar Standby Panggung
+                                OutlinedButton(
+                                    onClick = onNavigateToStandby,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    border = BorderStroke(1.dp, AccentGold),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = AccentGold
+                                    )
+                                ) {
+                                    Text(
+                                        text = "♫ Buka Layar Standby Panggung",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // =========================================================================
+            // 2. APPEARANCE (Theme Swatches & Language Capsule - No Dialogs!)
+            // =========================================================================
+            SettingsSection(title = "APPEARANCE") {
+                Column {
+                    // Theme Row with 5 Circle Color Swatches
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Theme",
+                            color = PrimaryText,
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        // 5 Circle Color Swatches: Dark, Light, Paper, Blackboard, Greenboard
+                        val themeSwatches = listOf(
+                            AppThemeMode.DARK to Color(0xFF0E1117),
+                            AppThemeMode.LIGHT to Color(0xFFF5F6F8),
+                            AppThemeMode.PAPER to Color(0xFFF4EFE6),
+                            AppThemeMode.BLACKBOARD to Color(0xFF1C2228),
+                            AppThemeMode.GREENBOARD to Color(0xFF14261C)
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            themeSwatches.forEach { (mode, swatchColor) ->
+                                val isSelected = currentTheme == mode
+                                Box(
+                                    modifier = Modifier
+                                        .size(23.dp)
+                                        .clip(CircleShape)
+                                        .background(swatchColor)
+                                        .border(
+                                            width = if (isSelected) 2.5.dp else 1.dp,
+                                            color = if (isSelected) AccentGold else Border,
+                                            shape = CircleShape
+                                        )
+                                        .clickable { viewModel.setTheme(mode) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isSelected) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(5.dp)
+                                                .background(AccentGold, CircleShape)
+                                        )
                                     }
                                 }
                             }
                         }
                     }
-                    BandMode.NORMAL -> {
+
+                    HorizontalDivider(color = Border)
+
+                    // Language Row with Capsule Segment [ ID | EN ]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = "Mode mandiri (solo). Pilih Server jika HP ini memimpin sesi lagu, atau Client jika ingin mengikuti lagu dari pemandu band.",
+                            text = "Language",
+                            color = PrimaryText,
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(RaisedSurface)
+                                .border(1.dp, Border, RoundedCornerShape(18.dp))
+                                .padding(3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val langOptions = listOf(
+                                AppLanguage.INDONESIAN to "ID",
+                                AppLanguage.ENGLISH to "EN"
+                            )
+                            langOptions.forEach { (lang, label) ->
+                                val isSelected = currentLanguage == lang
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) AccentGold else Color.Transparent)
+                                        .clickable { viewModel.setLanguage(lang) }
+                                        .padding(horizontal = 11.dp, vertical = 4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = label,
+                                        color = if (isSelected) Color(0xFF0C0E12) else MutedText,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 11.5.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // =========================================================================
+            // 3. MUSIC & CATALOG (Clean stats + 3 Tiers: Paket A, Paket B, Paket C)
+            // =========================================================================
+            val isDownloadingCatalog by viewModel.isDownloadingCatalog.collectAsState()
+            val catalogDownloadProgress by viewModel.catalogDownloadProgress.collectAsState()
+            val catalogDownloadStatus by viewModel.catalogDownloadStatus.collectAsState()
+            val catalogDownloadError by viewModel.catalogDownloadError.collectAsState()
+
+            SettingsSection(title = "MUSIC & CATALOG") {
+                Column {
+                    // Clean rows without subtitles
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 13.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "Artists", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = if (stats.artists > 0) String.format(Locale.GERMAN, "%,d", stats.artists) else "3.328",
+                            color = AccentGold,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.5.sp
+                        )
+                    }
+
+                    HorizontalDivider(color = Border)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 13.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "Songs", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = if (stats.songs > 0) String.format(Locale.GERMAN, "%,d", stats.songs) else "157.842",
+                            color = AccentGold,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.5.sp
+                        )
+                    }
+
+                    HorizontalDivider(color = Border)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 13.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "Catalog Size", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = formatBytes(stats.catalogBytes, "80 MB"),
+                            color = PrimaryText,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.5.sp
+                        )
+                    }
+
+                    HorizontalDivider(color = Border)
+
+                    // Visualisasi 3 Tingkatan Database: Paket A, Paket B, Paket C
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp, bottom = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "Download Catalog",
+                            color = PrimaryText,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        // 3 Tiers Grid
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val isTierAInstalled = stats.tierASongs > 0 || (stats.songs > 0 && stats.tierBSongs == 0 && stats.tierCSongs == 0)
+                            val isTierBInstalled = stats.tierBSongs > 0
+                            val isTierCInstalled = stats.tierCSongs > 0
+
+                            // Paket A (50% - Easy Chord)
+                            TierCatalogCard(
+                                title = "Paket A",
+                                count = "79k Lagu",
+                                size = "40 MB",
+                                isInstalled = isTierAInstalled,
+                                isDownloading = isDownloadingCatalog,
+                                actionLabel = if (isTierAInstalled) "Hapus" else "Unduh",
+                                onAction = {
+                                    if (isTierAInstalled) {
+                                        deleteTierTarget = "A"
+                                    } else {
+                                        viewModel.downloadTier("A")
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            // Paket B (30% - Penyempurnaan & Pro)
+                            TierCatalogCard(
+                                title = "Paket B",
+                                count = "47k Lagu",
+                                size = "24 MB",
+                                isInstalled = isTierBInstalled,
+                                isDownloading = isDownloadingCatalog,
+                                actionLabel = if (isTierBInstalled) "Hapus" else "Unduh",
+                                onAction = {
+                                    if (isTierBInstalled) {
+                                        deleteTierTarget = "B"
+                                    } else {
+                                        viewModel.downloadTier("B")
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            // Paket C (20% - Non-Mainstream & Arsip)
+                            TierCatalogCard(
+                                title = "Paket C",
+                                count = "32k Lagu",
+                                size = "16 MB",
+                                isInstalled = isTierCInstalled,
+                                isDownloading = isDownloadingCatalog,
+                                actionLabel = if (isTierCInstalled) "Hapus" else "Unduh",
+                                onAction = {
+                                    if (isTierCInstalled) {
+                                        deleteTierTarget = "C"
+                                    } else {
+                                        viewModel.downloadTier("C")
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        // Progress Indicator if downloading
+                        if (isDownloadingCatalog) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = catalogDownloadStatus,
+                                    color = PrimaryText,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                LinearProgressIndicator(
+                                    progress = { catalogDownloadProgress / 100f },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(7.dp)
+                                        .clip(RoundedCornerShape(4.dp)),
+                                    color = AccentGold,
+                                    trackColor = Border
+                                )
+                            }
+                        }
+
+                        if (catalogDownloadError != null) {
+                            Text(
+                                text = catalogDownloadError!!,
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // =========================================================================
+            // 4. LICENSE (Device ID Removed, Masked Key + Intip, Transfer License)
+            // =========================================================================
+            SettingsSection(title = "LICENSE & DEVICE") {
+                Column {
+                    // License Status
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "License Status",
+                                color = PrimaryText,
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Lisensi permanen pro",
+                                color = MutedText,
+                                fontSize = 11.5.sp
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(AccentGold.copy(alpha = 0.14f))
+                                .border(1.dp, AccentGold, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 9.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (isLicensed) "PRO AKTIF" else "INAKTIF",
+                                color = AccentGold,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(color = Border)
+
+                    // Masked License Key with Toggle View (Intip/Sensor)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "License Key",
+                            color = PrimaryText,
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val rawKey = savedKey ?: "KORD-PRO-8892"
+                            val displayKey = if (isKeyRevealed) {
+                                rawKey
+                            } else {
+                                "KORD-••••-••••"
+                            }
+
+                            Text(
+                                text = displayKey,
+                                color = PrimaryText,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(RaisedSurface)
+                                    .border(1.dp, Border, RoundedCornerShape(8.dp))
+                                    .clickable { isKeyRevealed = !isKeyRevealed }
+                                    .padding(horizontal = 9.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = if (isKeyRevealed) "Tutup" else "Lihat",
+                                    color = PrimaryText,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Border)
+
+                    // Transfer License Action with Confirmation
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "Transfer License",
+                                color = PrimaryText,
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Proteksi kunci layar / sidik jari",
+                                color = MutedText,
+                                fontSize = 11.5.sp
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(RaisedSurface)
+                                .border(1.dp, AccentGold, RoundedCornerShape(8.dp))
+                                .clickable { showTransferDialog = true }
+                                .padding(horizontal = 11.dp, vertical = 5.dp)
+                        ) {
+                            Text(
+                                text = "Salin Kode",
+                                color = AccentGold,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            // =========================================================================
+            // 5. APPLICATION (Version, APK Size, Check Update, About)
+            // =========================================================================
+            SettingsSection(title = "APPLICATION") {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "Version", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = "v${viewModel.versionName}",
                             color = MutedText,
-                            style = MaterialTheme.typography.bodySmall,
-                            lineHeight = 18.sp
+                            fontSize = 13.5.sp
+                        )
+                    }
+
+                    HorizontalDivider(color = Border)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "APK Size", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = formatBytes(stats.appBytes, "24.8 MB"),
+                            color = MutedText,
+                            fontSize = 13.5.sp
+                        )
+                    }
+
+                    HorizontalDivider(color = Border)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isCheckingUpdate) {
+                                isCheckingUpdate = true
+                                scope.launch {
+                                    val result = com.chordapp.repositories.UpdateRepository.checkAppUpdate(context)
+                                    isCheckingUpdate = false
+                                    result.onSuccess { info ->
+                                        if (info.hasUpdate) {
+                                            updateInfo = info
+                                            showUpdateDialog = true
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                "Aplikasi sudah versi terbaru (v${viewModel.versionName})",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }.onFailure {
+                                        Toast.makeText(
+                                            context,
+                                            "Aplikasi sudah versi terbaru",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            }
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "Check Update", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = if (isCheckingUpdate) "Memeriksa..." else "Cek Versi",
+                                color = AccentGold,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.5.sp
+                            )
+                            Text(text = "›", color = AccentGold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    HorizontalDivider(color = Border)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onAboutClick)
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "About", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Text(text = "›", color = MutedText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            Text(
+                text = strings.offlineDisclaimer,
+                color = MutedText,
+                style = MaterialTheme.typography.bodySmall,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+        }
+    }
+
+    // =========================================================================
+    // DIALOGS
+    // =========================================================================
+
+    // Dialog Transfer License
+    if (showTransferDialog) {
+        val transferKey = savedKey ?: "KORD-PRO-8892"
+        AlertDialog(
+            onDismissRequest = { if (!isTransferring) showTransferDialog = false },
+            title = {
+                Text(
+                    text = "Transfer Lisensi",
+                    color = PrimaryText,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Peringatan: Memindahkan lisensi akan menyalin kode lisensi dan melepaskan hak akses dari perangkat ini agar dapat digunakan di perangkat lain.",
+                        color = MutedText,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(RaisedSurface)
+                            .border(1.dp, Border, RoundedCornerShape(8.dp))
+                            .padding(10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = transferKey,
+                            color = AccentGold,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
                         )
                     }
                 }
-            }
-        }
-
-        // Appearance / Theme Section
-        SettingsSection(strings.themeSection) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showThemeDialog = true }
-                    .padding(vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(strings.appThemeLabel, color = PrimaryText)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val themeName = when (currentTheme) {
-                        com.chordapp.ui.theme.AppThemeMode.DARK -> strings.themeDark
-                        com.chordapp.ui.theme.AppThemeMode.LIGHT -> strings.themeLight
-                        com.chordapp.ui.theme.AppThemeMode.PAPER -> strings.themePaper
-                        com.chordapp.ui.theme.AppThemeMode.BLACKBOARD -> strings.themeBlackboard
-                        com.chordapp.ui.theme.AppThemeMode.GREENBOARD -> strings.themeGreenboard
-                    }
-                    Text(themeName, color = AccentGold, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.width(8.dp))
-                    Text("›", color = AccentGold)
-                }
-            }
-        }
-
-        // Language Section
-        SettingsSection(strings.languageSection) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showLanguageDialog = true }
-                    .padding(vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(strings.appLanguageLabel, color = PrimaryText)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(currentLanguage.displayName, color = AccentGold, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.width(8.dp))
-                    Text("›", color = AccentGold)
-                }
-            }
-        }
-
-        val isDownloadingCatalog by viewModel.isDownloadingCatalog.collectAsState()
-        val catalogDownloadProgress by viewModel.catalogDownloadProgress.collectAsState()
-        val catalogDownloadStatus by viewModel.catalogDownloadStatus.collectAsState()
-        val catalogDownloadError by viewModel.catalogDownloadError.collectAsState()
-
-        // Offline Catalog Section
-        SettingsSection(strings.offlineCatalogSection) {
-            InfoRow(strings.artists, stats.artists.toString())
-            HorizontalDivider(color = Border)
-            InfoRow(strings.songs, stats.songs.toString())
-            HorizontalDivider(color = Border)
-            InfoRow(strings.catalogSize, formatBytes(stats.catalogBytes, strings.calculating))
-            HorizontalDivider(color = Border)
-
-            Spacer(Modifier.height(10.dp))
-            if (isDownloadingCatalog) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = catalogDownloadStatus,
-                        color = PrimaryText,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium
-                    )
-                    LinearProgressIndicator(
-                        progress = { catalogDownloadProgress / 100f },
-                        modifier = Modifier.fillMaxWidth().height(8.dp),
-                        color = AccentGold,
-                        trackColor = Border
-                    )
-                }
-            } else {
+            },
+            confirmButton = {
                 Button(
-                    onClick = { viewModel.downloadCatalog() },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (stats.songs < 1000) AccentGold else CardSurface
-                    ),
-                    border = if (stats.songs >= 1000) BorderStroke(1.dp, Border) else null,
+                    onClick = {
+                        isTransferring = true
+                        scope.launch {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                            clipboard?.setPrimaryClip(ClipData.newPlainText("KordApp License", transferKey))
+                            Toast.makeText(context, "Kode lisensi berhasil disalin!", Toast.LENGTH_SHORT).show()
+
+                            val (ok, msg) = LicenseRepository.transferLicenseSelfService(context)
+                            isTransferring = false
+                            showTransferDialog = false
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                            if (ok) {
+                                onLicenseTransferred()
+                            }
+                        }
+                    },
+                    enabled = !isTransferring,
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGold),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Icon(
-                        imageVector = if (stats.songs < 1000) Icons.Filled.CloudDownload else Icons.Filled.Refresh,
-                        contentDescription = null,
-                        tint = if (stats.songs < 1000) Background else AccentGold,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
                     Text(
-                        text = if (stats.songs < 1000) "Tarik 157k Lagu Offline (80 MB)" else "Perbarui / Unduh Ulang Database",
-                        color = if (stats.songs < 1000) Background else PrimaryText,
-                        fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.labelLarge
+                        text = if (isTransferring) "Menyalin..." else "Salin Kode",
+                        color = Color(0xFF0C0E12),
+                        fontWeight = FontWeight.Bold
                     )
                 }
-            }
-            if (catalogDownloadError != null) {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = catalogDownloadError!!,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-
-        val isLicensed = remember { LicenseRepository.isLicensed(context) }
-        val savedKey = remember { LicenseRepository.getSavedLicenseKey(context) }
-        val deviceId = remember { LicenseRepository.getDeviceId(context) }
-
-        // License & Device Section
-        SettingsSection(strings.licenseAndDeviceSection) {
-            InfoRow(strings.licenseStatus, if (isLicensed) strings.licenseActivePro else strings.licenseInactive)
-            if (isLicensed && savedKey != null) {
-                HorizontalDivider(color = Border)
-                InfoRow(strings.licenseKey, savedKey)
-                HorizontalDivider(color = Border)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showTransferDialog = true }
-                        .padding(vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showTransferDialog = false },
+                    enabled = !isTransferring
                 ) {
-                    Text(strings.transferLicenseToOtherPhone, color = AccentGold, fontWeight = FontWeight.Medium)
-                    Text("›", color = AccentGold)
+                    Text("Batal", color = MutedText)
                 }
-            }
-            HorizontalDivider(color = Border)
-            InfoRow(strings.deviceId, deviceId)
-        }
+            },
+            containerColor = CardSurface
+        )
+    }
 
-        if (showTransferDialog && savedKey != null) {
-            AlertDialog(
-                onDismissRequest = { if (!isTransferring) showTransferDialog = false },
-                title = { Text(strings.transferLicenseTitle, color = PrimaryText, fontWeight = FontWeight.Bold) },
-                text = {
+    // Dialog Konfirmasi Hapus Paket Katalog
+    if (deleteTierTarget != null) {
+        val target = deleteTierTarget!!
+        val tierTitle = when (target) {
+            "A" -> "Paket A (79k Lagu Easy Chord)"
+            "B" -> "Paket B (47k Lagu Penyempurnaan)"
+            "C" -> "Paket C (32k Lagu Arsip)"
+            else -> "Paket $target"
+        }
+        AlertDialog(
+            onDismissRequest = { deleteTierTarget = null },
+            title = {
+                Text("Hapus $tierTitle?", color = PrimaryText, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text(
+                    text = "Lagu-lagu di dalam $tierTitle akan dihapus dari penyimpanan perangkat Anda untuk menghemat ruang memori. Paket lagu lainnya akan tetap aman dan dapat dimainkan.",
+                    color = MutedText,
+                    fontSize = 13.5.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val toDelete = target
+                        deleteTierTarget = null
+                        viewModel.deleteTier(toDelete)
+                        Toast.makeText(context, "$tierTitle berhasil dihapus", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Hapus", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTierTarget = null }) {
+                    Text("Batal", color = MutedText)
+                }
+            },
+            containerColor = CardSurface
+        )
+    }
+
+    // Dialog Update APK Tersedia
+    if (showUpdateDialog && updateInfo != null) {
+        val info = updateInfo!!
+        AlertDialog(
+            onDismissRequest = {
+                if (!info.isForceUpdate && !isDownloadingUpdate) showUpdateDialog = false
+            },
+            title = {
+                Text("Pembaruan Tersedia!", color = PrimaryText, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = strings.transferLicenseMessage(savedKey),
+                        text = "Versi baru v${info.latestVersionName} telah dirilis.",
+                        color = AccentGold,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = info.changelog,
                         color = MutedText,
                         fontSize = 13.sp
                     )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            isTransferring = true
-                            scope.launch {
-                                val (ok, msg) = LicenseRepository.transferLicenseSelfService(context)
-                                isTransferring = false
-                                showTransferDialog = false
-                                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
-                                if (ok) {
-                                    onLicenseTransferred()
-                                }
-                            }
-                        },
-                        enabled = !isTransferring,
-                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold)
-                    ) {
-                        Text(
-                            text = if (isTransferring) strings.releasingLicense else strings.releaseLicenseAction,
-                            color = Color.Black,
-                            fontWeight = FontWeight.Bold
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isDownloadingUpdate = true
+                        com.chordapp.repositories.UpdateRepository.startDownloadAndInstall(
+                            context,
+                            info.downloadUrl,
+                            "KordApp-v${info.latestVersionName}.apk"
                         )
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showTransferDialog = false },
-                        enabled = !isTransferring
-                    ) {
-                        Text(strings.cancel, color = MutedText)
-                    }
-                },
-                containerColor = CardSurface
-            )
-        }
-
-        // Language Picker Dialog
-        if (showLanguageDialog) {
-            AlertDialog(
-                onDismissRequest = { showLanguageDialog = false },
-                title = { Text(strings.selectLanguage, color = PrimaryText, fontWeight = FontWeight.Bold) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AppLanguage.entries.forEach { lang ->
-                            val isSelected = currentLanguage == lang
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        viewModel.setLanguage(lang)
-                                        showLanguageDialog = false
-                                    }
-                                    .padding(vertical = 12.dp, horizontal = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = lang.displayName,
-                                    color = if (isSelected) AccentGold else PrimaryText,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                if (isSelected) {
-                                    Text("✓", color = AccentGold, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showLanguageDialog = false }) {
-                        Text(strings.cancel, color = MutedText)
-                    }
-                },
-                containerColor = CardSurface
-            )
-        }
-
-        if (showThemeDialog) {
-            AlertDialog(
-                onDismissRequest = { showThemeDialog = false },
-                title = { Text(strings.selectTheme, color = PrimaryText, fontWeight = FontWeight.Bold) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        com.chordapp.ui.theme.AppThemeMode.entries.forEach { mode ->
-                            val isSelected = mode == currentTheme
-                            val label = when (mode) {
-                                com.chordapp.ui.theme.AppThemeMode.DARK -> strings.themeDark
-                                com.chordapp.ui.theme.AppThemeMode.LIGHT -> strings.themeLight
-                                com.chordapp.ui.theme.AppThemeMode.PAPER -> strings.themePaper
-                                com.chordapp.ui.theme.AppThemeMode.BLACKBOARD -> strings.themeBlackboard
-                                com.chordapp.ui.theme.AppThemeMode.GREENBOARD -> strings.themeGreenboard
-                            }
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        viewModel.setTheme(mode)
-                                        showThemeDialog = false
-                                    }
-                                    .padding(vertical = 12.dp, horizontal = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    label,
-                                    color = if (isSelected) AccentGold else PrimaryText,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                if (isSelected) {
-                                    Text("✓", color = AccentGold, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showThemeDialog = false }) {
-                        Text(strings.cancel, color = MutedText)
-                    }
-                },
-                containerColor = CardSurface
-            )
-        }
-
-        // Application Section
-        SettingsSection(strings.applicationSection) {
-            InfoRow(strings.version, viewModel.versionName)
-            HorizontalDivider(color = Border)
-            InfoRow(strings.apkSize, formatBytes(stats.appBytes, strings.calculating))
-            HorizontalDivider(color = Border)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(enabled = !isCheckingUpdate) {
-                        isCheckingUpdate = true
-                        scope.launch {
-                            val result = com.chordapp.repositories.UpdateRepository.checkAppUpdate(context)
-                            isCheckingUpdate = false
-                            result.onSuccess { info ->
-                                if (info.hasUpdate) {
-                                    updateInfo = info
-                                    showUpdateDialog = true
-                                } else {
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "Aplikasi sudah versi terbaru (v${viewModel.versionName})",
-                                        android.widget.Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }.onFailure {
-                                android.widget.Toast.makeText(
-                                    context,
-                                    "Gagal memeriksa pembaruan: ${it.message ?: "Koneksi bermasalah"}",
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
-                    }
-                    .padding(vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Periksa Pembaruan", color = PrimaryText)
-                Text(if (isCheckingUpdate) "Memeriksa..." else "Cek Versi ›", color = AccentGold, fontWeight = FontWeight.SemiBold)
-            }
-            HorizontalDivider(color = Border)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onAboutClick)
-                    .padding(vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(strings.aboutApp, color = PrimaryText)
-                Text("›", color = AccentGold)
-            }
-        }
-
-        // Dialog Pembaruan Tersedia
-        if (showUpdateDialog && updateInfo != null) {
-            val info = updateInfo!!
-            AlertDialog(
-                onDismissRequest = {
-                    if (!info.isForceUpdate && !isDownloadingUpdate) showUpdateDialog = false
-                },
-                title = {
-                    Text("Pembaruan Tersedia!", color = PrimaryText, fontWeight = FontWeight.Bold)
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            "Versi baru v${info.latestVersionName} telah dirilis.",
-                            color = AccentGold,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            "Catatan Perubahan:\n${info.changelog}",
-                            color = MutedText,
-                            fontSize = 13.sp
-                        )
-                        if (isDownloadingUpdate) {
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                "Sedang mengunduh APK... Cek status bar notifikasi.",
-                                color = AccentGold,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            isDownloadingUpdate = true
-                            com.chordapp.repositories.UpdateRepository.startDownloadAndInstall(
-                                context,
-                                info.downloadUrl,
-                                "KordApp-v${info.latestVersionName}.apk"
-                            )
-                            android.widget.Toast.makeText(
-                                context,
-                                "Unduhan dimulai. Cek panel notifikasi setelah selesai.",
-                                android.widget.Toast.LENGTH_LONG
-                            ).show()
-                            if (!info.isForceUpdate) {
-                                showUpdateDialog = false
-                                isDownloadingUpdate = false
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold),
-                        enabled = !isDownloadingUpdate
-                    ) {
-                        Text("Update Otomatis", color = Color.Black, fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(
-                            onClick = {
-                                val browserIntent = android.content.Intent(
-                                    android.content.Intent.ACTION_VIEW,
-                                    android.net.Uri.parse(info.downloadUrl)
-                                ).apply {
-                                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-                                context.startActivity(browserIntent)
-                                showUpdateDialog = false
-                            }
-                        ) {
-                            Text("Unduh via Browser", color = AccentGold, fontSize = 12.sp)
-                        }
+                        Toast.makeText(context, "Unduhan dimulai. Cek notifikasi.", Toast.LENGTH_LONG).show()
                         if (!info.isForceUpdate) {
-                            TextButton(
-                                onClick = { showUpdateDialog = false },
-                                enabled = !isDownloadingUpdate
-                            ) {
-                                Text("Nanti", color = MutedText, fontSize = 12.sp)
-                            }
+                            showUpdateDialog = false
+                            isDownloadingUpdate = false
                         }
-                    }
-                },
-                containerColor = CardSurface
-            )
-        }
-
-        if (showPinDialogForServer != null) {
-            val srv = showPinDialogForServer!!
-            AlertDialog(
-                onDismissRequest = { showPinDialogForServer = null },
-                title = { Text(strings.bandEnterPinTitle) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(strings.bandEnterPinPrompt)
-                        OutlinedTextField(
-                            value = pinDialogInput,
-                            onValueChange = { if (it.length <= 4) pinDialogInput = it },
-                            placeholder = { Text(strings.bandPinPlaceholder) },
-                            singleLine = true,
-                            isError = pinDialogError != null
-                        )
-                        if (pinDialogError != null) {
-                            Text(
-                                pinDialogError!!,
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            viewModel.connectToBandServer(srv, pinDialogInput) { err ->
-                                pinDialogError = err
-                            }
-                            showPinDialogForServer = null
-                            onNavigateToStandby()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Background)
-                    ) {
-                        Text(strings.bandConnect, fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showPinDialogForServer = null }) {
-                        Text("Batal", color = MutedText)
-                    }
-                },
-                containerColor = CardSurface
-            )
-        }
-
-        Text(
-            text = strings.offlineDisclaimer,
-            color = MutedText,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(bottom = 12.dp)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGold),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Update", color = Color(0xFF0C0E12), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUpdateDialog = false }) {
+                    Text("Nanti", color = MutedText)
+                }
+            },
+            containerColor = CardSurface
         )
     }
-}
+
+    // Dialog PIN untuk Client Connect
+    if (showPinDialogForServer != null) {
+        val srv = showPinDialogForServer!!
+        AlertDialog(
+            onDismissRequest = { showPinDialogForServer = null },
+            title = { Text(strings.bandEnterPinTitle, color = PrimaryText, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(strings.bandEnterPinPrompt, color = MutedText, fontSize = 13.sp)
+                    OutlinedTextField(
+                        value = pinDialogInput,
+                        onValueChange = { if (it.length <= 4) pinDialogInput = it },
+                        placeholder = { Text(strings.bandPinPlaceholder) },
+                        singleLine = true,
+                        isError = pinDialogError != null,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AccentGold,
+                            unfocusedBorderColor = Border
+                        )
+                    )
+                    if (pinDialogError != null) {
+                        Text(
+                            text = pinDialogError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.connectToBandServer(srv, pinDialogInput) { err ->
+                            pinDialogError = err
+                        }
+                        showPinDialogForServer = null
+                        onNavigateToStandby()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Hubungkan", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPinDialogForServer = null }) {
+                    Text("Batal", color = MutedText)
+                }
+            },
+            containerColor = CardSurface
+        )
+    }
 }
 
 @Composable
 private fun SettingsSection(title: String, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, color = AccentGold, fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.labelMedium)
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Text(
+            text = title,
+            color = MutedText,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 11.sp,
+            letterSpacing = 0.8.sp,
+            modifier = Modifier.padding(start = 6.dp)
+        )
         Column(
-            modifier = Modifier.fillMaxWidth().background(CardSurface, RoundedCornerShape(14.dp))
-                .padding(horizontal = 14.dp)
-        ) { content() }
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(CardSurface)
+                .border(1.dp, Border, RoundedCornerShape(20.dp))
+                .padding(horizontal = 16.dp, vertical = 2.dp)
+        ) {
+            content()
+        }
     }
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = PrimaryText)
-        Text(value, color = MutedText)
+private fun TierCatalogCard(
+    title: String,
+    count: String,
+    size: String,
+    isInstalled: Boolean,
+    isDownloading: Boolean,
+    actionLabel: String? = null,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val buttonText = actionLabel ?: if (isInstalled) "Hapus" else "Unduh"
+    val isDanger = buttonText == "Hapus"
+    val isSuccess = buttonText == "Aktif"
+
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(RaisedSurface)
+            .border(
+                width = 1.dp,
+                color = if (isInstalled) AccentGold else Border,
+                shape = RoundedCornerShape(14.dp)
+            )
+            .padding(vertical = 10.dp, horizontal = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        Text(
+            text = title,
+            color = if (isInstalled) AccentGold else PrimaryText,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = count,
+            color = MutedText,
+            fontSize = 10.5.sp
+        )
+        Text(
+            text = size,
+            color = MutedText,
+            fontSize = 10.sp
+        )
+        Spacer(Modifier.height(3.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    when {
+                        isDanger -> Color(0x24EF4444)
+                        isSuccess -> Color(0x1AE5A93C)
+                        else -> RaisedSurface
+                    }
+                )
+                .border(
+                    width = 1.dp,
+                    color = when {
+                        isDanger -> Color(0xFFEF4444)
+                        isSuccess -> AccentGold.copy(alpha = 0.5f)
+                        else -> Border
+                    },
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .clickable(enabled = !isDownloading) { onAction() }
+                .padding(vertical = 5.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = buttonText,
+                color = when {
+                    isDanger -> Color(0xFFEF4444)
+                    isSuccess -> AccentGold
+                    else -> MutedText
+                },
+                fontSize = 10.5.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
-private fun formatBytes(bytes: Long, calculatingText: String): String = when {
-    bytes <= 0L -> calculatingText
+private fun formatBytes(bytes: Long, fallback: String): String = when {
+    bytes <= 0L -> fallback
     bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
     bytes >= 1024L -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)
     else -> "$bytes B"

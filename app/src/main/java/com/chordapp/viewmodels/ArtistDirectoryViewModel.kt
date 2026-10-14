@@ -58,6 +58,20 @@ class ArtistDirectoryViewModel(private val repository: CatalogRepository) : View
 
     private var currentArtistSlug: String? = null
 
+    init {
+        viewModelScope.launch {
+            repository.catalogUpdateFlow.collect {
+                val slug = currentArtistSlug ?: return@collect
+                val info = repository.getArtistInfo(slug)
+                if (info != null) {
+                    _artistName.value = info.artist
+                    _region.value = info.region
+                }
+                _rawSongs.value = repository.getArtistSongs(slug)
+            }
+        }
+    }
+
     fun setSortOrder(order: ArtistSongSortOrder) {
         _sortOrder.value = order
     }

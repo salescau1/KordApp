@@ -302,25 +302,87 @@ def worker_crawl_batch(batch_num: int):
             state.threads.pop(batch_num, None)
 
 
+KNOWN_BANDS = {
+    "SIMON & GARFUNKEL", "SIMON AND GARFUNKEL",
+    "BROOKS & DUNN", "BROOKS AND DUNN",
+    "HALL & OATES", "DARYL HALL & JOHN OATES", "DARYL HALL AND JOHN OATES",
+    "EARTH, WIND & FIRE", "EARTH, WIND AND FIRE",
+    "KOOL & THE GANG", "KOOL AND THE GANG",
+    "TOM PETTY AND THE HEARTBREAKERS", "TOM PETTY & THE HEARTBREAKERS",
+    "BOB MARLEY AND THE WAILERS", "BOB MARLEY & THE WAILERS",
+    "HUEY LEWIS AND THE NEWS", "HUEY LEWIS & THE NEWS",
+    "JOAN JETT AND THE BLACKHEARTS", "JOAN JETT & THE BLACKHEARTS",
+    "KC AND THE SUNSHINE BAND", "KC & THE SUNSHINE BAND",
+    "DEREK AND THE DOMINOS", "HOOTIE AND THE BLOWFISH",
+    "ME FIRST AND THE GIMME GIMMES",
+    "THE MAMAS AND THE PAPAS", "THE MAMAS & THE PAPAS",
+    "OF MONSTERS AND MEN", "FLORENCE + THE MACHINE", "FLORENCE AND THE MACHINE",
+    "IRON & WINE", "IRON AND WINE",
+    "BONDAN PRAKOSO AND FADE2BLACK", "BONDAN PRAKOSO & FADE2BLACK",
+    "CROSBY, STILLS & NASH", "CROSBY, STILLS, NASH & YOUNG",
+    "EMERSON, LAKE & PALMER", "BLOOD, SWEAT & TEARS",
+    "LADY A", "DAN + SHAY", "ALICE IN CHAINS", "BOYS LIKE GIRLS",
+    "MUMFORD & SONS", "MUMFORD AND SONS",
+    "THE BLACK EYED PEAS", "BLACK EYED PEAS",
+    "PETER, PAUL AND MARY", "PETER, PAUL & MARY",
+    "TONY! TONI! TONÉ!", "TONY! TONI! TONE!", "BELL BIV DEVOE"
+}
+
+def smart_title_case(name: str) -> str:
+    if not name:
+        return ""
+    words = name.strip().split()
+    cased_words = []
+    for w in words:
+        if w.upper() in {"A$AP", "B.B.", "MGMT", "AC/DC", "U2", "INXS", "REM", "R.E.M.", "UB40", "O.A.R.", "D.R.A.M."}:
+            cased_words.append(w.upper())
+        elif len(w) > 1 and w[0] == '(' and w[1:].upper() in {"A$AP", "B.B."}:
+            cased_words.append(w)
+        else:
+            cased_words.append(w.capitalize())
+    return " ".join(cased_words)
+
 def normalize_artist_and_title(artist: str, title: str) -> tuple[str, str]:
     artist = (artist or "").strip()
     title = (title or "").strip()
-    
+    art_upper = artist.upper()
+
+    if any(kb == art_upper or f" {kb} " in f" {art_upper} " for kb in KNOWN_BANDS):
+        return artist, title
+
     # 1. Clean double duplicate name separated by comma (GT artifact: "BILLIE EILISH, BILLIE EILISH")
     if "," in artist:
         parts = [p.strip() for p in artist.split(",") if p.strip()]
         if len(parts) >= 2 and parts[0].lower() == parts[1].lower():
             artist = parts[0]
             
-    # 2. Check feat / featuring in artist name
+    # 2. Check feat / featuring in artist name or comma/AND separation in GT
     has_feat_in_title = bool(re.search(r"\b(feat\.?|ft\.?|featuring)\b", title, re.I))
+    lead_art = None
+    feat_arts = []
+
     m_feat = re.search(r"^(.*?)\s+(?:feat\.?|ft\.?|featuring)\s+(.*)$", artist, re.I)
     if m_feat:
-        main_art = m_feat.group(1).strip()
-        feat_art = m_feat.group(2).strip()
-        if not has_feat_in_title and feat_art:
-            title = f"{title} (feat. {feat_art})"
-        artist = main_art
+        lead_art = m_feat.group(1).strip()
+        feat_arts = [m_feat.group(2).strip()]
+    elif "," in artist:
+        parts = [p.strip() for p in artist.split(",") if p.strip()]
+        if len(parts) >= 2:
+            lead_art = parts[0]
+            feat_arts = parts[1:]
+    elif " AND " in artist.upper():
+        parts = re.split(r"\s+(?:AND|and)\s+", artist)
+        if len(parts) >= 2:
+            lead_art = parts[0].strip()
+            feat_arts = [p.strip() for p in parts[1:] if p.strip()]
+
+    if lead_art and feat_arts:
+        clean_lead = smart_title_case(lead_art)
+        clean_feats = [smart_title_case(f) for f in feat_arts if f]
+        feat_str = ", ".join(clean_feats[:-1]) + (" & " if len(clean_feats) > 1 else "") + clean_feats[-1] if clean_feats else ""
+        if not has_feat_in_title and feat_str:
+            title = f"{title} (feat. {feat_str})"
+        artist = clean_lead
 
     return artist, title
 

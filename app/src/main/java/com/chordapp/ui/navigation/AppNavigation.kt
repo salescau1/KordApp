@@ -520,6 +520,9 @@ private fun AppNavHost(
         }
         composable(Screen.BandStandby.route) {
             com.chordapp.ui.screens.p2p.BandStandbyScreen(
+                onCloseClick = {
+                    navController.popBackStack()
+                },
                 onDisconnectClick = {
                     com.chordapp.p2p.BandSessionManager.disconnectClient()
                     navController.popBackStack()

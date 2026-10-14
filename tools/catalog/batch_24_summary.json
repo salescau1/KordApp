@@ -1,0 +1,290 @@
+[
+  {
+    "name": "The Vines",
+    "region": "BARAT",
+    "gt_harvested": 8,
+    "ug_harvested": 50,
+    "ct_harvested": 0,
+    "inserted": 58,
+    "tiers": {
+      "A": 23,
+      "C": 34,
+      "B": 1
+    },
+    "total_in_db": 58,
+    "unique_titles": 51
+  },
+  {
+    "name": "The Hives",
+    "region": "BARAT",
+    "gt_harvested": 54,
+    "ug_harvested": 44,
+    "ct_harvested": 0,
+    "inserted": 98,
+    "tiers": {
+      "A": 59,
+      "B": 2,
+      "C": 37
+    },
+    "total_in_db": 98,
+    "unique_titles": 93
+  },
+  {
+    "name": "The Fratellis",
+    "region": "BARAT",
+    "gt_harvested": 47,
+    "ug_harvested": 37,
+    "ct_harvested": 0,
+    "inserted": 84,
+    "tiers": {
+      "A": 60,
+      "B": 16,
+      "C": 8
+    },
+    "total_in_db": 84,
+    "unique_titles": 61
+  },
+  {
+    "name": "Wolfmother",
+    "region": "BARAT",
+    "gt_harvested": 35,
+    "ug_harvested": 38,
+    "ct_harvested": 0,
+    "inserted": 73,
+    "tiers": {
+      "A": 45,
+      "C": 28
+    },
+    "total_in_db": 73,
+    "unique_titles": 64
+  },
+  {
+    "name": "The Darkness",
+    "region": "BARAT",
+    "gt_harvested": 20,
+    "ug_harvested": 47,
+    "ct_harvested": 0,
+    "inserted": 67,
+    "tiers": {
+      "A": 27,
+      "B": 5,
+      "C": 35
+    },
+    "total_in_db": 67,
+    "unique_titles": 58
+  },
+  {
+    "name": "The Subways",
+    "region": "BARAT",
+    "gt_harvested": 29,
+    "ug_harvested": 47,
+    "ct_harvested": 0,
+    "inserted": 76,
+    "tiers": {
+      "A": 39,
+      "C": 32,
+      "B": 5
+    },
+    "total_in_db": 76,
+    "unique_titles": 66
+  },
+  {
+    "name": "Caesars",
+    "region": "BARAT",
+    "gt_harvested": 37,
+    "ug_harvested": 32,
+    "ct_harvested": 0,
+    "inserted": 69,
+    "tiers": {
+      "A": 39,
+      "B": 2,
+      "C": 28
+    },
+    "total_in_db": 69,
+    "unique_titles": 64
+  },
+  {
+    "name": "Mando Diao",
+    "region": "BARAT",
+    "gt_harvested": 20,
+    "ug_harvested": 42,
+    "ct_harvested": 0,
+    "inserted": 62,
+    "tiers": {
+      "A": 38,
+      "C": 20,
+      "B": 4
+    },
+    "total_in_db": 62,
+    "unique_titles": 51
+  },
+  {
+    "name": "Matchbox 20",
+    "region": "BARAT",
+    "gt_harvested": 61,
+    "ug_harvested": 21,
+    "ct_harvested": 0,
+    "inserted": 0,
+    "tiers": {},
+    "total_in_db": 0,
+    "unique_titles": 0
+  },
+  {
+    "name": "Velvet Revolver",
+    "region": "BARAT",
+    "gt_harvested": 2,
+    "ug_harvested": 31,
+    "ct_harvested": 0,
+    "inserted": 33,
+    "tiers": {
+      "A": 11,
+      "C": 18,
+      "B": 4
+    },
+    "total_in_db": 33,
+    "unique_titles": 28
+  },
+  {
+    "name": "Theory of a Deadman",
+    "region": "BARAT",
+    "gt_harvested": 12,
+    "ug_harvested": 43,
+    "ct_harvested": 0,
+    "inserted": 55,
+    "tiers": {
+      "A": 30,
+      "C": 20,
+      "B": 5
+    },
+    "total_in_db": 55,
+    "unique_titles": 45
+  },
+  {
+    "name": "A Rocket to the Moon",
+    "region": "BARAT",
+    "gt_harvested": 1,
+    "ug_harvested": 25,
+    "ct_harvested": 0,
+    "inserted": 26,
+    "tiers": {
+      "A": 13,
+      "B": 5,
+      "C": 8
+    },
+    "total_in_db": 26,
+    "unique_titles": 15
+  },
+  {
+    "name": "All Time Low",
+    "region": "BARAT",
+    "gt_harvested": 68,
+    "ug_harvested": 15,
+    "ct_harvested": 0,
+    "inserted": 83,
+    "tiers": {
+      "A": 65,
+      "B": 18
+    },
+    "total_in_db": 83,
+    "unique_titles": 63
+  },
+  {
+    "name": "Bowling for Soup",
+    "region": "BARAT",
+    "gt_harvested": 76,
+    "ug_harvested": 28,
+    "ct_harvested": 0,
+    "inserted": 104,
+    "tiers": {
+      "A": 82,
+      "B": 18,
+      "C": 4
+    },
+    "total_in_db": 104,
+    "unique_titles": 84
+  },
+  {
+    "name": "Maneskin",
+    "region": "BARAT",
+    "gt_harvested": 45,
+    "ug_harvested": 45,
+    "ct_harvested": 0,
+    "inserted": 90,
+    "tiers": {
+      "A": 56,
+      "B": 31,
+      "C": 3
+    },
+    "total_in_db": 90,
+    "unique_titles": 52
+  },
+  {
+    "name": "Royal Blood",
+    "region": "BARAT",
+    "gt_harvested": 1,
+    "ug_harvested": 45,
+    "ct_harvested": 0,
+    "inserted": 46,
+    "tiers": {
+      "A": 18,
+      "B": 2,
+      "C": 26
+    },
+    "total_in_db": 46,
+    "unique_titles": 42
+  },
+  {
+    "name": "Greta Van Fleet",
+    "region": "BARAT",
+    "gt_harvested": 2,
+    "ug_harvested": 48,
+    "ct_harvested": 0,
+    "inserted": 50,
+    "tiers": {
+      "A": 29,
+      "B": 6,
+      "C": 15
+    },
+    "total_in_db": 50,
+    "unique_titles": 39
+  },
+  {
+    "name": "Dere",
+    "region": "INDO",
+    "gt_harvested": 7,
+    "ug_harvested": 11,
+    "ct_harvested": 17,
+    "inserted": 35,
+    "tiers": {
+      "A": 35
+    },
+    "total_in_db": 35,
+    "unique_titles": 17
+  },
+  {
+    "name": "Danilla",
+    "region": "INDO",
+    "gt_harvested": 5,
+    "ug_harvested": 44,
+    "ct_harvested": 11,
+    "inserted": 12,
+    "tiers": {
+      "A": 12
+    },
+    "total_in_db": 16,
+    "unique_titles": 16
+  },
+  {
+    "name": "Gilga Sahid",
+    "region": "INDO",
+    "gt_harvested": 0,
+    "ug_harvested": 6,
+    "ct_harvested": 11,
+    "inserted": 11,
+    "tiers": {
+      "A": 11
+    },
+    "total_in_db": 17,
+    "unique_titles": 16
+  }
+]

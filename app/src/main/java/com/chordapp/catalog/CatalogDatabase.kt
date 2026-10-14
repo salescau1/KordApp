@@ -8,13 +8,20 @@ import org.tukaani.xz.XZInputStream
 
 @Database(
     entities = [CatalogSongEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class CatalogDatabase : RoomDatabase() {
     abstract fun catalogDao(): CatalogDao
 
     companion object {
+        val MIGRATION_5_6 = object : androidx.room.migration.Migration(5, 6) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE songs ADD COLUMN tier TEXT NOT NULL DEFAULT 'A'")
+                db.execSQL("CREATE INDEX IF NOT EXISTS idx_tier ON songs (tier)")
+            }
+        }
+
         @Volatile
         private var INSTANCE: CatalogDatabase? = null
 
@@ -38,6 +45,7 @@ abstract class CatalogDatabase : RoomDatabase() {
                 }
 
                 val instance = builder
+                    .addMigrations(MIGRATION_5_6)
                     .fallbackToDestructiveMigration()
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
@@ -56,6 +64,11 @@ abstract class CatalogDatabase : RoomDatabase() {
                 INSTANCE?.close()
                 INSTANCE = null
             }
+        }
+
+        fun notifyDatabaseReloaded(context: Context) {
+            getDatabase(context)
+            com.chordapp.repositories.CatalogRepository.notifyCatalogUpdated()
         }
 
         /**
@@ -100,10 +113,79 @@ abstract class CatalogDatabase : RoomDatabase() {
                 // Inisialisasi ulang database dan pastikan index siap
                 val reloaded = getDatabase(context)
                 reloaded.openHelper.writableDatabase.execSQL("CREATE INDEX IF NOT EXISTS idx_source_url ON songs (source_url)")
+                notifyDatabaseReloaded(context)
                 true
             } catch (e: Exception) {
                 android.util.Log.e("CatalogDatabase", "Gagal mengimpor catalog.db.xz", e)
                 if (tempDb.exists()) tempDb.delete()
+                false
+            }
+        }
+
+        /**
+         * Mengimpor satu paket database (A, B, atau C) ke dalam catalog aktif secara modular.
+         */
+        fun importTierDatabaseFromXz(context: Context, xzFile: java.io.File, tier: String): Boolean {
+            val dbFile = context.getDatabasePath("catalog.db")
+            if (!dbFile.exists()) {
+                return importDatabaseFromXz(context, xzFile)
+            }
+
+            val tempDb = java.io.File(context.cacheDir, "temp_tier_$tier.db")
+            return try {
+                if (tempDb.exists()) tempDb.delete()
+                java.io.FileInputStream(xzFile).use { fis ->
+                    EncryptedAssetInputStream(fis).use { eis ->
+                        XZInputStream(eis).use { xzis ->
+                            tempDb.outputStream().use { fos ->
+                                xzis.copyTo(fos)
+                            }
+                        }
+                    }
+                }
+
+                if (!tempDb.exists() || tempDb.length() < 100_000) {
+                    if (tempDb.exists()) tempDb.delete()
+                    return false
+                }
+
+                val db = getDatabase(context).openHelper.writableDatabase
+                db.beginTransaction()
+                try {
+                    db.execSQL("ATTACH DATABASE '${tempDb.absolutePath.replace("'", "''")}' AS temp_tier_db")
+                    db.execSQL("INSERT OR REPLACE INTO songs SELECT * FROM temp_tier_db.songs")
+                    db.execSQL("DETACH DATABASE temp_tier_db")
+                    db.setTransactionSuccessful()
+                } finally {
+                    db.endTransaction()
+                }
+
+                tempDb.delete()
+                notifyDatabaseReloaded(context)
+                true
+            } catch (e: Exception) {
+                android.util.Log.e("CatalogDatabase", "Gagal mengimpor paket $tier", e)
+                if (tempDb.exists()) tempDb.delete()
+                false
+            }
+        }
+
+        /**
+         * Menghapus paket lagu tertentu (A, B, atau C) dari database lokal dan memadatkan penyimpanan.
+         */
+        suspend fun deleteTier(context: Context, tier: String): Boolean {
+            return try {
+                val dao = getDatabase(context).catalogDao()
+                dao.deleteSongsByTier(tier)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    try {
+                        getDatabase(context).openHelper.writableDatabase.execSQL("VACUUM")
+                    } catch (_: Exception) {}
+                }
+                notifyDatabaseReloaded(context)
+                true
+            } catch (e: Exception) {
+                android.util.Log.e("CatalogDatabase", "Gagal menghapus paket $tier", e)
                 false
             }
         }

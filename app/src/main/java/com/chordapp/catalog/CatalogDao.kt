@@ -267,4 +267,10 @@ interface CatalogDao {
 
     @Query("DELETE FROM songs WHERE id IN (:songIds)")
     suspend fun deleteSongsByIds(songIds: List<Long>): Int
+
+    @Query("SELECT COUNT(*) FROM songs WHERE tier = :tier")
+    suspend fun getSongCountByTier(tier: String): Int
+
+    @Query("DELETE FROM songs WHERE tier = :tier")
+    suspend fun deleteSongsByTier(tier: String): Int
 }

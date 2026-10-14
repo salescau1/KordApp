@@ -27,8 +27,11 @@ data class SetlistItemResolution(
 
 class UserdataRepository(
     private val userDao: UserdataDao,
-    private val catalogDao: CatalogDao
+    private val catalogDaoProvider: () -> CatalogDao
 ) {
+    constructor(userDao: UserdataDao, catalogDao: CatalogDao) : this(userDao, { catalogDao })
+
+    private val catalogDao: CatalogDao get() = catalogDaoProvider()
 
     // Setlists
     fun getAllSetlists() = userDao.getAllSetlists()

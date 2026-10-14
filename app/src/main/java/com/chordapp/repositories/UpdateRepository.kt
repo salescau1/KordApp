@@ -254,7 +254,7 @@ object UpdateRepository {
                 }
             }
 
-            onProgress(88, "Mengekstrak 157.000 lagu ke penyimpanan...")
+            onProgress(88, "Mengekstrak 158.000 lagu ke penyimpanan...")
             val success = com.chordapp.catalog.CatalogDatabase.importDatabaseFromXz(context, destFile)
             destFile.delete()
 
@@ -262,7 +262,104 @@ object UpdateRepository {
                 error("Gagal mengekstrak database")
             }
 
-            onProgress(100, "Selesai! 157.000 lagu siap dimainkan offline.")
+            onProgress(100, "Selesai! 158.000 lagu siap dimainkan offline.")
+            true
+        }
+    }
+
+    fun getTierCatalogUrl(tier: String): String {
+        val fileName = when (tier.uppercase()) {
+            "A" -> "catalog_a.db.xz"
+            "B" -> "catalog_b.db.xz"
+            "C" -> "catalog_c.db.xz"
+            else -> "catalog.db.xz"
+        }
+        return "https://github.com/salescau1/KordApp-Release/releases/download/v1.2.0/$fileName"
+    }
+
+    /**
+     * Mengunduh dan memasang satu paket tertentu (A, B, atau C) ke katalog aktif secara modular.
+     */
+    suspend fun downloadAndInstallTier(
+        context: Context,
+        tier: String,
+        onProgress: (percent: Int, statusText: String) -> Unit
+    ): Result<Boolean> = withContext(Dispatchers.IO) {
+        val urlString = getTierCatalogUrl(tier)
+        val tierUpper = tier.uppercase()
+        val tierLabel = when (tierUpper) {
+            "A" -> "Paket A (79k Lagu)"
+            "B" -> "Paket B (47k Lagu)"
+            "C" -> "Paket C (32k Lagu)"
+            else -> "Katalog"
+        }
+
+        runCatching {
+            onProgress(0, "Menghubungkan ke server $tierLabel...")
+            val destFile = File(context.cacheDir, "catalog_${tierUpper.lowercase()}.db.xz")
+            if (destFile.exists()) destFile.delete()
+
+            val url = URL(urlString)
+            var conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 15000
+                readTimeout = 30000
+                instanceFollowRedirects = true
+            }
+
+            var responseCode = conn.responseCode
+            if (responseCode == HttpURLConnection.HTTP_MOVED_PERM || responseCode == HttpURLConnection.HTTP_MOVED_TEMP) {
+                val newUrl = conn.getHeaderField("Location")
+                if (!newUrl.isNullOrBlank()) {
+                    conn = (URL(newUrl).openConnection() as HttpURLConnection).apply {
+                        requestMethod = "GET"
+                        connectTimeout = 15000
+                        readTimeout = 30000
+                    }
+                    responseCode = conn.responseCode
+                }
+            }
+
+            if (responseCode !in 200..299) {
+                error("Gagal mengunduh $tierLabel: HTTP $responseCode")
+            }
+
+            val totalBytes = conn.contentLengthLong.takeIf { it > 0 } ?: when (tierUpper) {
+                "A" -> 40_000_000L
+                "B" -> 25_000_000L
+                "C" -> 16_000_000L
+                else -> 84_000_000L
+            }
+            var downloadedBytes = 0L
+
+            conn.inputStream.use { input ->
+                destFile.outputStream().use { output ->
+                    val buffer = ByteArray(32 * 1024)
+                    var read: Int
+                    var lastPercent = 0
+                    while (input.read(buffer).also { read = it } != -1) {
+                        output.write(buffer, 0, read)
+                        downloadedBytes += read
+                        val percent = ((downloadedBytes * 85) / totalBytes).toInt().coerceIn(0, 85)
+                        if (percent != lastPercent) {
+                            lastPercent = percent
+                            val mbDownloaded = downloadedBytes / (1024 * 1024)
+                            val mbTotal = totalBytes / (1024 * 1024)
+                            onProgress(percent, "Mengunduh $tierLabel: $mbDownloaded MB / $mbTotal MB")
+                        }
+                    }
+                }
+            }
+
+            onProgress(88, "Memasang $tierLabel ke database...")
+            val success = com.chordapp.catalog.CatalogDatabase.importTierDatabaseFromXz(context, destFile, tierUpper)
+            destFile.delete()
+
+            if (!success) {
+                error("Gagal memasang $tierLabel")
+            }
+
+            onProgress(100, "Selesai! $tierLabel siap dimainkan offline.")
             true
         }
     }

@@ -117,12 +117,14 @@ class HomeViewModel(
 
     private var refreshJob: kotlinx.coroutines.Job? = null
     private var favoriteUrls: Set<String> = emptySet()
+    private var lastHistory: List<PlayHistoryEntity> = emptyList()
 
     init {
         viewModelScope.launch {
             // Expanded Home shows the five newest plays. Compact Home deliberately
             // renders only the first row to retain its existing visual hierarchy.
             userdataRepository.getRecentlyPlayed(limit = 5).collect { history ->
+                lastHistory = history
                 _recent.value = history.map { resolve(it) }
             }
         }
@@ -146,6 +148,36 @@ class HomeViewModel(
                         row.copy(isFavorite = row.favoriteSourceUrl in favoriteUrls)
                     }
                 )
+            }
+        }
+        viewModelScope.launch {
+            catalogRepository.catalogUpdateFlow.collect {
+                // 1. Invalidate & refresh stats
+                cachedStats = null
+                val stats = HomeCatalogStats(
+                    artists = catalogRepository.getUniqueArtistCount(),
+                    songs = catalogRepository.getUniqueSongCount(),
+                    catalogBytes = catalogSizeBytes()
+                )
+                cachedStats = stats
+                _catalogStats.value = stats
+
+                // 2. Invalidate chart caches & re-resolve current rows if loaded
+                resolvedRows.clear()
+                val currentLoaded = _chart.value as? ChartState.Loaded
+                if (currentLoaded != null) {
+                    val updatedRows = currentLoaded.rows.map { row ->
+                        toRowUi(ChartEntry(row.rank, row.title, row.artist))
+                    }
+                    resolvedRows[_platform.value] = updatedRows
+                    chartRepository.saveCachedResolved(_platform.value, updatedRows)
+                    _chart.value = currentLoaded.copy(rows = updatedRows)
+                }
+
+                // 3. Re-resolve recently played songs against updated catalog
+                if (lastHistory.isNotEmpty()) {
+                    _recent.value = lastHistory.map { resolve(it) }
+                }
             }
         }
         showCached(_platform.value)

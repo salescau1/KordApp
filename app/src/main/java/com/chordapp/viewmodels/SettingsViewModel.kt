@@ -14,7 +14,10 @@ data class CatalogStats(
     val artists: Int = 0,
     val songs: Int = 0,
     val catalogBytes: Long = 0,
-    val appBytes: Long = 0
+    val appBytes: Long = 0,
+    val tierASongs: Int = 0,
+    val tierBSongs: Int = 0,
+    val tierCSongs: Int = 0
 )
 
 class SettingsViewModel(
@@ -73,7 +76,8 @@ class SettingsViewModel(
             )
 
             result.onSuccess {
-                refreshCatalogStats()
+                com.chordapp.catalog.CatalogDatabase.notifyDatabaseReloaded(appContext)
+                loadCatalogStats()
             }.onFailure { err ->
                 _catalogDownloadError.value = err.localizedMessage ?: "Gagal mengunduh katalog"
             }
@@ -82,17 +86,61 @@ class SettingsViewModel(
         }
     }
 
+    fun downloadTier(tier: String) {
+        if (_isDownloadingCatalog.value) return
+        viewModelScope.launch {
+            _isDownloadingCatalog.value = true
+            _catalogDownloadError.value = null
+            _catalogDownloadProgress.value = 0
+            _catalogDownloadStatus.value = "Menghubungkan..."
+
+            val result = com.chordapp.repositories.UpdateRepository.downloadAndInstallTier(
+                context = appContext,
+                tier = tier,
+                onProgress = { percent, status ->
+                    _catalogDownloadProgress.value = percent
+                    _catalogDownloadStatus.value = status
+                }
+            )
+
+            result.onSuccess {
+                loadCatalogStats()
+            }.onFailure { err ->
+                _catalogDownloadError.value = err.localizedMessage ?: "Gagal mengunduh paket $tier"
+            }
+
+            _isDownloadingCatalog.value = false
+        }
+    }
+
+    fun deleteTier(tier: String) {
+        viewModelScope.launch {
+            com.chordapp.catalog.CatalogDatabase.deleteTier(appContext, tier)
+            loadCatalogStats()
+        }
+    }
+
     fun dismissCatalogError() {
         _catalogDownloadError.value = null
     }
 
+    fun loadCatalogStats() {
+        refreshCatalogStats()
+    }
+
     fun refreshCatalogStats() {
         viewModelScope.launch {
+            val tierA = repository.getSongCountByTier("A")
+            val tierB = repository.getSongCountByTier("B")
+            val tierC = repository.getSongCountByTier("C")
             _catalogStats.value = CatalogStats(
                 artists = repository.getUniqueArtistCount(),
                 songs = repository.getUniqueSongCount(),
                 catalogBytes = appContext.getDatabasePath("catalog.db").takeIf(File::exists)?.length() ?: 0L,
-                appBytes = File(appContext.applicationInfo.sourceDir).length()
+                appBytes = File(appContext.applicationInfo.sourceDir).length(),
+                tierASongs = tierA,
+                tierBSongs = tierB,
+                tierCSongs = tierC
             )
         }
     }
@@ -102,6 +150,7 @@ class SettingsViewModel(
     val serverPin = com.chordapp.p2p.BandSessionManager.serverPin
     val isPinEnabled = com.chordapp.p2p.BandSessionManager.isPinEnabled
     val connectedClients = com.chordapp.p2p.BandSessionManager.connectedClients
+    val webStageUrl = com.chordapp.p2p.BandSessionManager.webStageUrl
     val discoveredServers = com.chordapp.p2p.BandSessionManager.discoveredServers
     val connectionState = com.chordapp.p2p.BandSessionManager.connectionState
 
@@ -114,6 +163,11 @@ class SettingsViewModel(
     fun disconnectBandClient() = com.chordapp.p2p.BandSessionManager.disconnectClient()
 
     init {
-        refreshCatalogStats()
+        loadCatalogStats()
+        viewModelScope.launch {
+            repository.catalogUpdateFlow.collect {
+                loadCatalogStats()
+            }
+        }
     }
 }

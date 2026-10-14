@@ -69,6 +69,20 @@ class SearchViewModel(private val repository: CatalogRepository) : ViewModel() {
 
     private var searchJob: Job? = null
 
+    init {
+        viewModelScope.launch {
+            repository.catalogUpdateFlow.collect {
+                val trimmed = _query.value.trim()
+                if (trimmed.isNotBlank() && _selectedSource.value == SearchSource.LOCAL) {
+                    searchJob?.cancel()
+                    _isSearching.value = false
+                    _artistResults.value = repository.searchArtists(trimmed, limit = 5)
+                    _songResults.value = repository.searchSongs(trimmed, limit = 50)
+                }
+            }
+        }
+    }
+
     fun setSource(source: SearchSource) {
         if (_selectedSource.value == source) return
         _selectedSource.value = source

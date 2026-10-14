@@ -129,8 +129,11 @@ object BandSessionManager {
     // Server State
     private val _connectedClients = MutableStateFlow<List<String>>(emptyList())
     val connectedClients: StateFlow<List<String>> = _connectedClients.asStateFlow()
+    private val _webStageUrl = MutableStateFlow<String?>(null)
+    val webStageUrl: StateFlow<String?> = _webStageUrl.asStateFlow()
     private val serverClients = CopyOnWriteArrayList<ClientSession>()
     private var serverSocket: ServerSocket? = null
+    private var webStageServer: WebStageServer? = null
     private var currentActiveSong: LiveSongPayload? = null
 
     // Client State
@@ -252,12 +255,32 @@ object BandSessionManager {
         registerNsdService()
         startUdpResponder()
         startTcpServer()
+        startWebStageServer()
+    }
+
+    private fun startWebStageServer() {
+        try {
+            webStageServer = WebStageServer(8990).apply {
+                start()
+            }
+            val ip = getLocalIpAddress() ?: "127.0.0.1"
+            _webStageUrl.value = "http://$ip:8990"
+            if (currentActiveSong != null && !_isBroadcastPaused.value) {
+                webStageServer?.broadcastSong(currentActiveSong!!)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start WebStageServer", e)
+        }
     }
 
     private fun stopServer() {
         unregisterNsdService()
         udpJob?.cancel()
         udpJob = null
+
+        webStageServer?.stop()
+        webStageServer = null
+        _webStageUrl.value = null
 
         serverClients.forEach { it.close() }
         serverClients.clear()
@@ -420,11 +443,12 @@ object BandSessionManager {
     }
 
     /**
-     * Broadcasts a song opened by Server to all connected clients.
+     * Broadcasts a song opened by Server to all connected clients and Web Stage Mirror.
      */
     fun broadcastSong(payload: LiveSongPayload) {
         if (_currentMode.value != BandMode.SERVER || _isBroadcastPaused.value) return
         currentActiveSong = payload
+        webStageServer?.broadcastSong(payload)
         val b64 = android.util.Base64.encodeToString(payload.toJson().toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
         val msg = "SONG|$b64"
         scope.launch(Dispatchers.IO) {
@@ -433,10 +457,11 @@ object BandSessionManager {
     }
 
     /**
-     * Broadcasts transpose update to all connected clients.
+     * Broadcasts transpose update to all connected clients and Web Stage Mirror.
      */
     fun broadcastTranspose(transpose: Int) {
         if (_currentMode.value != BandMode.SERVER || _isBroadcastPaused.value) return
+        webStageServer?.broadcastTranspose(transpose)
         val msg = "TRANSPOSE|$transpose"
         scope.launch(Dispatchers.IO) {
             serverClients.forEach { it.send(msg) }
@@ -449,10 +474,29 @@ object BandSessionManager {
     fun broadcastStandby() {
         if (_currentMode.value != BandMode.SERVER || _isBroadcastPaused.value) return
         currentActiveSong = null
+        webStageServer?.broadcastStandby()
         val msg = "STANDBY|"
         scope.launch(Dispatchers.IO) {
             serverClients.forEach { it.send(msg) }
         }
+    }
+
+    fun getLocalIpAddress(): String? {
+        try {
+            val interfaces = java.net.NetworkInterface.getNetworkInterfaces() ?: return null
+            while (interfaces.hasMoreElements()) {
+                val iface = interfaces.nextElement()
+                if (iface.isLoopback || !iface.isUp) continue
+                val addresses = iface.inetAddresses
+                while (addresses.hasMoreElements()) {
+                    val addr = addresses.nextElement()
+                    if (!addr.isLoopbackAddress && addr is java.net.Inet4Address) {
+                        return addr.hostAddress
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+        return null
     }
 
     private class ClientSession(val name: String, val socket: Socket, private val outputStream: java.io.OutputStream) {

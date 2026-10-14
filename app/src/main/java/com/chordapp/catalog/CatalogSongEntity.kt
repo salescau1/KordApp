@@ -19,7 +19,8 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["source"], name = "idx_source"),
         Index(value = ["title_slug"], name = "idx_title_slug"),
-        Index(value = ["artist_slug"], name = "idx_artist_slug")
+        Index(value = ["artist_slug"], name = "idx_artist_slug"),
+        Index(value = ["tier"], name = "idx_tier")
     ]
 )
 data class CatalogSongEntity(
@@ -82,5 +83,8 @@ data class CatalogSongEntity(
     val contentHash: String,
 
     @ColumnInfo(name = "scraped_at")
-    val scrapedAt: String
+    val scrapedAt: String,
+
+    @ColumnInfo(name = "tier")
+    val tier: String = "A"
 )

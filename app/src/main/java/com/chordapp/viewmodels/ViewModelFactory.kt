@@ -19,7 +19,7 @@ import java.io.File
 class ViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         val database = CatalogDatabase.getDatabase(context)
-        val repository = CatalogRepository(database.catalogDao())
+        val repository = CatalogRepository { CatalogDatabase.getDatabase(context).catalogDao() }
         val chartRepository = ChartRepositoryImpl(
             remote = HttpChartRemoteSource(),
             cache = ChartCacheStore(File(context.filesDir, "charts"))
@@ -27,7 +27,9 @@ class ViewModelFactory(private val context: Context) : ViewModelProvider.Factory
 
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
             val userDb = com.chordapp.userdata.UserdataDatabase.getDatabase(context)
-            val userRepo = com.chordapp.repositories.UserdataRepository(userDb.userdataDao(), database.catalogDao())
+            val userRepo = com.chordapp.repositories.UserdataRepository(userDb.userdataDao()) {
+                CatalogDatabase.getDatabase(context).catalogDao()
+            }
             @Suppress("UNCHECKED_CAST")
             return HomeViewModel(
                 userRepo,
@@ -78,7 +80,9 @@ class ViewModelFactory(private val context: Context) : ViewModelProvider.Factory
         }
                 if (modelClass.isAssignableFrom(PlayerViewModel::class.java)) {
             val userDb = com.chordapp.userdata.UserdataDatabase.getDatabase(context)
-            val userRepo = com.chordapp.repositories.UserdataRepository(userDb.userdataDao(), database.catalogDao())
+            val userRepo = com.chordapp.repositories.UserdataRepository(userDb.userdataDao()) {
+                CatalogDatabase.getDatabase(context).catalogDao()
+            }
             @Suppress("UNCHECKED_CAST")
             return PlayerViewModel(
                 repository,
@@ -88,19 +92,25 @@ class ViewModelFactory(private val context: Context) : ViewModelProvider.Factory
         }
         if (modelClass.isAssignableFrom(SetlistsViewModel::class.java)) {
             val userDb = com.chordapp.userdata.UserdataDatabase.getDatabase(context)
-            val userRepo = com.chordapp.repositories.UserdataRepository(userDb.userdataDao(), database.catalogDao())
+            val userRepo = com.chordapp.repositories.UserdataRepository(userDb.userdataDao()) {
+                CatalogDatabase.getDatabase(context).catalogDao()
+            }
             @Suppress("UNCHECKED_CAST")
             return SetlistsViewModel(userRepo) as T
         }
         if (modelClass.isAssignableFrom(FavoritesViewModel::class.java)) {
             val userDb = com.chordapp.userdata.UserdataDatabase.getDatabase(context)
-            val userRepo = com.chordapp.repositories.UserdataRepository(userDb.userdataDao(), database.catalogDao())
+            val userRepo = com.chordapp.repositories.UserdataRepository(userDb.userdataDao()) {
+                CatalogDatabase.getDatabase(context).catalogDao()
+            }
             @Suppress("UNCHECKED_CAST")
             return FavoritesViewModel(userRepo) as T
         }
         if (modelClass.isAssignableFrom(SetlistTracklistViewModel::class.java)) {
             val userDb = com.chordapp.userdata.UserdataDatabase.getDatabase(context)
-            val userRepo = com.chordapp.repositories.UserdataRepository(userDb.userdataDao(), database.catalogDao())
+            val userRepo = com.chordapp.repositories.UserdataRepository(userDb.userdataDao()) {
+                CatalogDatabase.getDatabase(context).catalogDao()
+            }
             @Suppress("UNCHECKED_CAST")
             return SetlistTracklistViewModel(userRepo) as T
         }

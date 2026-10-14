@@ -69,6 +69,14 @@ class ExploreViewModel(private val repository: CatalogRepository) : ViewModel() 
             _artists.value = repository.getAllArtists()
             _isLoading.value = false
         }
+        viewModelScope.launch {
+            repository.catalogUpdateFlow.collect {
+                _artists.value = repository.getAllArtists()
+                if (_selectedGenre.value?.isSongs == true) {
+                    _ostSongs.value = repository.getOstSongs()
+                }
+            }
+        }
     }
 
     fun setQuery(value: String) {
