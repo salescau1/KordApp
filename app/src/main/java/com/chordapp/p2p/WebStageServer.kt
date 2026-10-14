@@ -467,19 +467,78 @@ class WebStageServer(private val port: Int = 8990) {
     #sheetContent {
       font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
       font-size: 15px;
-      line-height: 1.65;
-      white-space: pre-wrap;
-      word-break: break-word;
+      line-height: 1.6;
+      user-select: text;
     }
-    .chord {
-      color: var(--chord-color);
-      font-weight: 700;
+    .blank-line {
+      height: 1.2em;
     }
     .section-header {
       color: var(--gold);
-      font-weight: 700;
-      margin-top: 12px;
+      font-weight: 800;
+      font-size: 1.05em;
+      margin-top: 20px;
+      margin-bottom: 6px;
       display: block;
+      letter-spacing: 0.2px;
+    }
+    .chord-flow-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-bottom: 3px;
+    }
+    .chord-cell {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      white-space: pre;
+    }
+    .chord-cell .chord {
+      color: var(--chord-color);
+      font-weight: 700;
+      font-size: 1em;
+      line-height: 1.25;
+      min-height: 1.25em;
+    }
+    .chord-cell .lyric {
+      color: var(--text-primary);
+      font-size: 1em;
+      line-height: 1.4;
+    }
+    .chord-cell .chord-empty,
+    .chord-cell .lyric-empty {
+      opacity: 0;
+      user-select: none;
+    }
+    .chord-only-row {
+      white-space: pre;
+      margin-bottom: 3px;
+    }
+    .chord-only-row .chord {
+      color: var(--chord-color);
+      font-weight: 700;
+    }
+    .chord-spacer {
+      white-space: pre;
+    }
+    .bar-line {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-weight: 600;
+      margin-bottom: 6px;
+      white-space: pre-wrap;
+      color: var(--text-primary);
+    }
+    .bar-line .chord {
+      color: var(--chord-color);
+      font-weight: 700;
+    }
+    .lyric-line {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      color: var(--text-primary);
+      line-height: 1.45;
+      white-space: pre-wrap;
+      margin-bottom: 3px;
     }
 
     /* Floating Dock Controls (Full Icon Stage Toolbar) */
@@ -669,21 +728,62 @@ class WebStageServer(private val port: Int = 8990) {
       return outArray[newIndex] + suffix;
     }
 
-    function transposeChord(chord, delta) {
-      if (!chord || delta === 0) return chord;
-      if (chord.indexOf('/') !== -1) {
-        const parts = chord.split('/');
-        if (parts.length === 2 && parts[0] && parts[1]) {
-          return transposeSingle(parts[0].trim(), delta) + '/' + transposeSingle(parts[1].trim(), delta);
+    const suffixAllowed = "0123456789#+-badgijmnsu()";
+
+    function transposeChord(symbol, delta) {
+      if (!symbol || delta === 0) return symbol;
+      let prefix = "";
+      let clean = symbol.trim();
+      while (clean.length > 0 && (clean[0] === '-' || clean[0] === '\u2013' || clean[0] === '~')) {
+        prefix += clean[0];
+        clean = clean.substring(1).trim();
+      }
+      if (clean.indexOf('/') !== -1) {
+        const parts = clean.split('/');
+        if (parts.length === 2) {
+          const m = parts[0] ? transposeSingle(parts[0], delta) : "";
+          const b = parts[1] ? transposeSingle(parts[1], delta) : "";
+          return prefix + (m ? m + '/' + b : '/' + b);
         }
       }
-      return transposeSingle(chord, delta);
+      return prefix + transposeSingle(clean, delta);
     }
 
-    function isChordSymbol(token) {
+    function isChordSymbol(s) {
+      if (!s) return false;
+      let token = s.trim();
+      while (token.length > 0 && (token[0] === '-' || token[0] === '\u2013' || token[0] === '~')) {
+        token = token.substring(1).trim();
+      }
+      if (token.startsWith('(') && token.endsWith(')')) {
+        token = token.substring(1, token.length - 1).trim();
+      }
       if (!token) return false;
-      const clean = token.replace(/^[-\u2013~(]+/, '').replace(/[)]+$/, '').trim();
-      return /^[A-G][b#]?(?:m|maj|min|dim|aug|sus|add)?[0-9]*(?:\/[A-G][b#]?)?$/i.test(clean);
+      if (token.indexOf('/') !== -1) {
+        const parts = token.split('/');
+        if (parts.length !== 2) return false;
+        const main = parts[0];
+        const bass = parts[1];
+        if (!main) return isChordSymbol(bass);
+        return isChordSymbol(main) && isChordSymbol(bass);
+      }
+      let i = 0;
+      if (i < token.length && token[i] >= 'A' && token[i] <= 'G') i++;
+      else return false;
+      if (i < token.length && (token[i] === '#' || token[i] === 'b')) i++;
+      if (i === token.length) return true;
+      const suffix = token.substring(i).toLowerCase();
+      for (let c of suffix) {
+        if (suffixAllowed.indexOf(c) === -1) return false;
+      }
+      let hasMarker = false;
+      let letterCount = 0;
+      for (let c of suffix) {
+        if ((c >= '0' && c <= '9') || c === '#' || c === '+' || c === '-') hasMarker = true;
+        if (c >= 'a' && c <= 'z') letterCount++;
+      }
+      if (!hasMarker && letterCount > 3) return false;
+      return true;
     }
 
     function adjustTranspose(delta) {
@@ -767,46 +867,313 @@ class WebStageServer(private val port: Int = 8990) {
     });
 
     function escapeHtml(text) {
+      if (!text) return "";
       const div = document.createElement('div');
       div.innerText = text;
       return div.innerHTML;
     }
 
+    function unescapeHtml(text) {
+      if (!text) return "";
+      return text
+        .replace(/&#0*39;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&apos;/g, "'")
+        .replace(/&#x27;/gi, "'")
+        .replace(/&rsquo;/g, "'")
+        .replace(/&lsquo;/g, "'")
+        .replace(/&ldquo;/g, '"')
+        .replace(/&rdquo;/g, '"')
+        .replace(/&#x2F;/gi, '/')
+        .replace(/&hellip;/g, '...');
+    }
+
+    function isBarNotationLine(line, chordSpans) {
+      if (line.indexOf('|') === -1) return false;
+      let chars = line.split('');
+      for (let span of chordSpans) {
+        for (let i = span.start; i < span.end; i++) {
+          chars[i] = ' ';
+        }
+      }
+      let remaining = chars.join('')
+        .replace(/(?:N\.C\.?|NC|\b(?:[xX]\d+|\d+[xX]|riff|fill|solo|stop)\b)/gi, ' ')
+        .replace(/[|\s:.\-_/\\()%+*~^0-9]/g, '');
+      return remaining.length === 0 || !/[a-zA-Z]/.test(remaining);
+    }
+
+    function isOverlayOnly(line, chordSpans) {
+      if (line.indexOf('|') !== -1) return false;
+      let chars = line.split('');
+      for (let span of chordSpans) {
+        for (let i = span.start; i < span.end; i++) {
+          chars[i] = ' ';
+        }
+      }
+      let remaining = chars.join('')
+        .replace(/(?:N\.C\.?|NC|\b(?:[xX]\d+|\d+[xX]|riff|fill|solo|stop|hold)\b)/gi, ' ')
+        .replace(/[|\s:.\-_/\\()%+*~^0-9]/g, '');
+      return remaining.length === 0 || !/[a-zA-Z]/.test(remaining);
+    }
+
+    function splitInline(line, bracketChords) {
+      let tokens = [];
+      let lyric = "";
+      let removedBefore = 0;
+      let cursor = 0;
+      for (let bc of bracketChords) {
+        let col = bc.index - removedBefore;
+        tokens.push({ symbol: bc.chord, column: col });
+        lyric += line.substring(cursor, bc.index);
+        cursor = bc.index + bc.length;
+        removedBefore += bc.length;
+      }
+      lyric += line.substring(cursor);
+      return { tokens: tokens, lyric: lyric };
+    }
+
+    function extractTokens(line) {
+      let tokens = [];
+      let regex = /\S+/g;
+      let m;
+      while ((m = regex.exec(line)) !== null) {
+        tokens.push({ symbol: m[0], column: m.index });
+      }
+      return tokens;
+    }
+
+    function isChordLine(tokens) {
+      if (!tokens || tokens.length === 0) return false;
+      let chordCount = 0;
+      for (let t of tokens) {
+        if (isChordSymbol(t.symbol)) {
+          chordCount++;
+        } else {
+          if (t.symbol.length > 7 && t.symbol.indexOf('/') === -1) return false;
+        }
+      }
+      return (chordCount / tokens.length) > 0.5;
+    }
+
+    function buildChordLyricSegments(tokens, lyric, delta) {
+      const sorted = tokens.slice().sort((a, b) => a.column - b.column);
+      if (sorted.length === 0) return [{ chord: null, text: lyric }];
+      if (!lyric) return sorted.map(t => ({ chord: transposeChord(t.symbol, delta), text: "" }));
+
+      let segments = [];
+      const firstCol = sorted[0].column;
+      if (firstCol > 0) {
+        const prefixEnd = Math.min(firstCol, lyric.length);
+        segments.push({ chord: null, text: lyric.substring(0, prefixEnd) });
+      }
+
+      for (let i = 0; i < sorted.length; i++) {
+        const t = sorted[i];
+        const col = t.column;
+        const sym = transposeChord(t.symbol, delta);
+        const nextCol = (i + 1 < sorted.length) ? sorted[i + 1].column : Math.max(lyric.length, col);
+
+        let textSlice = "";
+        if (col < lyric.length) {
+          const sliceEnd = Math.min(nextCol, lyric.length);
+          textSlice = lyric.substring(col, sliceEnd);
+        } else {
+          const spaceCount = (i + 1 < sorted.length) ? Math.max(1, nextCol - col) : 1;
+          textSlice = " ".repeat(spaceCount);
+        }
+        segments.push({ chord: sym, text: textSlice });
+      }
+      return segments;
+    }
+
+    function renderBarLine(line, delta) {
+      let html = '<div class="bar-line">';
+      if (line.bracketed) {
+        const regex = /\[([^\[\]\r\n]+)\]/g;
+        let cursor = 0;
+        let m;
+        while ((m = regex.exec(line.originalText)) !== null) {
+          if (isChordSymbol(m[1])) {
+            if (m.index > cursor) {
+              html += escapeHtml(line.originalText.substring(cursor, m.index));
+            }
+            const tr = transposeChord(m[1].trim(), delta);
+            html += '<span class="chord">' + escapeHtml(tr) + '</span>';
+            cursor = m.index + m[0].length;
+          }
+        }
+        if (cursor < line.originalText.length) {
+          html += escapeHtml(line.originalText.substring(cursor));
+        }
+      } else {
+        let cursor = 0;
+        const sorted = (line.tokens || []).filter(t => isChordSymbol(t.symbol)).sort((a,b) => a.column - b.column);
+        for (let t of sorted) {
+          if (t.column > cursor) {
+            html += escapeHtml(line.originalText.substring(cursor, t.column));
+          }
+          const tr = transposeChord(t.symbol, delta);
+          html += '<span class="chord">' + escapeHtml(tr) + '</span>';
+          cursor = t.column + t.symbol.length;
+        }
+        if (cursor < line.originalText.length) {
+          html += escapeHtml(line.originalText.substring(cursor));
+        }
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function renderChordLyricFlow(tokens, lyric, delta) {
+      if (!tokens || tokens.length === 0) {
+        return '<div class="lyric-line">' + escapeHtml(lyric || '') + '</div>';
+      }
+      if (!lyric || lyric.trim().length === 0) {
+        let html = '<div class="chord-flow-line chord-only-row">';
+        const sorted = tokens.slice().sort((a, b) => a.column - b.column);
+        let col = 0;
+        for (let t of sorted) {
+          if (t.column > col) {
+            const spaces = t.column - col;
+            html += '<span class="chord-spacer">' + ' '.repeat(spaces) + '</span>';
+            col = t.column;
+          }
+          const tr = transposeChord(t.symbol, delta);
+          html += '<span class="chord">' + escapeHtml(tr) + '</span>';
+          col += tr.length;
+        }
+        html += '</div>';
+        return html;
+      }
+
+      const segments = buildChordLyricSegments(tokens, lyric, delta);
+      let html = '<div class="chord-flow-line">';
+      for (let seg of segments) {
+        html += '<div class="chord-cell">';
+        if (seg.chord) {
+          const chordText = (seg.text.length === 0 || seg.chord.length >= seg.text.length) ? (seg.chord + " ") : seg.chord;
+          html += '<span class="chord">' + escapeHtml(chordText) + '</span>';
+        } else {
+          html += '<span class="chord chord-empty">&nbsp;</span>';
+        }
+        if (seg.text && seg.text.length > 0) {
+          html += '<span class="lyric">' + escapeHtml(seg.text) + '</span>';
+        } else {
+          html += '<span class="lyric lyric-empty">&nbsp;</span>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+      return html;
+    }
+
     function renderSheet(rawContent, delta) {
       if (!rawContent) return "";
-      const lines = rawContent.split(/\r?\n/);
-      let html = "";
-      const bracketChordRegex = /\[([A-G][b#]?[^\]]*)\]/g;
-      const sectionHeaderRegex = /^\s*\[(Intro|Verse|Chorus|Bridge|Outro|Refrain|Pre-Chorus|Solo|Interlude|Ending|Tab|Instrumental|Hook|Drop|Bait|Reff)[^\]]*\]\s*$/i;
-      const chordRegex = /\b[A-G][b#]?(?:m|maj|min|dim|aug|sus|add)?[0-9]*(?:\/[A-G][b#]?)?\b/g;
+      const lines = unescapeHtml(rawContent).split(/\r?\n/);
+      let sheetLines = [];
+      const bracketGroupRegex = /\[([^\[\]\r\n]+)\]/g;
 
       for (let line of lines) {
-        let trimmed = line.trim();
-        if (sectionHeaderRegex.test(trimmed)) {
-          html += '<span class="section-header">' + escapeHtml(trimmed) + '</span>\n';
-        } else if (bracketChordRegex.test(line)) {
-          bracketChordRegex.lastIndex = 0;
-          let highlighted = escapeHtml(line).replace(/\[([A-G][b#]?[^\]]*)\]/g, (match, chordInside) => {
-            if (isChordSymbol(chordInside)) {
-              const tr = transposeChord(chordInside, delta || 0);
-              return '<span class="chord">[' + escapeHtml(tr) + ']</span>';
-            }
-            return match;
-          });
-          html += highlighted + '\n';
-        } else {
-          // Plain chord line
-          const tokens = trimmed.split(/\s+/).filter(t => t.length > 0);
-          const chordCount = tokens.filter(t => isChordSymbol(t)).length;
-          if (tokens.length > 0 && chordCount >= 1 && chordCount >= tokens.length * 0.5) {
-            let highlighted = escapeHtml(line).replace(chordRegex, (m) => {
-              const tr = transposeChord(m, delta || 0);
-              return '<span class="chord">' + escapeHtml(tr) + '</span>';
-            });
-            html += highlighted + '\n';
-          } else {
-            html += escapeHtml(line) + '\n';
+        const trimmed = line.trim();
+        if (trimmed.length === 0) {
+          sheetLines.push({ type: 'blank' });
+          continue;
+        }
+
+        let bracketChords = [];
+        let chordSpans = [];
+        let m;
+        bracketGroupRegex.lastIndex = 0;
+        while ((m = bracketGroupRegex.exec(line)) !== null) {
+          if (isChordSymbol(m[1])) {
+            bracketChords.push({ chord: m[1].trim(), index: m.index, length: m[0].length });
+            chordSpans.push({ start: m.index, end: m.index + m[0].length });
           }
+        }
+
+        if (bracketChords.length > 0) {
+          if (isBarNotationLine(line, chordSpans)) {
+            sheetLines.push({
+              type: 'chords',
+              tokens: bracketChords.map(bc => ({ symbol: bc.chord, column: bc.index })),
+              originalText: line,
+              bracketed: true,
+              isBarLine: true
+            });
+          } else if (isOverlayOnly(line, chordSpans)) {
+            sheetLines.push({
+              type: 'chords',
+              tokens: bracketChords.map(bc => ({ symbol: bc.chord, column: bc.index })),
+              originalText: line,
+              bracketed: true,
+              isBarLine: false
+            });
+          } else {
+            const split = splitInline(line, bracketChords);
+            sheetLines.push({
+              type: 'chords',
+              tokens: split.tokens,
+              originalText: line,
+              bracketed: true,
+              isBarLine: false
+            });
+            if (split.lyric.trim().length > 0 && /[a-zA-Z]/.test(split.lyric)) {
+              sheetLines.push({ type: 'lyric', text: split.lyric });
+            }
+          }
+          continue;
+        }
+
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+          sheetLines.push({ type: 'section', text: trimmed });
+          continue;
+        }
+
+        const tokens = extractTokens(line);
+        if (isChordLine(tokens)) {
+          const isBar = line.indexOf('|') !== -1;
+          sheetLines.push({
+            type: 'chords',
+            tokens: tokens,
+            originalText: line,
+            bracketed: false,
+            isBarLine: isBar
+          });
+        } else if (line.indexOf('|') !== -1 && isBarNotationLine(line, tokens.map(t => ({ start: t.column, end: t.column + t.symbol.length })))) {
+          sheetLines.push({
+            type: 'chords',
+            tokens: tokens,
+            originalText: line,
+            bracketed: false,
+            isBarLine: true
+          });
+        } else {
+          sheetLines.push({ type: 'lyric', text: line });
+        }
+      }
+
+      let html = "";
+      for (let i = 0; i < sheetLines.length; i++) {
+        const line = sheetLines[i];
+        if (line.type === 'blank') {
+          html += '<div class="blank-line"></div>\n';
+        } else if (line.type === 'section') {
+          html += '<div class="section-header">' + escapeHtml(line.text) + '</div>\n';
+        } else if (line.type === 'chords' && line.isBarLine) {
+          html += renderBarLine(line, delta || 0) + '\n';
+        } else if (line.type === 'chords' && !line.isBarLine) {
+          const nextLine = sheetLines[i + 1];
+          let lyricText = null;
+          if (nextLine && nextLine.type === 'lyric') {
+            lyricText = nextLine.text;
+            i++;
+          }
+          html += renderChordLyricFlow(line.tokens, lyricText, delta || 0) + '\n';
+        } else if (line.type === 'lyric') {
+          html += renderChordLyricFlow(null, line.text, delta || 0) + '\n';
         }
       }
       return html;
