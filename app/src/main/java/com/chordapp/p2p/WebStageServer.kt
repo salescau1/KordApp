@@ -482,44 +482,78 @@ class WebStageServer(private val port: Int = 8990) {
       display: block;
     }
 
-    /* Floating Dock Controls */
+    /* Floating Dock Controls (Full Icon Stage Toolbar) */
     .dock-bar {
       position: fixed;
-      bottom: 16px;
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(19, 23, 30, 0.94);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid var(--border);
-      border-radius: 30px;
-      padding: 6px 14px;
+      background: rgba(18, 22, 29, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(229, 169, 60, 0.28);
+      border-radius: 40px;
+      padding: 6px 12px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 5px;
       z-index: 1000;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      box-shadow: 0 10px 32px rgba(0,0,0,0.7), 0 0 16px rgba(229, 169, 60, 0.1);
+      max-width: 96vw;
+    }
+    .dock-sep {
+      width: 1px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.12);
+      margin: 0 3px;
     }
     .dock-btn {
       background: transparent;
       border: none;
-      color: var(--text-primary);
-      font-size: 13px;
-      font-weight: 700;
-      padding: 6px 12px;
-      border-radius: 20px;
+      color: #D2D9E5;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
-      transition: background 0.15s;
+      justify-content: center;
+      transition: all 0.18s ease;
+      flex-shrink: 0;
+    }
+    .dock-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #FFFFFF;
     }
     .dock-btn:active {
-      background: rgba(255,255,255,0.1);
+      transform: scale(0.9);
+      background: rgba(229, 169, 60, 0.2);
     }
     .dock-btn.active {
       background: var(--gold);
       color: #0C0E12;
+      box-shadow: 0 0 14px rgba(229, 169, 60, 0.5);
+    }
+    .dock-btn.always-lit {
+      color: var(--gold);
+      background: rgba(229, 169, 60, 0.14);
+      border: 1px solid rgba(229, 169, 60, 0.35);
+      box-shadow: 0 0 10px rgba(229, 169, 60, 0.25);
+    }
+    .dock-btn.always-lit:active {
+      background: rgba(229, 169, 60, 0.3);
+    }
+    .transpose-badge {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--gold);
+      min-width: 22px;
+      text-align: center;
+      letter-spacing: -0.5px;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
   </style>
 </head>
@@ -556,15 +590,49 @@ class WebStageServer(private val port: Int = 8990) {
     <div id="sheetContent"></div>
   </div>
 
-  <!-- Floating Dock -->
+  <!-- Floating Dock (Full Icon Controls) -->
   <div class="dock-bar" id="dockBar" style="display:none;">
-    <button class="dock-btn" id="btnScroll" onclick="toggleScroll()">▶ Scroll</button>
-    <button class="dock-btn" onclick="adjustTranspose(-1)">♭ −1</button>
-    <span id="dockTranspose" class="dock-btn" style="pointer-events:none;color:var(--gold);padding:6px 2px;">0</span>
-    <button class="dock-btn" onclick="adjustTranspose(1)">♯ +1</button>
-    <button class="dock-btn" onclick="adjustFont(-1)">A−</button>
-    <button class="dock-btn" onclick="adjustFont(1)">A+</button>
-    <button class="dock-btn" id="btnWake" onclick="requestWakeLock()">☀ Layar Nyala</button>
+    <!-- Auto Scroll (Play / Pause) -->
+    <button class="dock-btn" id="btnScroll" onclick="toggleScroll()" title="Auto Scroll (Play / Pause)">
+      <svg id="iconScrollPlay" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11.04-6.86a1 1 0 0 0 0-1.72L9.5 4.28a1 1 0 0 0-1.5.86z"/></svg>
+      <svg id="iconScrollPause" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+    </button>
+
+    <div class="dock-sep"></div>
+
+    <!-- Transpose Controls (Flat, Badge, Sharp) -->
+    <button class="dock-btn" onclick="adjustTranspose(-1)" title="Transpose Turun (Flat)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><text x="6" y="17" font-size="19" font-weight="900" font-family="-apple-system, sans-serif">♭</text></svg>
+    </button>
+    <span id="dockTranspose" class="transpose-badge" title="Status Transpose">0</span>
+    <button class="dock-btn" onclick="adjustTranspose(1)" title="Transpose Naik (Sharp)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><text x="5" y="17" font-size="18" font-weight="900" font-family="-apple-system, sans-serif">♯</text></svg>
+    </button>
+
+    <div class="dock-sep"></div>
+
+    <!-- Font Size Controls (A-, A+) -->
+    <button class="dock-btn" onclick="adjustFont(-1)" title="Kecilkan Huruf">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><text x="1" y="17" font-size="14" font-weight="900" font-family="-apple-system, sans-serif">A</text><rect x="13" y="12" width="9" height="2.5" rx="1.25"/></svg>
+    </button>
+    <button class="dock-btn" onclick="adjustFont(1)" title="Besarkan Huruf">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><text x="1" y="17" font-size="14" font-weight="900" font-family="-apple-system, sans-serif">A</text><rect x="13" y="12" width="9" height="2.5" rx="1.25"/><rect x="16.25" y="8.75" width="2.5" height="9" rx="1.25"/></svg>
+    </button>
+
+    <div class="dock-sep"></div>
+
+    <!-- Tetap Menyala (Always-Lit WakeLock Screen Indicator) -->
+    <button class="dock-btn always-lit" id="btnWake" onclick="requestWakeLock()" title="Layar Tetap Menyala (Stage Awake)">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="3.5"/><line x1="12" y1="20.5" x2="12" y2="22.5"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1.5" y1="12" x2="3.5" y2="12"/><line x1="20.5" y1="12" x2="22.5" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+
+    <div class="dock-sep"></div>
+
+    <!-- Full Screen Trigger -->
+    <button class="dock-btn" id="btnFullscreen" onclick="toggleFullScreen()" title="Layar Penuh (Full Screen)">
+      <svg id="iconFsEnter" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      <svg id="iconFsExit" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+    </button>
   </div>
 
   <script>
@@ -624,15 +692,14 @@ class WebStageServer(private val port: Int = 8990) {
       updateUi(currentData);
     }
 
-    // WakeLock API
+    // WakeLock API (Layar Tetap Menyala)
     async function requestWakeLock() {
       try {
         if ('wakeLock' in navigator) {
           wakeLock = await navigator.wakeLock.request('screen');
-          document.getElementById('btnWake').classList.add('active');
         }
       } catch (err) {
-        console.log("WakeLock error: " + err);
+        console.log("WakeLock info: " + err);
       }
     }
 
@@ -643,19 +710,61 @@ class WebStageServer(private val port: Int = 8990) {
 
     function toggleScroll() {
       const btn = document.getElementById('btnScroll');
+      const iconPlay = document.getElementById('iconScrollPlay');
+      const iconPause = document.getElementById('iconScrollPause');
+
       if (scrollInterval) {
         clearInterval(scrollInterval);
         scrollInterval = null;
-        btn.innerHTML = '▶ Scroll';
-        btn.classList.remove('active');
+        if (iconPlay) iconPlay.style.display = 'block';
+        if (iconPause) iconPause.style.display = 'none';
+        if (btn) btn.classList.remove('active');
       } else {
-        btn.innerHTML = '❚❚ Pause';
-        btn.classList.add('active');
+        if (iconPlay) iconPlay.style.display = 'none';
+        if (iconPause) iconPause.style.display = 'block';
+        if (btn) btn.classList.add('active');
         scrollInterval = setInterval(() => {
           window.scrollBy({ top: 1, behavior: 'smooth' });
         }, 40 / scrollSpeed);
       }
     }
+
+    function toggleFullScreen() {
+      const doc = window.document;
+      const docEl = doc.documentElement;
+
+      const requestFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+      const cancelFs = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+
+      if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
+        if (requestFs) {
+          requestFs.call(docEl).catch(() => {});
+        }
+      } else {
+        if (cancelFs) {
+          cancelFs.call(doc).catch(() => {});
+        }
+      }
+    }
+
+    function updateFsIcon() {
+      const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+      const enterIcon = document.getElementById('iconFsEnter');
+      const exitIcon = document.getElementById('iconFsExit');
+      const btnFs = document.getElementById('btnFullscreen');
+      if (enterIcon && exitIcon) {
+        enterIcon.style.display = isFs ? 'none' : 'block';
+        exitIcon.style.display = isFs ? 'block' : 'none';
+      }
+      if (btnFs) {
+        if (isFs) btnFs.classList.add('active');
+        else btnFs.classList.remove('active');
+      }
+    }
+
+    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(ev => {
+      document.addEventListener(ev, updateFsIcon);
+    });
 
     function escapeHtml(text) {
       const div = document.createElement('div');
