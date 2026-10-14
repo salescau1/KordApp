@@ -106,6 +106,7 @@ class SettingsViewModel(
             result.onSuccess {
                 loadCatalogStats()
             }.onFailure { err ->
+                android.util.Log.e("SettingsViewModel", "Download tier $tier failed", err)
                 _catalogDownloadError.value = err.localizedMessage ?: "Gagal mengunduh paket $tier"
             }
 

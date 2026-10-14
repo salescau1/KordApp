@@ -127,7 +127,12 @@ abstract class CatalogDatabase : RoomDatabase() {
          */
         fun importTierDatabaseFromXz(context: Context, xzFile: java.io.File, tier: String): Boolean {
             val dbFile = context.getDatabasePath("catalog.db")
-            if (!dbFile.exists()) {
+            val currentSongs = runCatching {
+                getDatabase(context).openHelper.readableDatabase.query("SELECT COUNT(*) FROM songs").use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getInt(0) else 0
+                }
+            }.getOrDefault(0)
+            if (!dbFile.exists() || currentSongs == 0) {
                 return importDatabaseFromXz(context, xzFile)
             }
 
@@ -150,14 +155,17 @@ abstract class CatalogDatabase : RoomDatabase() {
                 }
 
                 val db = getDatabase(context).openHelper.writableDatabase
-                db.beginTransaction()
+                db.execSQL("ATTACH DATABASE '${tempDb.absolutePath.replace("'", "''")}' AS temp_tier_db")
                 try {
-                    db.execSQL("ATTACH DATABASE '${tempDb.absolutePath.replace("'", "''")}' AS temp_tier_db")
-                    db.execSQL("INSERT OR REPLACE INTO songs SELECT * FROM temp_tier_db.songs")
-                    db.execSQL("DETACH DATABASE temp_tier_db")
-                    db.setTransactionSuccessful()
+                    db.beginTransaction()
+                    try {
+                        db.execSQL("INSERT OR REPLACE INTO songs SELECT * FROM temp_tier_db.songs")
+                        db.setTransactionSuccessful()
+                    } finally {
+                        db.endTransaction()
+                    }
                 } finally {
-                    db.endTransaction()
+                    db.execSQL("DETACH DATABASE temp_tier_db")
                 }
 
                 tempDb.delete()

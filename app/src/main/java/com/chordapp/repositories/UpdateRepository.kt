@@ -299,32 +299,41 @@ object UpdateRepository {
             val destFile = File(context.cacheDir, "catalog_${tierUpper.lowercase()}.db.xz")
             if (destFile.exists()) destFile.delete()
 
-            val url = URL(urlString)
-            var conn = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = 15000
-                readTimeout = 30000
-                instanceFollowRedirects = true
-            }
+            var currentUrl = urlString
+            var conn: HttpURLConnection? = null
+            var responseCode = 0
+            var redirects = 0
 
-            var responseCode = conn.responseCode
-            if (responseCode == HttpURLConnection.HTTP_MOVED_PERM || responseCode == HttpURLConnection.HTTP_MOVED_TEMP) {
-                val newUrl = conn.getHeaderField("Location")
-                if (!newUrl.isNullOrBlank()) {
-                    conn = (URL(newUrl).openConnection() as HttpURLConnection).apply {
-                        requestMethod = "GET"
-                        connectTimeout = 15000
-                        readTimeout = 30000
-                    }
-                    responseCode = conn.responseCode
+            while (redirects < 6) {
+                conn?.disconnect()
+                val url = URL(currentUrl)
+                conn = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 25000
+                    readTimeout = 60000
+                    instanceFollowRedirects = false
+                    setRequestProperty("User-Agent", "KordApp/1.3.0")
+                    setRequestProperty("Accept", "*/*")
                 }
+                responseCode = conn.responseCode
+                if (responseCode in listOf(301, 302, 303, 307, 308)) {
+                    val location = conn.getHeaderField("Location")
+                    if (!location.isNullOrBlank()) {
+                        currentUrl = location
+                        redirects++
+                        continue
+                    }
+                }
+                break
             }
 
+            val finalConn = conn ?: error("Koneksi gagal ke server $tierLabel")
             if (responseCode !in 200..299) {
+                finalConn.disconnect()
                 error("Gagal mengunduh $tierLabel: HTTP $responseCode")
             }
 
-            val totalBytes = conn.contentLengthLong.takeIf { it > 0 } ?: when (tierUpper) {
+            val totalBytes = finalConn.contentLengthLong.takeIf { it > 0 } ?: when (tierUpper) {
                 "A" -> 40_000_000L
                 "B" -> 25_000_000L
                 "C" -> 16_000_000L
@@ -332,23 +341,27 @@ object UpdateRepository {
             }
             var downloadedBytes = 0L
 
-            conn.inputStream.use { input ->
-                destFile.outputStream().use { output ->
-                    val buffer = ByteArray(32 * 1024)
-                    var read: Int
-                    var lastPercent = 0
-                    while (input.read(buffer).also { read = it } != -1) {
-                        output.write(buffer, 0, read)
-                        downloadedBytes += read
-                        val percent = ((downloadedBytes * 85) / totalBytes).toInt().coerceIn(0, 85)
-                        if (percent != lastPercent) {
-                            lastPercent = percent
-                            val mbDownloaded = downloadedBytes / (1024 * 1024)
-                            val mbTotal = totalBytes / (1024 * 1024)
-                            onProgress(percent, "Mengunduh $tierLabel: $mbDownloaded MB / $mbTotal MB")
+            try {
+                finalConn.inputStream.use { input ->
+                    destFile.outputStream().use { output ->
+                        val buffer = ByteArray(32 * 1024)
+                        var read: Int
+                        var lastPercent = 0
+                        while (input.read(buffer).also { read = it } != -1) {
+                            output.write(buffer, 0, read)
+                            downloadedBytes += read
+                            val percent = ((downloadedBytes * 85) / totalBytes).toInt().coerceIn(0, 85)
+                            if (percent != lastPercent) {
+                                lastPercent = percent
+                                val mbDownloaded = downloadedBytes / (1024 * 1024)
+                                val mbTotal = totalBytes / (1024 * 1024)
+                                onProgress(percent, "Mengunduh $tierLabel: $mbDownloaded MB / $mbTotal MB")
+                            }
                         }
                     }
                 }
+            } finally {
+                finalConn.disconnect()
             }
 
             onProgress(88, "Memasang $tierLabel ke database...")
