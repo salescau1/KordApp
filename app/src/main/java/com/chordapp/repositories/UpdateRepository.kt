@@ -274,7 +274,7 @@ object UpdateRepository {
             "C" -> "catalog_c.db.xz"
             else -> "catalog.db.xz"
         }
-        return "https://github.com/salescau1/KordApp-Release/releases/download/v1.2.0/$fileName"
+        return "https://github.com/salescau1/KordApp-Release/releases/download/v1.3.0/$fileName"
     }
 
     /**
