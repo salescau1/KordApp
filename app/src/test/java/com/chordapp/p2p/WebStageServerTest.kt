@@ -29,6 +29,15 @@ class WebStageServerTest {
             val htmlBody = htmlConn.inputStream.bufferedReader().use { it.readText() }
             assertTrue(htmlBody.contains("Web Stage Mirror"))
             assertTrue(htmlBody.contains("Standby Panggung"))
+            assertTrue(htmlBody.contains("id=\"btnScroll\""))
+            assertTrue(htmlBody.contains("id=\"dockSpeed\""))
+            assertTrue(htmlBody.contains("id=\"btnPageFlip\""))
+            assertTrue(htmlBody.contains("id=\"speedRail\""))
+            assertTrue(htmlBody.contains("id=\"speedRailTrack\""))
+            assertTrue(htmlBody.contains("id=\"pageFlipRail\""))
+            assertTrue(htmlBody.contains("cycleSpeedPreset"))
+            assertTrue(htmlBody.contains("togglePageFlip"))
+            assertTrue(htmlBody.contains("updatePageFlipRailUI"))
 
             // Test GET /api/current in standby
             val apiUrl = URL("http://127.0.0.1:$testPort/api/current")

@@ -251,13 +251,6 @@ private fun BoxScope.PageFlipRail(
                 }
             }
         }
-        Text(
-            text = "${currentPage + 1}/$pageCount",
-            color = AccentGold,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(top = 4.dp)
-        )
     }
 }
 

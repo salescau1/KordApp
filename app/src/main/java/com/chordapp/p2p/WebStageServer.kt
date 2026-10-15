@@ -448,6 +448,7 @@ class WebStageServer(private val port: Int = 8990) {
       max-width: 800px;
       margin: 0 auto;
       width: 100%;
+      position: relative;
     }
     .song-meta-bar {
       display: flex;
@@ -541,7 +542,21 @@ class WebStageServer(private val port: Int = 8990) {
       margin-bottom: 3px;
     }
 
-    /* Floating Dock Controls (Full Icon Stage Toolbar) */
+    /* Page Flip Container */
+    .pageflip-container {
+      width: 100%;
+      min-height: calc(100vh - 180px);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      animation: fadeInPage 0.18s ease-out;
+    }
+    @keyframes fadeInPage {
+      from { opacity: 0; transform: translateY(3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Floating Dock Controls */
     .dock-bar {
       position: fixed;
       bottom: calc(16px + env(safe-area-inset-bottom, 0px));
@@ -552,26 +567,26 @@ class WebStageServer(private val port: Int = 8990) {
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid rgba(229, 169, 60, 0.28);
       border-radius: 40px;
-      padding: 6px 12px;
+      padding: 5px 10px;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
       z-index: 1000;
       box-shadow: 0 10px 32px rgba(0,0,0,0.7), 0 0 16px rgba(229, 169, 60, 0.1);
-      max-width: 96vw;
+      max-width: 98vw;
     }
     .dock-sep {
       width: 1px;
-      height: 20px;
+      height: 18px;
       background: rgba(255, 255, 255, 0.12);
-      margin: 0 3px;
+      margin: 0 2px;
     }
     .dock-btn {
       background: transparent;
       border: none;
       color: #D2D9E5;
-      width: 38px;
-      height: 38px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       cursor: pointer;
       display: flex;
@@ -602,17 +617,217 @@ class WebStageServer(private val port: Int = 8990) {
     .dock-btn.always-lit:active {
       background: rgba(229, 169, 60, 0.3);
     }
+
+    /* Speed Control Group inside Dock Bar */
+    .dock-speed-group {
+      display: flex;
+      align-items: center;
+      gap: 1px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(229, 169, 60, 0.28);
+      border-radius: 18px;
+      padding: 1px 3px;
+      margin: 0 1px;
+    }
+    .dock-btn-stepper {
+      background: transparent;
+      border: none;
+      color: #D2D9E5;
+      width: 20px;
+      height: 26px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      transition: all 0.15s;
+    }
+    .dock-btn-stepper:hover {
+      color: #FFF;
+      background: rgba(255,255,255,0.1);
+    }
+    .dock-btn-stepper:active {
+      transform: scale(0.88);
+    }
+    .dock-speed-badge {
+      background: transparent;
+      border: none;
+      color: var(--gold);
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 0 3px;
+      min-width: 32px;
+      text-align: center;
+      cursor: pointer;
+      letter-spacing: -0.3px;
+      user-select: none;
+      transition: text-shadow 0.15s;
+    }
+    .dock-speed-badge:hover {
+      text-shadow: 0 0 8px rgba(229, 169, 60, 0.6);
+    }
+
     .transpose-badge {
       font-size: 13px;
       font-weight: 800;
       color: var(--gold);
-      min-width: 22px;
+      min-width: 20px;
       text-align: center;
       letter-spacing: -0.5px;
       user-select: none;
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    /* Vertical Speed Rail (Slider on right screen edge) */
+    .speed-rail-container {
+      position: fixed;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%) translateX(70px);
+      width: 42px;
+      height: 220px;
+      background: rgba(18, 22, 29, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(229, 169, 60, 0.35);
+      border-radius: 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      z-index: 999;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 14px rgba(229, 169, 60, 0.15);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      user-select: none;
+    }
+    .speed-rail-container.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(-50%) translateX(0);
+    }
+    .rail-btn {
+      background: transparent;
+      border: none;
+      color: var(--gold);
+      font-size: 18px;
+      font-weight: 800;
+      width: 32px;
+      height: 28px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all 0.15s;
+    }
+    .rail-btn:active {
+      background: rgba(229, 169, 60, 0.2);
+      transform: scale(0.9);
+    }
+    .rail-track {
+      position: relative;
+      width: 6px;
+      flex: 1;
+      margin: 6px 0;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 3px;
+      cursor: pointer;
+      touch-action: none;
+    }
+    .rail-track-fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: var(--gold);
+      border-radius: 3px;
+      box-shadow: 0 0 8px rgba(229, 169, 60, 0.6);
+      pointer-events: none;
+    }
+    .rail-thumb {
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%, 50%);
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--gold);
+      border: 2px solid #0C0E12;
+      box-shadow: 0 0 10px rgba(229, 169, 60, 0.8);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .rail-thumb-tip {
+      position: absolute;
+      right: 26px;
+      background: rgba(18, 22, 29, 0.95);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 8px;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    /* Page Flip Dots Rail (Clean minimal dots without text numbers) */
+    .pageflip-rail {
+      position: fixed;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%) translateX(70px);
+      background: rgba(18, 22, 29, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(229, 169, 60, 0.35);
+      border-radius: 20px;
+      padding: 10px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      z-index: 999;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 14px rgba(229, 169, 60, 0.15);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .pageflip-rail.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(-50%) translateX(0);
+    }
+    .pageflip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .pageflip-dot:hover {
+      background: rgba(229, 169, 60, 0.6);
+    }
+    .pageflip-dot.active {
+      width: 8px;
+      height: 22px;
+      background: var(--gold);
+      border-color: var(--gold);
+      box-shadow: 0 0 10px rgba(229, 169, 60, 0.8);
     }
   </style>
 </head>
@@ -657,6 +872,21 @@ class WebStageServer(private val port: Int = 8990) {
       <svg id="iconScrollPause" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
     </button>
 
+    <!-- Speed Controls (Stepper - / Badge / Stepper +) -->
+    <div class="dock-speed-group" title="Kecepatan Auto Scroll">
+      <button class="dock-btn-stepper" onclick="adjustSpeed(-0.2)" title="Perlambat Scroll">−</button>
+      <button class="dock-speed-badge" id="dockSpeed" onclick="cycleSpeedPreset()" title="Klik untuk ganti preset kecepatan">1.0×</button>
+      <button class="dock-btn-stepper" onclick="adjustSpeed(0.2)" title="Percepat Scroll">+</button>
+    </div>
+
+    <!-- Page Flip Toggle (Open Book) -->
+    <button class="dock-btn" id="btnPageFlip" onclick="togglePageFlip()" title="Page Flip (Buka Halaman per Slide)">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+      </svg>
+    </button>
+
     <div class="dock-sep"></div>
 
     <!-- Transpose Controls (Flat, Badge, Sharp) -->
@@ -680,7 +910,7 @@ class WebStageServer(private val port: Int = 8990) {
 
     <div class="dock-sep"></div>
 
-    <!-- Tetap Menyala (Always-Lit WakeLock Screen Indicator) -->
+    <!-- Layar Tetap Menyala (Always-Lit WakeLock Screen Indicator) -->
     <button class="dock-btn always-lit" id="btnWake" onclick="requestWakeLock()" title="Layar Tetap Menyala (Stage Awake)">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="3.5"/><line x1="12" y1="20.5" x2="12" y2="22.5"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1.5" y1="12" x2="3.5" y2="12"/><line x1="20.5" y1="12" x2="22.5" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
     </button>
@@ -694,11 +924,33 @@ class WebStageServer(private val port: Int = 8990) {
     </button>
   </div>
 
+  <!-- Vertical Speed Rail (Slider on right edge) -->
+  <div class="speed-rail-container" id="speedRail">
+    <button class="rail-btn" onclick="adjustSpeed(0.2)" title="Percepat">+</button>
+    <div class="rail-track" id="speedRailTrack">
+      <div class="rail-track-fill" id="speedRailFill"></div>
+      <div class="rail-thumb" id="speedRailThumb">
+        <span class="rail-thumb-tip" id="speedRailTip">1.0×</span>
+      </div>
+    </div>
+    <button class="rail-btn" onclick="adjustSpeed(-0.2)" title="Perlambat">−</button>
+  </div>
+
+  <!-- Page Flip Dots Rail (Pills at right edge) -->
+  <div class="pageflip-rail" id="pageFlipRail"></div>
+
   <script>
     let currentData = null;
-    let scrollInterval = null;
-    let scrollSpeed = 1.0;
-    let fontSize = 15;
+    let isScrolling = false;
+    let scrollAnimFrame = null;
+    let lastScrollTime = 0;
+    let scrollSubpixel = 0;
+    let scrollSpeed = parseFloat(localStorage.getItem('kordapp_scroll_speed') || '1.0') || 1.0;
+    let fontSize = parseInt(localStorage.getItem('kordapp_font_size') || '15') || 15;
+    let isPageFlip = false;
+    let currentPageIndex = 0;
+    let pageList = [];
+    let parsedSheetLines = [];
     let wakeLock = null;
 
     const notesSharp = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -805,45 +1057,294 @@ class WebStageServer(private val port: Int = 8990) {
 
     function adjustFont(delta) {
       fontSize = Math.max(11, Math.min(28, fontSize + delta));
+      localStorage.setItem('kordapp_font_size', fontSize);
       document.getElementById('sheetContent').style.fontSize = fontSize + 'px';
+      if (isPageFlip) {
+        paginateSheet();
+        renderCurrentPage();
+      }
     }
 
-    function toggleScroll() {
+    /* =========================================================
+       SPEED ADJUSTMENT & SPEED RAIL
+       ========================================================= */
+    function setScrollSpeed(val) {
+      scrollSpeed = Math.max(0.4, Math.min(3.0, Math.round(val * 10) / 10));
+      localStorage.setItem('kordapp_scroll_speed', scrollSpeed);
+      updateSpeedUI();
+    }
+
+    function adjustSpeed(delta) {
+      setScrollSpeed(scrollSpeed + delta);
+    }
+
+    function cycleSpeedPreset() {
+      const presets = [0.6, 0.8, 1.0, 1.3, 1.6, 2.0, 2.5];
+      let next = presets[0];
+      for (let i = 0; i < presets.length; i++) {
+        if (presets[i] > scrollSpeed + 0.05) {
+          next = presets[i];
+          break;
+        }
+      }
+      setScrollSpeed(next);
+    }
+
+    function updateSpeedUI() {
+      const str = scrollSpeed.toFixed(1) + '\u00D7';
+      const dockBadge = document.getElementById('dockSpeed');
+      if (dockBadge) dockBadge.innerText = str;
+
+      const tip = document.getElementById('speedRailTip');
+      if (tip) tip.innerText = str;
+
+      const pct = Math.max(0, Math.min(1, (scrollSpeed - 0.4) / (3.0 - 0.4)));
+      const fill = document.getElementById('speedRailFill');
+      if (fill) fill.style.height = (pct * 100) + '%';
+      const thumb = document.getElementById('speedRailThumb');
+      if (thumb) thumb.style.bottom = (pct * 100) + '%';
+    }
+
+    function initSpeedRail() {
+      const track = document.getElementById('speedRailTrack');
+      if (!track) return;
+      let isDragging = false;
+
+      function updateFromPointer(clientY) {
+        const rect = track.getBoundingClientRect();
+        const height = rect.height;
+        if (height <= 0) return;
+        const relY = clientY - rect.top;
+        const clampedY = Math.max(0, Math.min(height, relY));
+        const pct = 1 - (clampedY / height);
+        const speed = 0.4 + pct * (3.0 - 0.4);
+        setScrollSpeed(speed);
+      }
+
+      track.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        track.setPointerCapture(e.pointerId);
+        updateFromPointer(e.clientY);
+      });
+      track.addEventListener('pointermove', (e) => {
+        if (isDragging) updateFromPointer(e.clientY);
+      });
+      track.addEventListener('pointerup', (e) => { isDragging = false; });
+      track.addEventListener('pointercancel', (e) => { isDragging = false; });
+    }
+
+    /* =========================================================
+       AUTO SCROLL (SMOOTH ANIMATION FRAME)
+       ========================================================= */
+    function scrollLoop(time) {
+      if (!isScrolling) return;
+      if (!lastScrollTime) lastScrollTime = time;
+      const dt = (time - lastScrollTime) / 1000;
+      lastScrollTime = time;
+
+      const pixelsPerSec = 32 * scrollSpeed;
+      scrollSubpixel += pixelsPerSec * dt;
+
+      if (scrollSubpixel >= 1) {
+        const px = Math.floor(scrollSubpixel);
+        window.scrollBy(0, px);
+        scrollSubpixel -= px;
+      }
+
+      if ((window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 2)) {
+        toggleScroll(false);
+        return;
+      }
+
+      scrollAnimFrame = requestAnimationFrame(scrollLoop);
+    }
+
+    function toggleScroll(forceState) {
+      const shouldStart = (forceState !== undefined) ? forceState : !isScrolling;
       const btn = document.getElementById('btnScroll');
       const iconPlay = document.getElementById('iconScrollPlay');
       const iconPause = document.getElementById('iconScrollPause');
+      const rail = document.getElementById('speedRail');
 
-      if (scrollInterval) {
-        clearInterval(scrollInterval);
-        scrollInterval = null;
-        if (iconPlay) iconPlay.style.display = 'block';
-        if (iconPause) iconPause.style.display = 'none';
-        if (btn) btn.classList.remove('active');
-      } else {
+      if (shouldStart) {
+        if (isPageFlip) {
+          togglePageFlip(false);
+        }
+        isScrolling = true;
+        lastScrollTime = 0;
+        scrollSubpixel = 0;
         if (iconPlay) iconPlay.style.display = 'none';
         if (iconPause) iconPause.style.display = 'block';
         if (btn) btn.classList.add('active');
-        scrollInterval = setInterval(() => {
-          window.scrollBy({ top: 1, behavior: 'smooth' });
-        }, 40 / scrollSpeed);
+        if (rail) rail.classList.add('visible');
+        cancelAnimationFrame(scrollAnimFrame);
+        scrollAnimFrame = requestAnimationFrame(scrollLoop);
+        requestWakeLock();
+      } else {
+        isScrolling = false;
+        cancelAnimationFrame(scrollAnimFrame);
+        scrollAnimFrame = null;
+        if (iconPlay) iconPlay.style.display = 'block';
+        if (iconPause) iconPause.style.display = 'none';
+        if (btn) btn.classList.remove('active');
+        if (rail) rail.classList.remove('visible');
+      }
+    }
+
+    /* =========================================================
+       PAGE FLIP (DISCRETE SLIDE VIEWPORT PAGINATION)
+       ========================================================= */
+    function togglePageFlip(forceState) {
+      const shouldActive = (forceState !== undefined) ? forceState : !isPageFlip;
+      const btn = document.getElementById('btnPageFlip');
+      const rail = document.getElementById('pageFlipRail');
+
+      if (shouldActive) {
+        if (isScrolling) {
+          toggleScroll(false);
+        }
+        isPageFlip = true;
+        if (btn) btn.classList.add('active');
+        if (rail) rail.classList.add('visible');
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        paginateSheet();
+        renderCurrentPage();
+      } else {
+        isPageFlip = false;
+        if (btn) btn.classList.remove('active');
+        if (rail) rail.classList.remove('visible');
+        renderContinuousSheet();
+      }
+    }
+
+    function paginateSheet() {
+      if (!parsedSheetLines || parsedSheetLines.length === 0) {
+        pageList = [];
+        return;
+      }
+      const fontLineHeight = fontSize * 1.6;
+      const availableH = window.innerHeight - 170;
+      const capacity = Math.max(6, Math.floor(availableH / fontLineHeight));
+
+      const pages = [];
+      let currentPage = [];
+      let usedSlots = 0;
+
+      for (let i = 0; i < parsedSheetLines.length; i++) {
+        const item = parsedSheetLines[i];
+        if (currentPage.length === 0 && item.type === 'blank') {
+          continue;
+        }
+        let cost = 1;
+        if (item.type === 'section') {
+          cost = 2;
+        } else if (item.type === 'chord-lyric-flow') {
+          cost = 2;
+        }
+
+        const isSection = (item.type === 'section');
+        const extraForSection = isSection ? 2 : 0;
+
+        if (currentPage.length > 0 && (usedSlots + cost + extraForSection) > capacity) {
+          pages.push(currentPage);
+          currentPage = [];
+          usedSlots = 0;
+          if (item.type === 'blank') continue;
+        }
+
+        currentPage.push(item);
+        usedSlots += cost;
+      }
+
+      if (currentPage.length > 0) {
+        pages.push(currentPage);
+      }
+
+      pageList = pages.length > 0 ? pages : [[]];
+      if (currentPageIndex >= pageList.length) {
+        currentPageIndex = Math.max(0, pageList.length - 1);
+      }
+      updatePageFlipRailUI();
+    }
+
+    function renderCurrentPage() {
+      const container = document.getElementById('sheetContent');
+      if (!container) return;
+      if (!pageList || pageList.length === 0 || !pageList[currentPageIndex]) {
+        container.innerHTML = "";
+        return;
+      }
+      const lines = pageList[currentPageIndex];
+      const tr = (currentData && currentData.transpose) || 0;
+      let html = '<div class="pageflip-container">';
+      for (let item of lines) {
+        html += item.getHtml(tr) + '\n';
+      }
+      html += '</div>';
+      container.innerHTML = html;
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      updatePageFlipRailUI();
+    }
+
+    function renderContinuousSheet() {
+      const container = document.getElementById('sheetContent');
+      if (!container) return;
+      const tr = (currentData && currentData.transpose) || 0;
+      let html = "";
+      for (let item of parsedSheetLines) {
+        html += item.getHtml(tr) + '\n';
+      }
+      container.innerHTML = html;
+    }
+
+    function updatePageFlipRailUI() {
+      const rail = document.getElementById('pageFlipRail');
+      if (!rail) return;
+      const total = pageList.length;
+      if (total <= 1 || !isPageFlip) {
+        rail.innerHTML = "";
+        rail.classList.remove('visible');
+        return;
+      }
+      rail.classList.add('visible');
+      let dotsHtml = "";
+      for (let i = 0; i < total; i++) {
+        const isCur = (i === currentPageIndex);
+        dotsHtml += '<div class="pageflip-dot ' + (isCur ? 'active' : '') + '" onclick="goToPage(' + i + ')" title="Halaman ' + (i + 1) + '"></div>';
+      }
+      rail.innerHTML = dotsHtml;
+    }
+
+    function goToPage(idx) {
+      if (idx < 0 || idx >= pageList.length) return;
+      currentPageIndex = idx;
+      renderCurrentPage();
+    }
+
+    function nextPage() {
+      if (currentPageIndex < pageList.length - 1) {
+        currentPageIndex++;
+        renderCurrentPage();
+      }
+    }
+
+    function prevPage() {
+      if (currentPageIndex > 0) {
+        currentPageIndex--;
+        renderCurrentPage();
       }
     }
 
     function toggleFullScreen() {
       const doc = window.document;
       const docEl = doc.documentElement;
-
       const requestFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
       const cancelFs = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
 
       if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
-        if (requestFs) {
-          requestFs.call(docEl).catch(() => {});
-        }
+        if (requestFs) requestFs.call(docEl).catch(() => {});
       } else {
-        if (cancelFs) {
-          cancelFs.call(doc).catch(() => {});
-        }
+        if (cancelFs) cancelFs.call(doc).catch(() => {});
       }
     }
 
@@ -862,9 +1363,8 @@ class WebStageServer(private val port: Int = 8990) {
       }
     }
 
-    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(ev => {
-      document.addEventListener(ev, updateFsIcon);
-    });
+    document.addEventListener('fullscreenchange', updateFsIcon);
+    document.addEventListener('webkitfullscreenchange', updateFsIcon);
 
     function escapeHtml(text) {
       if (!text) return "";
@@ -1070,16 +1570,22 @@ class WebStageServer(private val port: Int = 8990) {
       return html;
     }
 
-    function renderSheet(rawContent, delta) {
-      if (!rawContent) return "";
-      const lines = unescapeHtml(rawContent).split(/\r?\n/);
+    function parseSheet(rawContent) {
+      if (!rawContent) {
+        parsedSheetLines = [];
+        return;
+      }
+      const rawLines = unescapeHtml(rawContent).split(/\r?\n/);
       let sheetLines = [];
       const bracketGroupRegex = /\[([^\[\]\r\n]+)\]/g;
 
-      for (let line of lines) {
+      for (let line of rawLines) {
         const trimmed = line.trim();
         if (trimmed.length === 0) {
-          sheetLines.push({ type: 'blank' });
+          sheetLines.push({
+            type: 'blank',
+            getHtml: () => '<div class="blank-line"></div>'
+          });
           continue;
         }
 
@@ -1096,87 +1602,109 @@ class WebStageServer(private val port: Int = 8990) {
 
         if (bracketChords.length > 0) {
           if (isBarNotationLine(line, chordSpans)) {
-            sheetLines.push({
-              type: 'chords',
+            const lObj = {
               tokens: bracketChords.map(bc => ({ symbol: bc.chord, column: bc.index })),
               originalText: line,
               bracketed: true,
               isBarLine: true
+            };
+            sheetLines.push({
+              type: 'chords-bar',
+              getHtml: (d) => renderBarLine(lObj, d)
             });
           } else if (isOverlayOnly(line, chordSpans)) {
-            sheetLines.push({
-              type: 'chords',
+            const lObj = {
               tokens: bracketChords.map(bc => ({ symbol: bc.chord, column: bc.index })),
               originalText: line,
               bracketed: true,
               isBarLine: false
+            };
+            sheetLines.push({
+              type: 'chord-lyric-flow',
+              tokens: lObj.tokens,
+              lyric: "",
+              getHtml: (d) => renderChordLyricFlow(lObj.tokens, "", d)
             });
           } else {
             const split = splitInline(line, bracketChords);
             sheetLines.push({
-              type: 'chords',
+              type: 'chord-lyric-flow',
               tokens: split.tokens,
-              originalText: line,
-              bracketed: true,
-              isBarLine: false
+              lyric: "",
+              getHtml: (d) => renderChordLyricFlow(split.tokens, "", d)
             });
             if (split.lyric.trim().length > 0 && /[a-zA-Z]/.test(split.lyric)) {
-              sheetLines.push({ type: 'lyric', text: split.lyric });
+              sheetLines.push({
+                type: 'lyric',
+                getHtml: (d) => renderChordLyricFlow(null, split.lyric, d)
+              });
             }
           }
           continue;
         }
 
         if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-          sheetLines.push({ type: 'section', text: trimmed });
+          sheetLines.push({
+            type: 'section',
+            getHtml: () => '<div class="section-header">' + escapeHtml(trimmed) + '</div>'
+          });
           continue;
         }
 
         const tokens = extractTokens(line);
         if (isChordLine(tokens)) {
           const isBar = line.indexOf('|') !== -1;
-          sheetLines.push({
-            type: 'chords',
-            tokens: tokens,
-            originalText: line,
-            bracketed: false,
-            isBarLine: isBar
-          });
+          if (isBar) {
+            const lObj = { tokens: tokens, originalText: line, bracketed: false, isBarLine: true };
+            sheetLines.push({
+              type: 'chords-bar',
+              getHtml: (d) => renderBarLine(lObj, d)
+            });
+          } else {
+            sheetLines.push({
+              type: 'chords-overlay',
+              tokens: tokens,
+              originalText: line
+            });
+          }
         } else if (line.indexOf('|') !== -1 && isBarNotationLine(line, tokens.map(t => ({ start: t.column, end: t.column + t.symbol.length })))) {
+          const lObj = { tokens: tokens, originalText: line, bracketed: false, isBarLine: true };
           sheetLines.push({
-            type: 'chords',
-            tokens: tokens,
-            originalText: line,
-            bracketed: false,
-            isBarLine: true
+            type: 'chords-bar',
+            getHtml: (d) => renderBarLine(lObj, d)
           });
         } else {
-          sheetLines.push({ type: 'lyric', text: line });
+          sheetLines.push({
+            type: 'lyric',
+            text: line,
+            getHtml: (d) => renderChordLyricFlow(null, line, d)
+          });
         }
       }
 
-      let html = "";
+      // Pair chord overlay lines with following lyric line
+      let combined = [];
       for (let i = 0; i < sheetLines.length; i++) {
-        const line = sheetLines[i];
-        if (line.type === 'blank') {
-          html += '<div class="blank-line"></div>\n';
-        } else if (line.type === 'section') {
-          html += '<div class="section-header">' + escapeHtml(line.text) + '</div>\n';
-        } else if (line.type === 'chords' && line.isBarLine) {
-          html += renderBarLine(line, delta || 0) + '\n';
-        } else if (line.type === 'chords' && !line.isBarLine) {
-          const nextLine = sheetLines[i + 1];
+        const item = sheetLines[i];
+        if (item.type === 'chords-overlay') {
+          const next = sheetLines[i + 1];
           let lyricText = null;
-          if (nextLine && nextLine.type === 'lyric') {
-            lyricText = nextLine.text;
+          if (next && next.type === 'lyric') {
+            lyricText = next.text;
             i++;
           }
-          html += renderChordLyricFlow(line.tokens, lyricText, delta || 0) + '\n';
-        } else if (line.type === 'lyric') {
-          html += renderChordLyricFlow(null, line.text, delta || 0) + '\n';
+          const tks = item.tokens;
+          combined.push({
+            type: 'chord-lyric-flow',
+            tokens: tks,
+            lyric: lyricText,
+            getHtml: (d) => renderChordLyricFlow(tks, lyricText, d)
+          });
+        } else {
+          combined.push(item);
         }
       }
-      return html;
+      parsedSheetLines = combined;
     }
 
     function updateUi(data) {
@@ -1186,7 +1714,8 @@ class WebStageServer(private val port: Int = 8990) {
         document.getElementById('dockBar').style.display = 'none';
         document.getElementById('headerTitle').innerText = 'Standby Panggung';
         document.getElementById('headerSubtitle').innerText = 'KordApp Stage Mirror';
-        if (scrollInterval) toggleScroll();
+        if (isScrolling) toggleScroll(false);
+        if (isPageFlip) togglePageFlip(false);
         return;
       }
 
@@ -1214,9 +1743,100 @@ class WebStageServer(private val port: Int = 8990) {
       if (data.capo && data.capo > 0) badges += '<span class="meta-badge">Capo: ' + data.capo + '</span>';
       metaBar.innerHTML = badges;
 
-      document.getElementById('sheetContent').innerHTML = renderSheet(data.rawContent || '', tr);
+      parseSheet(data.rawContent || '');
+      if (isPageFlip) {
+        paginateSheet();
+        renderCurrentPage();
+      } else {
+        renderContinuousSheet();
+      }
+      updateSpeedUI();
       requestWakeLock();
     }
+
+    // Touch and Gesture Navigation for Page Flip
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+
+    document.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+      if (!isPageFlip) return;
+      if (e.changedTouches.length === 1) {
+        const deltaX = e.changedTouches[0].clientX - touchStartX;
+        const deltaY = e.changedTouches[0].clientY - touchStartY;
+        const elapsed = Date.now() - touchStartTime;
+
+        const target = e.target;
+        if (target && (target.closest('#dockBar') || target.closest('#pageFlipRail') || target.closest('#speedRail'))) {
+          return;
+        }
+
+        // Horizontal swipe gesture
+        if (Math.abs(deltaX) > 40 && Math.abs(deltaY) < 65 && elapsed < 500) {
+          if (deltaX < 0) {
+            nextPage();
+          } else {
+            prevPage();
+          }
+          return;
+        }
+
+        // Tap gesture (right half = next, left half = prev)
+        if (Math.abs(deltaX) < 15 && Math.abs(deltaY) < 15 && elapsed < 350) {
+          const clickX = e.changedTouches[0].clientX;
+          if (clickX > window.innerWidth * 0.5) {
+            nextPage();
+          } else {
+            prevPage();
+          }
+        }
+      }
+    }, { passive: true });
+
+    // Click on desktop screen for Page Flip
+    document.getElementById('viewPlayer').addEventListener('click', (e) => {
+      if (!isPageFlip) return;
+      if (e.target && (e.target.closest('#dockBar') || e.target.closest('#pageFlipRail') || e.target.closest('#speedRail'))) {
+        return;
+      }
+      if (e.clientX > window.innerWidth * 0.5) {
+        nextPage();
+      } else {
+        prevPage();
+      }
+    });
+
+    // Keyboard Navigation for Page Flip
+    document.addEventListener('keydown', (e) => {
+      if (!isPageFlip) return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
+        e.preventDefault();
+        nextPage();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevPage();
+      }
+    });
+
+    // Window resize handler for dynamic pagination
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      if (isPageFlip) {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          paginateSheet();
+          renderCurrentPage();
+        }, 150);
+      }
+    });
 
     // Connect to SSE stream
     function connectSse() {
@@ -1271,6 +1891,10 @@ class WebStageServer(private val port: Int = 8990) {
       } catch(err) {}
     }, 4000);
 
+    // Initialize components on load
+    initSpeedRail();
+    updateSpeedUI();
+    document.getElementById('sheetContent').style.fontSize = fontSize + 'px';
     connectSse();
   </script>
 </body>
