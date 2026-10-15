@@ -187,6 +187,27 @@ interface AppStrings {
     val verifying: String
     val unableToOpenBrowserOrWa: String
     fun waOrderMessage(deviceId: String): String
+    val buyLicenseLabel: String
+    val lostAccessLabel: String
+    val resetKeyAction: String
+    val resetKeyDialogTitle: String
+    val resetKeyDialogDesc: String
+    val sendResetVerificationBtn: String
+    val enterResetOtpTitle: String
+    val confirmResetBtn: String
+    val recoveryEmailPlaceholder: String
+    val resetSuccessMsg: String
+    val bindEmailEduTitle: String
+    val bindEmailEduDesc: String
+    val bindEmailNowBtn: String
+    val setupLaterBtn: String
+    val bindEmailSuccess: String
+    val recoveryEmailTitle: String
+    val notLinkedStatus: String
+    val linkAction: String
+    val verifiedStatus: String
+    val qrisDialogTitle: String
+    val qrisDialogDesc: String
 
     // Band Live Sync (P2P Mode)
     val bandSection: String

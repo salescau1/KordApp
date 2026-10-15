@@ -75,8 +75,7 @@ class HomeViewModelTest {
 
     @After
     fun teardown() {
-        catalogDb.close()
-        userDb.close()
+        runCatching { catalogDb.close() }
         HomeViewModel.resetTestCache()
         Dispatchers.resetMain()
     }

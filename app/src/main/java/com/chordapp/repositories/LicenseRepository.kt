@@ -223,15 +223,63 @@ object LicenseRepository {
         }.getOrDefault(false)
     }
 
+    private const val KEY_RECOVERY_EMAIL = "recovery_email"
+    private const val KEY_EMAIL_VERIFIED = "email_verified"
+    private const val KEY_DISMISSED_BIND_EMAIL_PROMPT = "dismissed_bind_email_prompt"
+
+    fun getSavedRecoveryEmail(context: Context): String? {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_RECOVERY_EMAIL, null)
+    }
+
+    fun isEmailVerified(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_EMAIL_VERIFIED, false)
+    }
+
+    fun saveRecoveryEmailLocally(context: Context, email: String, verified: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString(KEY_RECOVERY_EMAIL, email.trim().lowercase())
+            .putBoolean(KEY_EMAIL_VERIFIED, verified)
+            .apply()
+    }
+
+    fun isBindEmailPromptDismissed(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_DISMISSED_BIND_EMAIL_PROMPT, false)
+    }
+
+    fun setBindEmailPromptDismissed(context: Context, dismissed: Boolean = true) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_DISMISSED_BIND_EMAIL_PROMPT, dismissed).apply()
+    }
+
+    fun maskEmail(email: String?): String {
+        if (email.isNullOrBlank() || !email.contains("@")) return "-"
+        val namePart = email.substringBefore("@")
+        val domainPart = email.substringAfter("@")
+        val visibleCount = if (namePart.length <= 3) 1 else 3
+        return namePart.take(visibleCount) + "***@" + domainPart
+    }
+
     /**
      * Aktivasi kode lisensi ke Supabase.
      * Mengembalikan Result: Pair(isSuccess, message).
+     * Otomatis menormalisasi format 3-segmen atau 4-segmen (menambahkan dash jika input mentah).
      */
     suspend fun activateLicense(context: Context, rawKey: String): Pair<Boolean, String> =
         withContext(Dispatchers.IO) {
             val cleanKey = rawKey.trim().uppercase()
             if (cleanKey.isEmpty()) {
                 return@withContext Pair(false, "Kode lisensi tidak boleh kosong!")
+            }
+
+            // Normalisasi otomatis jika input alfanumerik tanpa dash (12 atau 16 karakter)
+            val normalizedKey = if (!cleanKey.contains("-") && (cleanKey.length == 12 || cleanKey.length == 16)) {
+                cleanKey.chunked(4).joinToString("-")
+            } else {
+                cleanKey
             }
 
             val deviceId = getDeviceId(context)
@@ -249,7 +297,7 @@ object LicenseRepository {
                 }
 
                 val body = JSONObject().apply {
-                    put("p_license_key", cleanKey)
+                    put("p_license_key", normalizedKey)
                     put("p_device_id", deviceId)
                 }
 
@@ -267,7 +315,7 @@ object LicenseRepository {
                     val success = json.optBoolean("success", false)
                     val message = json.optString("message", "Respon server tidak valid.")
                     if (success) {
-                        saveLicenseSuccess(context, cleanKey)
+                        saveLicenseSuccess(context, normalizedKey)
                         recordDevice(context)
                     }
                     Pair(success, message)
@@ -278,4 +326,278 @@ object LicenseRepository {
                 Pair(false, "Gagal koneksi: ${error.localizedMessage ?: "Periksa internet Anda."}")
             }
         }
+
+    /**
+     * Mengajukan penautan email pemulihan ke server Supabase via RPC request_license_otp.
+     * Mengembalikan Pair(isSuccess, message).
+     */
+    suspend fun requestEmailBindingOtp(
+        context: Context,
+        email: String,
+        generatedOtp: String = (100000..999999).random().toString()
+    ): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+        val savedKey = getSavedLicenseKey(context) ?: return@withContext Pair(false, "Lisensi belum aktif.")
+        val cleanEmail = email.trim().lowercase()
+        if (cleanEmail.isEmpty() || !cleanEmail.contains("@")) {
+            return@withContext Pair(false, "Format email tidak valid.")
+        }
+
+        runCatching {
+            val url = URL("$SUPABASE_URL/rpc/request_license_otp")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 8_000
+                readTimeout = 8_000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("apikey", SUPABASE_ANON_KEY)
+                setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
+            }
+
+            val body = JSONObject().apply {
+                put("p_license_key", savedKey)
+                put("p_email", cleanEmail)
+                put("p_otp", generatedOtp)
+                put("p_expires_minutes", 15)
+            }
+
+            conn.outputStream.use { os ->
+                OutputStreamWriter(os, StandardCharsets.UTF_8).use { it.write(body.toString()) }
+            }
+
+            val status = conn.responseCode
+            val stream = if (status in 200..299) conn.inputStream else conn.errorStream
+            val responseText = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            conn.disconnect()
+
+            if (status in 200..299 && responseText.isNotEmpty()) {
+                val json = JSONObject(responseText)
+                val success = json.optBoolean("success", false)
+                val message = json.optString("message", "Respon server tidak valid.")
+                if (success) {
+                    saveRecoveryEmailLocally(context, cleanEmail, false)
+                }
+                Pair(success, message)
+            } else {
+                Pair(false, "Gagal request OTP (Error $status). Periksa koneksi internet.")
+            }
+        }.getOrElse { error ->
+            Pair(false, "Koneksi gagal: ${error.localizedMessage ?: "Periksa internet Anda."}")
+        }
+    }
+
+    /**
+     * Memverifikasi kode OTP 6-digit untuk email pemulihan via RPC verify_license_otp.
+     * Mengembalikan Pair(isSuccess, message).
+     */
+    suspend fun verifyEmailOtp(
+        context: Context,
+        otp: String
+    ): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+        val savedKey = getSavedLicenseKey(context) ?: return@withContext Pair(false, "Lisensi belum aktif.")
+        val cleanOtp = otp.trim()
+        if (cleanOtp.length != 6) {
+            return@withContext Pair(false, "Kode OTP harus berupa 6 digit angka.")
+        }
+
+        runCatching {
+            val url = URL("$SUPABASE_URL/rpc/verify_license_otp")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 8_000
+                readTimeout = 8_000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("apikey", SUPABASE_ANON_KEY)
+                setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
+            }
+
+            val body = JSONObject().apply {
+                put("p_license_key", savedKey)
+                put("p_otp", cleanOtp)
+            }
+
+            conn.outputStream.use { os ->
+                OutputStreamWriter(os, StandardCharsets.UTF_8).use { it.write(body.toString()) }
+            }
+
+            val status = conn.responseCode
+            val stream = if (status in 200..299) conn.inputStream else conn.errorStream
+            val responseText = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            conn.disconnect()
+
+            if (status in 200..299 && responseText.isNotEmpty()) {
+                val json = JSONObject(responseText)
+                val success = json.optBoolean("success", false)
+                val message = json.optString("message", "Respon server tidak valid.")
+                if (success) {
+                    val verifiedEmail = json.optString("email", getSavedRecoveryEmail(context) ?: "")
+                    if (verifiedEmail.isNotEmpty()) {
+                        saveRecoveryEmailLocally(context, verifiedEmail, true)
+                    }
+                }
+                Pair(success, message)
+            } else {
+                Pair(false, "Gagal verifikasi OTP (Error $status). Periksa koneksi internet.")
+            }
+        }.getOrElse { error ->
+            Pair(false, "Koneksi gagal: ${error.localizedMessage ?: "Periksa internet Anda."}")
+        }
+    }
+
+    /**
+     * Permintaan reset lisensi mandiri berbasis email pemulihan terverifikasi via RPC request_license_reset_by_email.
+     */
+    suspend fun requestLicenseResetByEmail(
+        email: String,
+        resetToken: String = java.util.UUID.randomUUID().toString()
+    ): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+        val cleanEmail = email.trim().lowercase()
+        if (cleanEmail.isEmpty() || !cleanEmail.contains("@")) {
+            return@withContext Pair(false, "Format email tidak valid.")
+        }
+
+        runCatching {
+            val url = URL("$SUPABASE_URL/rpc/request_license_reset_by_email")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 8_000
+                readTimeout = 8_000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("apikey", SUPABASE_ANON_KEY)
+                setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
+            }
+
+            val body = JSONObject().apply {
+                put("p_email", cleanEmail)
+                put("p_reset_token", resetToken)
+                put("p_expires_minutes", 30)
+            }
+
+            conn.outputStream.use { os ->
+                OutputStreamWriter(os, StandardCharsets.UTF_8).use { it.write(body.toString()) }
+            }
+
+            val status = conn.responseCode
+            val stream = if (status in 200..299) conn.inputStream else conn.errorStream
+            val responseText = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            conn.disconnect()
+
+            if (status in 200..299 && responseText.isNotEmpty()) {
+                val json = JSONObject(responseText)
+                val success = json.optBoolean("success", false)
+                val message = json.optString("message", "Respon server tidak valid.")
+                Pair(success, message)
+            } else {
+                Pair(false, "Gagal permintaan reset (Error $status). Periksa koneksi internet.")
+            }
+        }.getOrElse { error ->
+            Pair(false, "Koneksi gagal: ${error.localizedMessage ?: "Periksa internet Anda."}")
+        }
+    }
+
+    /**
+     * Konfirmasi eksekusi reset lisensi via token unik reset (bisa dipanggil dari web link atau deep link).
+     */
+    suspend fun confirmLicenseReset(resetToken: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+        val cleanToken = resetToken.trim()
+        if (cleanToken.isEmpty()) {
+            return@withContext Pair(false, "Token reset tidak boleh kosong.")
+        }
+
+        runCatching {
+            val url = URL("$SUPABASE_URL/rpc/confirm_license_reset")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 8_000
+                readTimeout = 8_000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("apikey", SUPABASE_ANON_KEY)
+                setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
+            }
+
+            val body = JSONObject().apply {
+                put("p_reset_token", cleanToken)
+            }
+
+            conn.outputStream.use { os ->
+                OutputStreamWriter(os, StandardCharsets.UTF_8).use { it.write(body.toString()) }
+            }
+
+            val status = conn.responseCode
+            val stream = if (status in 200..299) conn.inputStream else conn.errorStream
+            val responseText = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            conn.disconnect()
+
+            if (status in 200..299 && responseText.isNotEmpty()) {
+                val json = JSONObject(responseText)
+                val success = json.optBoolean("success", false)
+                val message = json.optString("message", "Respon server tidak valid.")
+                Pair(success, message)
+            } else {
+                Pair(false, "Gagal konfirmasi reset (Error $status).")
+            }
+        }.getOrElse { error ->
+            Pair(false, "Koneksi gagal: ${error.localizedMessage ?: "Periksa internet Anda."}")
+        }
+    }
+
+    /**
+     * Konfirmasi reset lisensi dari HP lama via 6-digit OTP email pemulihan langsung di dalam aplikasi (All-in-One).
+     * Mengembalikan Triple(isSuccess, licenseKey, message).
+     */
+    suspend fun confirmLicenseResetByEmailOtp(
+        email: String,
+        otp: String
+    ): Triple<Boolean, String, String> = withContext(Dispatchers.IO) {
+        val cleanEmail = email.trim().lowercase()
+        val cleanOtp = otp.trim()
+        if (cleanEmail.isEmpty() || !cleanEmail.contains("@")) {
+            return@withContext Triple(false, "", "Format email tidak valid.")
+        }
+        if (cleanOtp.isEmpty()) {
+            return@withContext Triple(false, "", "Kode OTP tidak boleh kosong.")
+        }
+
+        runCatching {
+            val url = URL("$SUPABASE_URL/rpc/confirm_license_reset_by_email_otp")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 8_000
+                readTimeout = 8_000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("apikey", SUPABASE_ANON_KEY)
+                setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
+            }
+
+            val body = JSONObject().apply {
+                put("p_email", cleanEmail)
+                put("p_otp", cleanOtp)
+            }
+
+            conn.outputStream.use { os ->
+                OutputStreamWriter(os, StandardCharsets.UTF_8).use { it.write(body.toString()) }
+            }
+
+            val status = conn.responseCode
+            val stream = if (status in 200..299) conn.inputStream else conn.errorStream
+            val responseText = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            conn.disconnect()
+
+            if (status in 200..299 && responseText.isNotEmpty()) {
+                val json = JSONObject(responseText)
+                val success = json.optBoolean("success", false)
+                val licenseKey = json.optString("license_key", "")
+                val message = json.optString("message", "Respon server tidak valid.")
+                Triple(success, licenseKey, message)
+            } else {
+                Triple(false, "", "Gagal konfirmasi reset (Error $status). Periksa koneksi internet.")
+            }
+        }.getOrElse { error ->
+            Triple(false, "", "Koneksi gagal: ${error.localizedMessage ?: "Periksa internet Anda."}")
+        }
+    }
 }

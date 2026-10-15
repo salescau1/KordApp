@@ -13,8 +13,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chordapp.localization.AppLanguage
@@ -79,6 +81,15 @@ fun SettingsScreen(
 
     val isLicensed = remember { LicenseRepository.isLicensed(context) }
     val savedKey = remember { LicenseRepository.getSavedLicenseKey(context) }
+    var recoveryEmail by remember { mutableStateOf(LicenseRepository.getSavedRecoveryEmail(context)) }
+    var isEmailVerified by remember { mutableStateOf(LicenseRepository.isEmailVerified(context)) }
+
+    var showBindEmailDialog by remember { mutableStateOf(false) }
+    var bindEmailInput by remember { mutableStateOf("") }
+    var bindOtpInput by remember { mutableStateOf("") }
+    var isBindOtpSent by remember { mutableStateOf(false) }
+    var isBindLoading by remember { mutableStateOf(false) }
+    var bindError by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -889,6 +900,80 @@ fun SettingsScreen(
 
                     HorizontalDivider(color = Border)
 
+                    // Baris Email Pemulihan (duduk tenang)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "Email Pemulihan",
+                                color = PrimaryText,
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = if (isEmailVerified && !recoveryEmail.isNullOrBlank()) {
+                                    LicenseRepository.maskEmail(recoveryEmail)
+                                } else {
+                                    "Belum ditautkan"
+                                },
+                                color = if (isEmailVerified) Color(0xFF22C55E) else MutedText,
+                                fontSize = 11.5.sp,
+                                fontFamily = if (isEmailVerified) FontFamily.Monospace else FontFamily.Default
+                            )
+                        }
+
+                        if (isEmailVerified && !recoveryEmail.isNullOrBlank()) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFF22C55E).copy(alpha = 0.12f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF22C55E).copy(alpha = 0.35f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF22C55E), modifier = Modifier.size(13.dp))
+                                    Text(
+                                        text = "Terverifikasi",
+                                        color = Color(0xFF22C55E),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(RaisedSurface)
+                                    .border(1.dp, AccentGold, RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        bindEmailInput = ""
+                                        bindOtpInput = ""
+                                        isBindOtpSent = false
+                                        bindError = null
+                                        showBindEmailDialog = true
+                                    }
+                                    .padding(horizontal = 11.dp, vertical = 5.dp)
+                            ) {
+                                Text(
+                                    text = "Tautkan",
+                                    color = AccentGold,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Border)
+
                     // Transfer License Action with Confirmation
                     Row(
                         modifier = Modifier
@@ -1118,6 +1203,157 @@ fun SettingsScreen(
                 TextButton(
                     onClick = { showTransferDialog = false },
                     enabled = !isTransferring
+                ) {
+                    Text("Batal", color = MutedText)
+                }
+            },
+            containerColor = CardSurface
+        )
+    }
+
+    // Dialog Tautkan Email Pemulihan dari Settings
+    if (showBindEmailDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isBindLoading) showBindEmailDialog = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = AccentGold, modifier = Modifier.size(22.dp))
+                    Text(
+                        text = "Tautkan Email Pemulihan",
+                        color = PrimaryText,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Tautkan email Anda agar Anda dapat mereset dan memindahkan lisensi secara mandiri jika perangkat ini hilang atau rusak.",
+                        color = MutedText,
+                        fontSize = 12.5.sp,
+                        lineHeight = 17.sp
+                    )
+
+                    OutlinedTextField(
+                        value = bindEmailInput,
+                        onValueChange = { bindEmailInput = it.trim().lowercase(); bindError = null },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("nama@email.com", color = MutedText.copy(alpha = 0.5f), fontSize = 13.sp) },
+                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = AccentGold) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        enabled = !isBindOtpSent && !isBindLoading,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AccentGold,
+                            unfocusedBorderColor = Border,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    if (isBindOtpSent) {
+                        OutlinedTextField(
+                            value = bindOtpInput,
+                            onValueChange = { if (it.length <= 6) bindOtpInput = it.filter { c -> c.isDigit() }; bindError = null },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Masukkan 6 Digit OTP", color = MutedText.copy(alpha = 0.5f), fontSize = 13.sp) },
+                            leadingIcon = { Icon(Icons.Default.Key, contentDescription = null, tint = AccentGold) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            enabled = !isBindLoading,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AccentGold,
+                                unfocusedBorderColor = Border,
+                                focusedTextColor = PrimaryText,
+                                unfocusedTextColor = PrimaryText
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                    }
+
+                    bindError?.let { err ->
+                        Text(text = err, color = ActiveHeart, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+            },
+            confirmButton = {
+                if (!isBindOtpSent) {
+                    Button(
+                        onClick = {
+                            if (bindEmailInput.isBlank() || !bindEmailInput.contains("@")) {
+                                bindError = "Masukkan alamat email yang valid."
+                                return@Button
+                            }
+                            isBindLoading = true
+                            bindError = null
+                            scope.launch {
+                                val otp = (100000..999999).random().toString()
+                                val (ok, msg) = LicenseRepository.requestEmailBindingOtp(context, bindEmailInput, generatedOtp = otp)
+                                isBindLoading = false
+                                if (ok) {
+                                    isBindOtpSent = true
+                                    Toast.makeText(context, "Kode OTP terkirim ke $bindEmailInput (simulasi: $otp)", Toast.LENGTH_LONG).show()
+                                } else {
+                                    bindError = msg
+                                }
+                            }
+                        },
+                        enabled = !isBindLoading,
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        if (isBindLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
+                        } else {
+                            Text("Kirim OTP", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            if (bindOtpInput.length < 6) {
+                                bindError = "Kode OTP harus 6 digit angka."
+                                return@Button
+                            }
+                            isBindLoading = true
+                            bindError = null
+                            scope.launch {
+                                val (ok, msg) = LicenseRepository.verifyEmailOtp(context, bindOtpInput)
+                                isBindLoading = false
+                                if (ok) {
+                                    recoveryEmail = bindEmailInput
+                                    isEmailVerified = true
+                                    showBindEmailDialog = false
+                                    Toast.makeText(context, "Email pemulihan berhasil ditautkan!", Toast.LENGTH_LONG).show()
+                                } else {
+                                    bindError = msg
+                                }
+                            }
+                        },
+                        enabled = !isBindLoading,
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        if (isBindLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
+                        } else {
+                            Text("Verifikasi OTP", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showBindEmailDialog = false },
+                    enabled = !isBindLoading
                 ) {
                     Text("Batal", color = MutedText)
                 }

@@ -477,7 +477,8 @@
                 if (search) {
                     const matchKey = (l.license_key || '').toLowerCase().includes(search);
                     const matchDev = (l.device_id || '').toLowerCase().includes(search);
-                    if (!matchKey && !matchDev) return false;
+                    const matchEmail = (l.recovery_email || '').toLowerCase().includes(search);
+                    if (!matchKey && !matchDev && !matchEmail) return false;
                 }
                 return true;
             });
@@ -507,6 +508,12 @@
                         </td>
                         <td class="py-3 px-3 font-mono text-[11px] text-slate-300">
                             <span class="select-all">${escapeHtml(l.device_id || '-')}</span>
+                            ${l.recovery_email ? `
+                                <div class="mt-1 flex items-center gap-1 font-sans text-[11px] ${l.email_verified ? 'text-emerald-400' : 'text-amber-400'}">
+                                    <span class="text-[9px] px-1 py-0.5 rounded border ${l.email_verified ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-amber-500/40 bg-amber-500/10'}">${l.email_verified ? '✓ Verified' : '⏳ Pending'}</span>
+                                    <span class="truncate max-w-[150px]" title="${escapeHtml(l.recovery_email)}">${escapeHtml(l.recovery_email)}</span>
+                                </div>
+                            ` : '<div class="mt-0.5 text-[10px] text-slate-500 italic font-sans">Belum bind email</div>'}
                         </td>
                         <td class="py-3 px-3 text-slate-300">
                             ${escapeHtml(devModel)}
