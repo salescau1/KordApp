@@ -84,4 +84,24 @@ class LicenseRepositoryTest {
         assertFalse(okBlankOtp)
         assertEquals("Kode OTP tidak boleh kosong.", msgBlankOtp)
     }
+
+    @Test
+    fun testMaskEmail() {
+        assertEquals("-", LicenseRepository.maskEmail(null))
+        assertEquals("-", LicenseRepository.maskEmail(""))
+        assertEquals("-", LicenseRepository.maskEmail("invalid-email"))
+        assertEquals("k***@gmail.com", LicenseRepository.maskEmail("kek@gmail.com"))
+        assertEquals("yau***@domain.com", LicenseRepository.maskEmail("yaumil@domain.com"))
+    }
+
+    @Test
+    fun testVerifiedEmailStateOnNewDevice() {
+        // Simulasi HP baru setelah aktivasi lisensi yang sudah memiliki email_verified di server
+        LicenseRepository.saveRecoveryEmailLocally(context, "owner@guitar.com", true)
+        LicenseRepository.setBindEmailPromptDismissed(context, true)
+
+        assertTrue("Recovery email harus terverifikasi", LicenseRepository.isEmailVerified(context))
+        assertTrue("Prompt bind email harus dismissed", LicenseRepository.isBindEmailPromptDismissed(context))
+        assertEquals("owner@guitar.com", LicenseRepository.getSavedRecoveryEmail(context))
+    }
 }

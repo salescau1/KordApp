@@ -74,6 +74,14 @@ BEGIN
         RETURN json_build_object('success', false, 'message', 'Kode lisensi tidak ditemukan di server.');
     END IF;
 
+    -- Cegah penimpaan email jika sudah terikat & terverifikasi (Immutable Owner Identity)
+    IF v_row.email_verified = true THEN
+        RETURN json_build_object(
+            'success', false, 
+            'message', 'Lisensi ini sudah terikat secara permanen dengan email (' || v_row.recovery_email || '). Email pemilik lisensi bersifat permanen dan tidak dapat diubah.'
+        );
+    END IF;
+
     -- Update tabel licenses dengan OTP baru & email yang diajukan
     UPDATE public.licenses
     SET recovery_email = v_clean_email,
@@ -311,8 +319,70 @@ END;
 $$;
 
 -- ------------------------------------------------------------------------------
--- 8. GRANT PERMISSION KE ANON & AUTHENTICATED
+-- 8. STORED PROCEDURE / RPC: ACTIVATE LICENSE (RETURNING RECOVERY EMAIL INFO)
 -- ------------------------------------------------------------------------------
+-- Mengaktifkan lisensi pada perangkat baru dan mengembalikan info email pemilik permanen
+CREATE OR REPLACE FUNCTION public.activate_license(
+    p_license_key text,
+    p_device_id text
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_clean_key text;
+    v_clean_device text;
+    v_row record;
+BEGIN
+    v_clean_key := UPPER(TRIM(p_license_key));
+    v_clean_device := TRIM(p_device_id);
+
+    IF v_clean_key IS NULL OR v_clean_key = '' THEN
+        RETURN json_build_object('success', false, 'message', 'Kode lisensi tidak valid.');
+    END IF;
+
+    IF v_clean_device IS NULL OR v_clean_device = '' THEN
+        RETURN json_build_object('success', false, 'message', 'Device ID tidak valid.');
+    END IF;
+
+    SELECT id, is_used, device_id, recovery_email, email_verified
+    INTO v_row
+    FROM public.licenses
+    WHERE license_key = v_clean_key;
+
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'message', 'Kode lisensi tidak valid atau tidak ditemukan.');
+    END IF;
+
+    IF v_row.is_used AND v_row.device_id <> v_clean_device THEN
+        RETURN json_build_object(
+            'success', false, 
+            'message', 'Lisensi ini sedang aktif di perangkat lain. Silakan reset lisensi via menu "Reset Lisensi Mandiri" di aplikasi jika Anda berganti perangkat.'
+        );
+    END IF;
+
+    -- Aktivasi berhasil atau re-aktivasi perangkat yang sama
+    UPDATE public.licenses
+    SET is_used = true,
+        device_id = v_clean_device,
+        activated_at = COALESCE(activated_at, NOW())
+    WHERE id = v_row.id;
+
+    RETURN json_build_object(
+        'success', true,
+        'message', 'Lisensi berhasil diaktifkan!',
+        'license_key', v_clean_key,
+        'recovery_email', COALESCE(v_row.recovery_email, ''),
+        'email_verified', COALESCE(v_row.email_verified, false)
+    );
+END;
+$$;
+
+-- ------------------------------------------------------------------------------
+-- 9. GRANT PERMISSION KE ANON & AUTHENTICATED
+-- ------------------------------------------------------------------------------
+GRANT EXECUTE ON FUNCTION public.activate_license(text, text) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.request_license_otp(text, text, text, int) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.verify_license_otp(text, text) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.request_license_reset_by_email(text, text, int) TO anon, authenticated, service_role;
@@ -320,6 +390,6 @@ GRANT EXECUTE ON FUNCTION public.confirm_license_reset(text) TO anon, authentica
 GRANT EXECUTE ON FUNCTION public.confirm_license_reset_by_email_otp(text, text) TO anon, authenticated, service_role;
 
 -- ------------------------------------------------------------------------------
--- 9. RELOAD SCHEMA CACHE SUPABASE
+-- 10. RELOAD SCHEMA CACHE SUPABASE
 -- ------------------------------------------------------------------------------
 NOTIFY pgrst, 'reload schema';

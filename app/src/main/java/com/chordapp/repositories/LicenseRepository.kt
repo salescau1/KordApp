@@ -321,6 +321,13 @@ object LicenseRepository {
                     if (success) {
                         saveLicenseSuccess(context, normalizedKey)
                         recordDevice(context)
+
+                        val serverRecoveryEmail = json.optString("recovery_email", "").trim()
+                        val serverEmailVerified = json.optBoolean("email_verified", false)
+                        if (serverEmailVerified && serverRecoveryEmail.isNotEmpty()) {
+                            saveRecoveryEmailLocally(context, serverRecoveryEmail, true)
+                            setBindEmailPromptDismissed(context, true)
+                        }
                     }
                     Pair(success, message)
                 } else {

@@ -272,10 +272,10 @@ fun ActivationScreen(
                                 if (ok) {
                                     successMessage = msg
                                     delay(600)
-                                    if (!LicenseRepository.isEmailVerified(context) && !LicenseRepository.isBindEmailPromptDismissed(context)) {
-                                        showBindEducationDialog = true
-                                    } else {
+                                    if (LicenseRepository.isEmailVerified(context) || LicenseRepository.isBindEmailPromptDismissed(context)) {
                                         onActivationSuccess()
+                                    } else {
+                                        showBindEducationDialog = true
                                     }
                                 } else {
                                     errorMessage = msg
