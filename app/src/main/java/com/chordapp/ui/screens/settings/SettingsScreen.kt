@@ -727,7 +727,6 @@ fun SettingsScreen(
 
                             // Paket A (50% - Easy Chord)
                             TierCatalogCard(
-                                badge = strings.tierCoreBadge,
                                 title = strings.packageA,
                                 count = strings.packageSongsCount("79k"),
                                 size = "40 MB",
@@ -748,7 +747,6 @@ fun SettingsScreen(
 
                             // Paket B (30% - Penyempurnaan & Pro)
                             TierCatalogCard(
-                                badge = strings.tierProBadge,
                                 title = strings.packageB,
                                 count = strings.packageSongsCount("47k"),
                                 size = "24 MB",
@@ -769,7 +767,6 @@ fun SettingsScreen(
 
                             // Paket C (20% - Non-Mainstream & Arsip)
                             TierCatalogCard(
-                                badge = strings.tierArchiveBadge,
                                 title = strings.packageC,
                                 count = strings.packageSongsCount("32k"),
                                 size = "16 MB",
@@ -1750,7 +1747,6 @@ private fun SettingsSection(title: String, content: @Composable () -> Unit) {
 
 @Composable
 private fun TierCatalogCard(
-    badge: String,
     title: String,
     count: String,
     size: String,
@@ -1763,8 +1759,13 @@ private fun TierCatalogCard(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalAppStrings.current
-    val buttonText = actionLabel ?: if (isInstalled) strings.deleteAction else strings.downloadAction
-    val isDanger = isInstalled
+    val buttonText = when {
+        isThisTierDownloading -> "$downloadPercent%"
+        actionLabel != null -> actionLabel
+        isInstalled -> strings.deleteAction
+        else -> strings.downloadAction
+    }
+    val isDanger = isInstalled && !isThisTierDownloading
 
     Column(
         modifier = modifier
@@ -1781,77 +1782,28 @@ private fun TierCatalogCard(
             )
             .padding(vertical = 10.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(3.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        // Category Badge (⭐ Inti / 🎸 Populer / 📚 Arsip)
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
-                .background(AccentGold.copy(alpha = 0.12f))
-                .padding(horizontal = 6.dp, vertical = 2.dp)
-        ) {
-            Text(
-                text = badge,
-                color = AccentGold,
-                fontSize = 9.5.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
         Text(
             text = title,
             color = if (isInstalled || isThisTierDownloading) AccentGold else PrimaryText,
-            fontSize = 12.5.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold
         )
         Text(
             text = count,
             color = MutedText,
-            fontSize = 10.5.sp
+            fontSize = 11.sp
         )
         Text(
             text = size,
             color = MutedText,
-            fontSize = 10.sp
+            fontSize = 10.5.sp
         )
 
-        // Status or Downloading Indicator
-        if (isThisTierDownloading) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(AccentGold.copy(alpha = 0.18f))
-                    .border(1.dp, AccentGold, RoundedCornerShape(6.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = "⏳ ${strings.tierDownloadingBadge(downloadPercent)}",
-                    color = AccentGold,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
-            }
-        } else if (isInstalled) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF22C55E).copy(alpha = 0.12f))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = strings.tierInstalledBadge,
-                    color = Color(0xFF22C55E),
-                    fontSize = 9.5.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        } else {
-            Spacer(Modifier.height(14.dp))
-        }
+        Spacer(Modifier.height(6.dp))
 
-        Spacer(Modifier.height(2.dp))
-
-        // Action Button (Hapus / Unduh)
+        // Action Button (Hapus / Unduh / XX%)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
