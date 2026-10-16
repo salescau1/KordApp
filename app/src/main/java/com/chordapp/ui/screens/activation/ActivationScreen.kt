@@ -484,6 +484,20 @@ fun ActivationScreen(
                         lineHeight = 17.sp
                     )
 
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = RaisedSurface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Border)
+                    ) {
+                        Text(
+                            text = strings.resetCooldownNote,
+                            color = AccentGold,
+                            fontSize = 11.5.sp,
+                            lineHeight = 16.sp,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+                        )
+                    }
+
                     // Step 1: Input Email
                     OutlinedTextField(
                         value = resetEmail,
@@ -538,7 +552,7 @@ fun ActivationScreen(
                     Button(
                         onClick = {
                             if (resetEmail.isBlank() || !resetEmail.contains("@")) {
-                                resetError = "Masukkan alamat email yang valid."
+                                resetError = strings.invalidEmailError
                                 return@Button
                             }
                             isResetLoading = true
@@ -549,7 +563,7 @@ fun ActivationScreen(
                                 isResetLoading = false
                                 if (ok) {
                                     isResetOtpSent = true
-                                    resetSuccess = "Kode verifikasi telah dikirim ke $resetEmail. Silakan periksa kotak masuk atau spam email Anda."
+                                    resetSuccess = strings.otpSentToast(resetEmail)
                                 } else {
                                     resetError = msg
                                 }
@@ -569,7 +583,7 @@ fun ActivationScreen(
                     Button(
                         onClick = {
                             if (resetOtp.length < 6) {
-                                resetError = "Kode OTP harus berupa 6 digit angka."
+                                resetError = strings.otpLengthError
                                 return@Button
                             }
                             isResetLoading = true
@@ -673,7 +687,7 @@ fun ActivationScreen(
                             value = bindOtp,
                             onValueChange = { if (it.length <= 6) bindOtp = it.filter { c -> c.isDigit() }; bindError = null },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Kode OTP 6 Digit", color = MutedText.copy(alpha = 0.5f), fontSize = 13.sp) },
+                            placeholder = { Text(strings.enter6DigitOtpPlaceholder, color = MutedText.copy(alpha = 0.5f), fontSize = 13.sp) },
                             leadingIcon = { Icon(Icons.Default.Key, contentDescription = null, tint = AccentGold) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -698,7 +712,7 @@ fun ActivationScreen(
                     Button(
                         onClick = {
                             if (bindEmail.isBlank() || !bindEmail.contains("@")) {
-                                bindError = "Masukkan alamat email yang valid."
+                                bindError = strings.invalidEmailError
                                 return@Button
                             }
                             isBindLoading = true
@@ -709,7 +723,7 @@ fun ActivationScreen(
                                 isBindLoading = false
                                 if (ok) {
                                     isBindOtpSent = true
-                                    Toast.makeText(context, "Kode OTP telah dikirim ke $bindEmail. Periksa kotak masuk atau spam email Anda.", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, strings.otpSentToast(bindEmail), Toast.LENGTH_LONG).show()
                                 } else {
                                     bindError = msg
                                 }
@@ -729,7 +743,7 @@ fun ActivationScreen(
                     Button(
                         onClick = {
                             if (bindOtp.length < 6) {
-                                bindError = "Kode OTP harus 6 digit angka."
+                                bindError = strings.otpLengthError
                                 return@Button
                             }
                             isBindLoading = true
@@ -754,7 +768,7 @@ fun ActivationScreen(
                         if (isBindLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
                         } else {
-                            Text("Verifikasi & Masuk", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(strings.verifyAndContinueBtn, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                 }
@@ -876,7 +890,7 @@ fun ActivationScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Konfirmasi ke WhatsApp", fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
+                    Text(strings.confirmToWhatsApp, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
                 }
             },
             dismissButton = {

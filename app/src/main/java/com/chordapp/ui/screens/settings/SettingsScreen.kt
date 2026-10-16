@@ -3,6 +3,8 @@ package com.chordapp.ui.screens.settings
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -85,6 +87,7 @@ fun SettingsScreen(
     var isEmailVerified by remember { mutableStateOf(LicenseRepository.isEmailVerified(context)) }
 
     var showBindEmailDialog by remember { mutableStateOf(false) }
+    var showFeedbackDialog by remember { mutableStateOf(false) }
     var bindEmailInput by remember { mutableStateOf("") }
     var bindOtpInput by remember { mutableStateOf("") }
     var isBindOtpSent by remember { mutableStateOf(false) }
@@ -125,7 +128,7 @@ fun SettingsScreen(
             // =========================================================================
             // 1. MODE (Server | Normal | Client)
             // =========================================================================
-            SettingsSection(title = "MODE") {
+            SettingsSection(title = strings.bandSection) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -144,9 +147,9 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         val modes = listOf(
-                            BandMode.SERVER to "Server",
-                            BandMode.NORMAL to "Normal",
-                            BandMode.CLIENT to "Client"
+                            BandMode.SERVER to strings.bandModeServer,
+                            BandMode.NORMAL to strings.bandModeNormal,
+                            BandMode.CLIENT to strings.bandModeClient
                         )
                         modes.forEach { (mode, label) ->
                             val selected = bandMode == mode
@@ -188,7 +191,7 @@ fun SettingsScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "Status Server",
+                                        text = strings.bandServerActive,
                                         color = PrimaryText,
                                         fontSize = 13.5.sp,
                                         fontWeight = FontWeight.SemiBold
@@ -203,7 +206,7 @@ fun SettingsScreen(
                                                 .background(Color(0xFF22C55E), CircleShape)
                                         )
                                         Text(
-                                            text = "Aktif (${connectedClients.size} Klien)",
+                                            text = strings.bandConnectedCount(connectedClients.size),
                                             color = Color(0xFF22C55E),
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold
@@ -214,7 +217,7 @@ fun SettingsScreen(
                                 // Nama Host
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(
-                                        text = "Nama Host",
+                                        text = strings.bandServerName,
                                         color = MutedText,
                                         fontSize = 11.5.sp
                                     )
@@ -240,7 +243,7 @@ fun SettingsScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(text = "Proteksi PIN", color = PrimaryText, fontSize = 13.5.sp)
+                                    Text(text = strings.bandPinProtection, color = PrimaryText, fontSize = 13.5.sp)
                                     Switch(
                                         checked = isPinEnabled,
                                         onCheckedChange = { viewModel.setPinEnabled(it) },
@@ -260,7 +263,7 @@ fun SettingsScreen(
                                                 viewModel.setServerPin(it)
                                             }
                                         },
-                                        placeholder = { Text("Masukkan 4 digit PIN") },
+                                        placeholder = { Text(strings.bandPinPlaceholder) },
                                         modifier = Modifier.fillMaxWidth(),
                                         singleLine = true,
                                         shape = RoundedCornerShape(10.dp),
@@ -290,7 +293,7 @@ fun SettingsScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "Akses Web Browser (Stage Mirror)",
+                                            text = strings.stageMirrorTitle,
                                             color = PrimaryText,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 12.5.sp
@@ -303,7 +306,7 @@ fun SettingsScreen(
                                         )
                                     }
                                     Text(
-                                        text = "Safari iPhone, Android lain, atau laptop di Wi-Fi / Hotspot:",
+                                        text = strings.stageMirrorInstruction,
                                         color = MutedText,
                                         fontSize = 11.sp
                                     )
@@ -331,12 +334,12 @@ fun SettingsScreen(
                                                 .clickable {
                                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
                                                     clipboard?.setPrimaryClip(ClipData.newPlainText("Stage Mirror URL", displayWebUrl))
-                                                    Toast.makeText(context, "Link disalin: $displayWebUrl", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, strings.linkCopiedToast(displayWebUrl), Toast.LENGTH_SHORT).show()
                                                 }
                                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                                         ) {
                                             Text(
-                                                text = "Salin",
+                                                text = strings.copyAction,
                                                 color = PrimaryText,
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.SemiBold
@@ -394,14 +397,14 @@ fun SettingsScreen(
                                                 onClick = { viewModel.disconnectBandClient() },
                                                 colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFEF4444))
                                             ) {
-                                                Text("Disconnect", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                Text(strings.bandDisconnect, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                             }
                                         }
                                     }
 
                                     else -> {
                                         Text(
-                                            text = "HOST TERDETEKSI:",
+                                            text = strings.bandHostDetected,
                                             color = MutedText,
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold
@@ -478,7 +481,7 @@ fun SettingsScreen(
                                                         shape = RoundedCornerShape(8.dp),
                                                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                                                     ) {
-                                                        Text("Connect", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                        Text(strings.bandConnect, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                                     }
                                                 }
                                             }
@@ -497,7 +500,7 @@ fun SettingsScreen(
                                     )
                                 ) {
                                     Text(
-                                        text = "♫ Buka Layar Standby Panggung",
+                                        text = "♫ ${strings.bandOpenStandby}",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp
                                     )
@@ -511,7 +514,7 @@ fun SettingsScreen(
             // =========================================================================
             // 2. APPEARANCE (Theme Swatches & Language Capsule - No Dialogs!)
             // =========================================================================
-            SettingsSection(title = "APPEARANCE") {
+            SettingsSection(title = strings.themeSection) {
                 Column {
                     // Theme Row with 5 Circle Color Swatches
                     Row(
@@ -522,7 +525,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Theme",
+                            text = strings.themeLabel,
                             color = PrimaryText,
                             fontSize = 14.5.sp,
                             fontWeight = FontWeight.SemiBold
@@ -579,7 +582,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Language",
+                            text = strings.languageLabel,
                             color = PrimaryText,
                             fontSize = 14.5.sp,
                             fontWeight = FontWeight.SemiBold
@@ -629,7 +632,7 @@ fun SettingsScreen(
             val catalogDownloadStatus by viewModel.catalogDownloadStatus.collectAsState()
             val catalogDownloadError by viewModel.catalogDownloadError.collectAsState()
 
-            SettingsSection(title = "MUSIC & CATALOG") {
+            SettingsSection(title = strings.musicAndCatalogSection) {
                 Column {
                     // Clean rows without subtitles
                     Row(
@@ -639,7 +642,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "Artists", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Text(text = strings.artists, color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
                         Text(
                             text = if (stats.artists > 0) String.format(Locale.GERMAN, "%,d", stats.artists) else "0",
                             color = AccentGold,
@@ -657,7 +660,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "Songs", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Text(text = strings.songs, color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
                         Text(
                             text = if (stats.songs > 0) String.format(Locale.GERMAN, "%,d", stats.songs) else "0",
                             color = AccentGold,
@@ -675,7 +678,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "Catalog Size", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Text(text = strings.catalogSize, color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
                         Text(
                             text = formatBytes(stats.catalogBytes, "0 MB"),
                             color = PrimaryText,
@@ -694,7 +697,7 @@ fun SettingsScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
-                            text = "Download Catalog",
+                            text = strings.downloadCatalogLabel,
                             color = PrimaryText,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
@@ -711,12 +714,12 @@ fun SettingsScreen(
 
                             // Paket A (50% - Easy Chord)
                             TierCatalogCard(
-                                title = "Paket A",
-                                count = "79k Lagu",
+                                title = strings.packageA,
+                                count = strings.packageSongsCount("79k"),
                                 size = "40 MB",
                                 isInstalled = isTierAInstalled,
                                 isDownloading = isDownloadingCatalog,
-                                actionLabel = if (isTierAInstalled) "Hapus" else "Unduh",
+                                actionLabel = if (isTierAInstalled) strings.deleteAction else strings.downloadAction,
                                 onAction = {
                                     if (isTierAInstalled) {
                                         deleteTierTarget = "A"
@@ -729,12 +732,12 @@ fun SettingsScreen(
 
                             // Paket B (30% - Penyempurnaan & Pro)
                             TierCatalogCard(
-                                title = "Paket B",
-                                count = "47k Lagu",
+                                title = strings.packageB,
+                                count = strings.packageSongsCount("47k"),
                                 size = "24 MB",
                                 isInstalled = isTierBInstalled,
                                 isDownloading = isDownloadingCatalog,
-                                actionLabel = if (isTierBInstalled) "Hapus" else "Unduh",
+                                actionLabel = if (isTierBInstalled) strings.deleteAction else strings.downloadAction,
                                 onAction = {
                                     if (isTierBInstalled) {
                                         deleteTierTarget = "B"
@@ -747,12 +750,12 @@ fun SettingsScreen(
 
                             // Paket C (20% - Non-Mainstream & Arsip)
                             TierCatalogCard(
-                                title = "Paket C",
-                                count = "32k Lagu",
+                                title = strings.packageC,
+                                count = strings.packageSongsCount("32k"),
                                 size = "16 MB",
                                 isInstalled = isTierCInstalled,
                                 isDownloading = isDownloadingCatalog,
-                                actionLabel = if (isTierCInstalled) "Hapus" else "Unduh",
+                                actionLabel = if (isTierCInstalled) strings.deleteAction else strings.downloadAction,
                                 onAction = {
                                     if (isTierCInstalled) {
                                         deleteTierTarget = "C"
@@ -804,7 +807,7 @@ fun SettingsScreen(
             // =========================================================================
             // 4. LICENSE (Device ID Removed, Masked Key + Intip, Transfer License)
             // =========================================================================
-            SettingsSection(title = "LICENSE & DEVICE") {
+            SettingsSection(title = strings.licenseAndDeviceSection) {
                 Column {
                     // License Status
                     Row(
@@ -814,19 +817,12 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                text = "License Status",
-                                color = PrimaryText,
-                                fontSize = 14.5.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = "Lisensi permanen pro",
-                                color = MutedText,
-                                fontSize = 11.5.sp
-                            )
-                        }
+                        Text(
+                            text = strings.licenseStatus,
+                            color = PrimaryText,
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
@@ -835,7 +831,7 @@ fun SettingsScreen(
                                 .padding(horizontal = 9.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                text = if (isLicensed) "PRO AKTIF" else "INAKTIF",
+                                text = if (isLicensed) strings.licenseActivePro else strings.licenseInactive,
                                 color = AccentGold,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
@@ -855,7 +851,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "License Key",
+                            text = strings.licenseKey,
                             color = PrimaryText,
                             fontSize = 14.5.sp,
                             fontWeight = FontWeight.SemiBold
@@ -889,7 +885,7 @@ fun SettingsScreen(
                                     .padding(horizontal = 9.dp, vertical = 4.dp)
                             ) {
                                 Text(
-                                    text = if (isKeyRevealed) "Tutup" else "Lihat",
+                                    text = if (isKeyRevealed) strings.hideKey else strings.revealKey,
                                     color = PrimaryText,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
@@ -910,7 +906,7 @@ fun SettingsScreen(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
-                                text = "Email Pemulihan",
+                                text = strings.recoveryEmailTitle,
                                 color = PrimaryText,
                                 fontSize = 14.5.sp,
                                 fontWeight = FontWeight.SemiBold
@@ -919,7 +915,7 @@ fun SettingsScreen(
                                 text = if (isEmailVerified && !recoveryEmail.isNullOrBlank()) {
                                     LicenseRepository.maskEmail(recoveryEmail)
                                 } else {
-                                    "Belum ditautkan"
+                                    strings.notLinkedStatus
                                 },
                                 color = if (isEmailVerified) Color(0xFF22C55E) else MutedText,
                                 fontSize = 11.5.sp,
@@ -940,7 +936,7 @@ fun SettingsScreen(
                                 ) {
                                     Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF22C55E), modifier = Modifier.size(13.dp))
                                     Text(
-                                        text = "Terverifikasi",
+                                        text = strings.verifiedStatus,
                                         color = Color(0xFF22C55E),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold
@@ -963,7 +959,7 @@ fun SettingsScreen(
                                     .padding(horizontal = 11.dp, vertical = 5.dp)
                             ) {
                                 Text(
-                                    text = "Tautkan",
+                                    text = strings.linkAction,
                                     color = AccentGold,
                                     fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold
@@ -984,13 +980,13 @@ fun SettingsScreen(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
-                                text = "Transfer License",
+                                text = strings.transferLicense,
                                 color = PrimaryText,
                                 fontSize = 14.5.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Proteksi kunci layar / sidik jari",
+                                text = strings.transferLicenseDesc,
                                 color = MutedText,
                                 fontSize = 11.5.sp
                             )
@@ -1005,7 +1001,7 @@ fun SettingsScreen(
                                 .padding(horizontal = 11.dp, vertical = 5.dp)
                         ) {
                             Text(
-                                text = "Salin Kode",
+                                text = strings.copyKeyAction,
                                 color = AccentGold,
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold
@@ -1018,7 +1014,7 @@ fun SettingsScreen(
             // =========================================================================
             // 5. APPLICATION (Version, APK Size, Check Update, About)
             // =========================================================================
-            SettingsSection(title = "APPLICATION") {
+            SettingsSection(title = strings.applicationSection) {
                 Column {
                     Row(
                         modifier = Modifier
@@ -1027,7 +1023,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "Version", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Text(text = strings.version, color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
                         Text(
                             text = "v${viewModel.versionName}",
                             color = MutedText,
@@ -1044,7 +1040,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "APK Size", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Text(text = strings.apkSize, color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
                         Text(
                             text = formatBytes(stats.appBytes, "24.8 MB"),
                             color = MutedText,
@@ -1069,14 +1065,14 @@ fun SettingsScreen(
                                         } else {
                                             Toast.makeText(
                                                 context,
-                                                "Aplikasi sudah versi terbaru (v${viewModel.versionName})",
+                                                strings.appUpToDate(viewModel.versionName),
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                         }
                                     }.onFailure {
                                         Toast.makeText(
                                             context,
-                                            "Aplikasi sudah versi terbaru",
+                                            strings.appUpToDate(viewModel.versionName),
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     }
@@ -1086,18 +1082,59 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "Check Update", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Text(text = strings.checkUpdate, color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = if (isCheckingUpdate) "Memeriksa..." else "Cek Versi",
+                                text = if (isCheckingUpdate) strings.checkingUpdate else strings.checkVersion,
                                 color = AccentGold,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.5.sp
                             )
                             Text(text = "›", color = AccentGold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    HorizontalDivider(color = Border)
+
+                    // Masukan & Saran (Feedback)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = strings.feedbackAndSuggestions,
+                                color = PrimaryText,
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "kekalclip@gmail.com",
+                                color = MutedText,
+                                fontSize = 11.5.sp
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(RaisedSurface)
+                                .border(1.dp, AccentGold, RoundedCornerShape(8.dp))
+                                .clickable { showFeedbackDialog = true }
+                                .padding(horizontal = 11.dp, vertical = 5.dp)
+                        ) {
+                            Text(
+                                text = strings.sendEmailAction,
+                                color = AccentGold,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
 
@@ -1111,25 +1148,90 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "About", color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                        Text(text = strings.aboutApp, color = PrimaryText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
                         Text(text = "›", color = MutedText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
-            Text(
-                text = strings.offlineDisclaimer,
-                color = MutedText,
-                style = MaterialTheme.typography.bodySmall,
-                fontSize = 11.sp,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 
     // =========================================================================
     // DIALOGS
     // =========================================================================
+
+    // Dialog Feedback & Suggestions (Kirim Email)
+    if (showFeedbackDialog) {
+        AlertDialog(
+            onDismissRequest = { showFeedbackDialog = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Email, contentDescription = null, tint = AccentGold, modifier = Modifier.size(20.dp))
+                    Text(
+                        text = strings.feedbackDialogTitle,
+                        color = PrimaryText,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val categories = listOf(
+                        strings.feedbackFeatureCategory to "[KordApp-Feature] ",
+                        strings.feedbackBugCategory to "[KordApp-Bug] ",
+                        strings.feedbackGeneralCategory to "[KordApp-Feedback] "
+                    )
+
+                    categories.forEach { (label, subjectTag) ->
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = RaisedSurface,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showFeedbackDialog = false
+                                    try {
+                                        val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                            data = Uri.parse("mailto:kekalclip@gmail.com")
+                                            putExtra(Intent.EXTRA_SUBJECT, subjectTag)
+                                            putExtra(Intent.EXTRA_TEXT, "")
+                                        }
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, strings.noEmailAppFound, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                        ) {
+                            Text(
+                                text = label,
+                                color = PrimaryText,
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showFeedbackDialog = false }) {
+                    Text(strings.cancel, color = MutedText)
+                }
+            },
+            containerColor = CardSurface
+        )
+    }
 
     // Dialog Transfer License
     if (showTransferDialog) {
@@ -1138,7 +1240,7 @@ fun SettingsScreen(
             onDismissRequest = { if (!isTransferring) showTransferDialog = false },
             title = {
                 Text(
-                    text = "Transfer Lisensi",
+                    text = strings.transferLicense,
                     color = PrimaryText,
                     fontWeight = FontWeight.Bold
                 )
@@ -1146,7 +1248,7 @@ fun SettingsScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "Peringatan: Memindahkan lisensi akan menyalin kode lisensi dan melepaskan hak akses dari perangkat ini agar dapat digunakan di perangkat lain.",
+                        text = strings.transferDialogWarning,
                         color = MutedText,
                         fontSize = 13.sp,
                         lineHeight = 18.sp
@@ -1177,7 +1279,7 @@ fun SettingsScreen(
                         scope.launch {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
                             clipboard?.setPrimaryClip(ClipData.newPlainText("KordApp License", transferKey))
-                            Toast.makeText(context, "Kode lisensi berhasil disalin!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, strings.keyCopiedToast, Toast.LENGTH_SHORT).show()
 
                             val (ok, msg) = LicenseRepository.transferLicenseSelfService(context)
                             isTransferring = false
@@ -1193,7 +1295,7 @@ fun SettingsScreen(
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
-                        text = if (isTransferring) "Menyalin..." else "Salin Kode",
+                        text = if (isTransferring) strings.copyingAction else strings.copyKeyAction,
                         color = Color(0xFF0C0E12),
                         fontWeight = FontWeight.Bold
                     )
@@ -1204,7 +1306,7 @@ fun SettingsScreen(
                     onClick = { showTransferDialog = false },
                     enabled = !isTransferring
                 ) {
-                    Text("Batal", color = MutedText)
+                    Text(strings.cancel, color = MutedText)
                 }
             },
             containerColor = CardSurface
@@ -1222,7 +1324,7 @@ fun SettingsScreen(
                 ) {
                     Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = AccentGold, modifier = Modifier.size(22.dp))
                     Text(
-                        text = "Tautkan Email Pemulihan",
+                        text = strings.bindEmailDialogTitle,
                         color = PrimaryText,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
@@ -1235,7 +1337,7 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "Tautkan email Anda agar Anda dapat mereset dan memindahkan lisensi secara mandiri jika perangkat ini hilang atau rusak.",
+                        text = strings.bindEmailDialogDesc,
                         color = MutedText,
                         fontSize = 12.5.sp,
                         lineHeight = 17.sp
@@ -1245,7 +1347,7 @@ fun SettingsScreen(
                         value = bindEmailInput,
                         onValueChange = { bindEmailInput = it.trim().lowercase(); bindError = null },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("nama@email.com", color = MutedText.copy(alpha = 0.5f), fontSize = 13.sp) },
+                        placeholder = { Text(strings.recoveryEmailPlaceholder, color = MutedText.copy(alpha = 0.5f), fontSize = 13.sp) },
                         leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = AccentGold) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -1264,7 +1366,7 @@ fun SettingsScreen(
                             value = bindOtpInput,
                             onValueChange = { if (it.length <= 6) bindOtpInput = it.filter { c -> c.isDigit() }; bindError = null },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Masukkan 6 Digit OTP", color = MutedText.copy(alpha = 0.5f), fontSize = 13.sp) },
+                            placeholder = { Text(strings.enter6DigitOtpPlaceholder, color = MutedText.copy(alpha = 0.5f), fontSize = 13.sp) },
                             leadingIcon = { Icon(Icons.Default.Key, contentDescription = null, tint = AccentGold) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -1289,7 +1391,7 @@ fun SettingsScreen(
                     Button(
                         onClick = {
                             if (bindEmailInput.isBlank() || !bindEmailInput.contains("@")) {
-                                bindError = "Masukkan alamat email yang valid."
+                                bindError = strings.invalidEmailError
                                 return@Button
                             }
                             isBindLoading = true
@@ -1300,7 +1402,7 @@ fun SettingsScreen(
                                 isBindLoading = false
                                 if (ok) {
                                     isBindOtpSent = true
-                                    Toast.makeText(context, "Kode OTP telah dikirim ke $bindEmailInput. Periksa kotak masuk atau spam email Anda.", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, strings.otpSentToast(bindEmailInput), Toast.LENGTH_LONG).show()
                                 } else {
                                     bindError = msg
                                 }
@@ -1313,14 +1415,14 @@ fun SettingsScreen(
                         if (isBindLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
                         } else {
-                            Text("Kirim OTP", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(strings.sendOtpBtn, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                 } else {
                     Button(
                         onClick = {
                             if (bindOtpInput.length < 6) {
-                                bindError = "Kode OTP harus 6 digit angka."
+                                bindError = strings.otpLengthError
                                 return@Button
                             }
                             isBindLoading = true
@@ -1332,7 +1434,7 @@ fun SettingsScreen(
                                     recoveryEmail = bindEmailInput
                                     isEmailVerified = true
                                     showBindEmailDialog = false
-                                    Toast.makeText(context, "Email pemulihan berhasil ditautkan!", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, strings.bindEmailSuccess, Toast.LENGTH_LONG).show()
                                 } else {
                                     bindError = msg
                                 }
@@ -1345,7 +1447,7 @@ fun SettingsScreen(
                         if (isBindLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
                         } else {
-                            Text("Verifikasi OTP", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(strings.verifyBtn, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                 }
@@ -1355,7 +1457,7 @@ fun SettingsScreen(
                     onClick = { showBindEmailDialog = false },
                     enabled = !isBindLoading
                 ) {
-                    Text("Batal", color = MutedText)
+                    Text(strings.cancel, color = MutedText)
                 }
             },
             containerColor = CardSurface
@@ -1365,20 +1467,14 @@ fun SettingsScreen(
     // Dialog Konfirmasi Hapus Paket Katalog
     if (deleteTierTarget != null) {
         val target = deleteTierTarget!!
-        val tierTitle = when (target) {
-            "A" -> "Paket A (79k Lagu Easy Chord)"
-            "B" -> "Paket B (47k Lagu Penyempurnaan)"
-            "C" -> "Paket C (32k Lagu Arsip)"
-            else -> "Paket $target"
-        }
         AlertDialog(
             onDismissRequest = { deleteTierTarget = null },
             title = {
-                Text("Hapus $tierTitle?", color = PrimaryText, fontWeight = FontWeight.Bold)
+                Text(strings.deletePackageDialogTitle(target), color = PrimaryText, fontWeight = FontWeight.Bold)
             },
             text = {
                 Text(
-                    text = "Lagu-lagu di dalam $tierTitle akan dihapus dari penyimpanan perangkat Anda untuk menghemat ruang memori. Paket lagu lainnya akan tetap aman dan dapat dimainkan.",
+                    text = strings.deletePackageDialogDesc(target),
                     color = MutedText,
                     fontSize = 13.5.sp
                 )
@@ -1389,17 +1485,17 @@ fun SettingsScreen(
                         val toDelete = target
                         deleteTierTarget = null
                         viewModel.deleteTier(toDelete)
-                        Toast.makeText(context, "$tierTitle berhasil dihapus", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, strings.packageDeletedToast(toDelete), Toast.LENGTH_SHORT).show()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Hapus", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(strings.deleteAction, color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { deleteTierTarget = null }) {
-                    Text("Batal", color = MutedText)
+                    Text(strings.cancel, color = MutedText)
                 }
             },
             containerColor = CardSurface
@@ -1414,12 +1510,12 @@ fun SettingsScreen(
                 if (!info.isForceUpdate && !isDownloadingUpdate) showUpdateDialog = false
             },
             title = {
-                Text("Pembaruan Tersedia!", color = PrimaryText, fontWeight = FontWeight.Bold)
+                Text(strings.updateAvailableTitle, color = PrimaryText, fontWeight = FontWeight.Bold)
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Versi baru v${info.latestVersionName} telah dirilis.",
+                        text = strings.newVersionAvailable(info.latestVersionName),
                         color = AccentGold,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -1439,7 +1535,7 @@ fun SettingsScreen(
                             info.downloadUrl,
                             "KordApp-v${info.latestVersionName}.apk"
                         )
-                        Toast.makeText(context, "Unduhan dimulai. Cek notifikasi.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, strings.downloadStartedToast, Toast.LENGTH_LONG).show()
                         if (!info.isForceUpdate) {
                             showUpdateDialog = false
                             isDownloadingUpdate = false
@@ -1448,12 +1544,12 @@ fun SettingsScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = AccentGold),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Update", color = Color(0xFF0C0E12), fontWeight = FontWeight.Bold)
+                    Text(strings.updateAction, color = Color(0xFF0C0E12), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showUpdateDialog = false }) {
-                    Text("Nanti", color = MutedText)
+                    Text(strings.laterAction, color = MutedText)
                 }
             },
             containerColor = CardSurface
@@ -1501,12 +1597,12 @@ fun SettingsScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Hubungkan", fontWeight = FontWeight.Bold)
+                    Text(strings.bandConnect, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPinDialogForServer = null }) {
-                    Text("Batal", color = MutedText)
+                    Text(strings.cancel, color = MutedText)
                 }
             },
             containerColor = CardSurface
@@ -1549,9 +1645,10 @@ private fun TierCatalogCard(
     onAction: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val buttonText = actionLabel ?: if (isInstalled) "Hapus" else "Unduh"
-    val isDanger = buttonText == "Hapus"
-    val isSuccess = buttonText == "Aktif"
+    val strings = LocalAppStrings.current
+    val buttonText = actionLabel ?: if (isInstalled) strings.deleteAction else strings.downloadAction
+    val isDanger = isInstalled
+    val isSuccess = false
 
     Column(
         modifier = modifier

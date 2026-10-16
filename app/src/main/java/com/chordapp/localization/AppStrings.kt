@@ -232,4 +232,65 @@ interface AppStrings {
     val bandOpenStandby: String
     val bandLiveBadge: String
     val bandSyncBadge: String
+
+    // Settings & Customization Strings
+    val musicAndCatalogSection: String
+    val downloadCatalogLabel: String
+    val themeLabel: String
+    val languageLabel: String
+    val revealKey: String
+    val hideKey: String
+    val transferLicense: String
+    val transferLicenseDesc: String
+    val copyKeyAction: String
+    val checkUpdate: String
+    val checkingUpdate: String
+    val checkVersion: String
+    fun appUpToDate(version: String): String
+    val deleteAction: String
+    val downloadAction: String
+    val packageA: String
+    val packageB: String
+    val packageC: String
+    fun packageSongsCount(count: String): String
+
+    // Feedback & Suggestions
+    val feedbackAndSuggestions: String
+    val sendEmailAction: String
+    val feedbackDialogTitle: String
+    val feedbackFeatureCategory: String
+    val feedbackBugCategory: String
+    val feedbackGeneralCategory: String
+
+    // Cooldown Note
+    val resetCooldownNote: String
+
+    // Additional Dialogs & Prompts
+    val bandHostDetected: String
+    val copyAction: String
+    fun linkCopiedToast(url: String): String
+    val keyCopiedToast: String
+    val bindEmailDialogTitle: String
+    val bindEmailDialogDesc: String
+    val enter6DigitOtpPlaceholder: String
+    val sendOtpBtn: String
+    val verifyBtn: String
+    fun deletePackageDialogTitle(target: String): String
+    fun deletePackageDialogDesc(target: String): String
+    val stageMirrorInstruction: String
+    val stageMirrorTitle: String
+    val noEmailAppFound: String
+    val transferDialogWarning: String
+    val copyingAction: String
+    val invalidEmailError: String
+    fun otpSentToast(email: String): String
+    val otpLengthError: String
+    fun packageDeletedToast(target: String): String
+    val updateAvailableTitle: String
+    fun newVersionAvailable(version: String): String
+    val updateAction: String
+    val laterAction: String
+    val downloadStartedToast: String
+    val verifyAndContinueBtn: String
+    val confirmToWhatsApp: String
 }
