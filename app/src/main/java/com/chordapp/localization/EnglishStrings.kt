@@ -262,7 +262,45 @@ object EnglishStrings : AppStrings {
     override val feedbackDialogTitle = "Select Feedback Category"
     override val feedbackFeatureCategory = "💡 Feature Request"
     override val feedbackBugCategory = "🐛 Bug Report"
-    override val feedbackGeneralCategory = "💬 General Feedback"
+    override val feedbackGeneralCategory = "💬 Feedback & Suggestions"
+    override fun feedbackFeatureBody(version: String, device: String) = """
+Hi KordApp Team,
+
+I would like to suggest a new feature:
+- Feature Name: 
+- Description / Benefit: 
+
+Device Info:
+- Device: $device
+- KordApp Version: v$version
+
+Thank you.
+""".trimIndent()
+
+    override fun feedbackBugBody(version: String, device: String) = """
+Hi KordApp Team,
+
+I would like to report an issue/bug in the app:
+- Device: $device
+- KordApp Version: v$version
+- Issue Description: 
+- Steps to reproduce (if any): 
+
+Thank you.
+""".trimIndent()
+
+    override fun feedbackGeneralBody(version: String, device: String) = """
+Hi KordApp Team,
+
+Here is my feedback & suggestions for KordApp:
+- Feedback / Suggestions: 
+
+Device Info:
+- Device: $device
+- KordApp Version: v$version
+
+Thank you.
+""".trimIndent()
 
     // Cooldown Note
     override val resetCooldownNote = "ℹ️ Note: License reset is limited to once per month (30 days)."

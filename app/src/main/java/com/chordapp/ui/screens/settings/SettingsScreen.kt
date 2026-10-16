@@ -1185,13 +1185,16 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    val device = "${android.os.Build.MANUFACTURER.replaceFirstChar { it.uppercase() }} ${android.os.Build.MODEL} (Android ${android.os.Build.VERSION.RELEASE})"
+                    val version = viewModel.versionName
+
                     val categories = listOf(
-                        strings.feedbackFeatureCategory to "[KordApp-Feature] ",
-                        strings.feedbackBugCategory to "[KordApp-Bug] ",
-                        strings.feedbackGeneralCategory to "[KordApp-Feedback] "
+                        Triple(strings.feedbackFeatureCategory, "[KordApp-Feature] ", strings.feedbackFeatureBody(version, device)),
+                        Triple(strings.feedbackBugCategory, "[KordApp-Bug] ", strings.feedbackBugBody(version, device)),
+                        Triple(strings.feedbackGeneralCategory, "[KordApp-Feedback] ", strings.feedbackGeneralBody(version, device))
                     )
 
-                    categories.forEach { (label, subjectTag) ->
+                    categories.forEach { (label, subjectTag, bodyTemplate) ->
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = RaisedSurface,
@@ -1201,10 +1204,10 @@ fun SettingsScreen(
                                 .clickable {
                                     showFeedbackDialog = false
                                     try {
-                                        val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                            data = Uri.parse("mailto:kekalclip@gmail.com")
+                                        val mailtoUri = Uri.parse("mailto:kekalclip@gmail.com?subject=${Uri.encode(subjectTag)}&body=${Uri.encode(bodyTemplate)}")
+                                        val intent = Intent(Intent.ACTION_SENDTO, mailtoUri).apply {
                                             putExtra(Intent.EXTRA_SUBJECT, subjectTag)
-                                            putExtra(Intent.EXTRA_TEXT, "")
+                                            putExtra(Intent.EXTRA_TEXT, bodyTemplate)
                                         }
                                         context.startActivity(intent)
                                     } catch (e: Exception) {

@@ -260,9 +260,47 @@ object IndonesianStrings : AppStrings {
     override val feedbackAndSuggestions = "Masukan & Saran"
     override val sendEmailAction = "Kirim Email"
     override val feedbackDialogTitle = "Pilih Kategori Masukan"
-    override val feedbackFeatureCategory = "💡 Usulan Fitur (Feature Request)"
-    override val feedbackBugCategory = "🐛 Laporan Kendala (Bug Report)"
-    override val feedbackGeneralCategory = "💬 Masukan Umum (Feedback)"
+    override val feedbackFeatureCategory = "💡 Usulan Fitur"
+    override val feedbackBugCategory = "🐛 Laporan Kendala"
+    override val feedbackGeneralCategory = "💬 Masukan & Saran"
+    override fun feedbackFeatureBody(version: String, device: String) = """
+Halo Tim KordApp,
+
+Saya ingin mengusulkan fitur baru:
+- Nama Fitur: 
+- Penjelasan / Manfaat Fitur: 
+
+Info Perangkat:
+- Perangkat: $device
+- Versi KordApp: v$version
+
+Terima kasih.
+""".trimIndent()
+
+    override fun feedbackBugBody(version: String, device: String) = """
+Halo Tim KordApp,
+
+Saya ingin melaporkan kendala/bug pada aplikasi:
+- Perangkat: $device
+- Versi KordApp: v$version
+- Kendala yang dialami: 
+- Langkah untuk mengulang (jika ada): 
+
+Terima kasih.
+""".trimIndent()
+
+    override fun feedbackGeneralBody(version: String, device: String) = """
+Halo Tim KordApp,
+
+Berikut masukan & saran saya untuk KordApp:
+- Masukan / Saran: 
+
+Info Perangkat:
+- Perangkat: $device
+- Versi KordApp: v$version
+
+Terima kasih.
+""".trimIndent()
 
     // Cooldown Note
     override val resetCooldownNote = "ℹ️ Catatan: Reset lisensi dibatasi maksimal 1 kali dalam sebulan (30 hari)."

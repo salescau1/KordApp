@@ -261,6 +261,9 @@ interface AppStrings {
     val feedbackFeatureCategory: String
     val feedbackBugCategory: String
     val feedbackGeneralCategory: String
+    fun feedbackFeatureBody(version: String, device: String): String
+    fun feedbackBugBody(version: String, device: String): String
+    fun feedbackGeneralBody(version: String, device: String): String
 
     // Cooldown Note
     val resetCooldownNote: String
