@@ -549,7 +549,7 @@ fun ActivationScreen(
                                 isResetLoading = false
                                 if (ok) {
                                     isResetOtpSent = true
-                                    resetSuccess = "Kode verifikasi telah dikirim ke $resetEmail (simulasi OTP: $otp)"
+                                    resetSuccess = "Kode verifikasi telah dikirim ke $resetEmail. Silakan periksa kotak masuk atau spam email Anda."
                                 } else {
                                     resetError = msg
                                 }
@@ -709,7 +709,7 @@ fun ActivationScreen(
                                 isBindLoading = false
                                 if (ok) {
                                     isBindOtpSent = true
-                                    Toast.makeText(context, "Kode OTP terkirim ke $bindEmail (simulasi: $otp)", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, "Kode OTP telah dikirim ke $bindEmail. Periksa kotak masuk atau spam email Anda.", Toast.LENGTH_LONG).show()
                                 } else {
                                     bindError = msg
                                 }

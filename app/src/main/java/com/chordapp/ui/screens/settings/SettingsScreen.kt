@@ -1300,7 +1300,7 @@ fun SettingsScreen(
                                 isBindLoading = false
                                 if (ok) {
                                     isBindOtpSent = true
-                                    Toast.makeText(context, "Kode OTP terkirim ke $bindEmailInput (simulasi: $otp)", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, "Kode OTP telah dikirim ke $bindEmailInput. Periksa kotak masuk atau spam email Anda.", Toast.LENGTH_LONG).show()
                                 } else {
                                     bindError = msg
                                 }

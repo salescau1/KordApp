@@ -6,6 +6,7 @@ import android.os.Build
 import android.provider.Settings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -24,6 +25,9 @@ object LicenseRepository {
     private const val SUPABASE_URL = "https://rhgcsgrdqbhimpdloxgo.supabase.co/rest/v1"
     private const val SUPABASE_ANON_KEY =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZ2NzZ3JkcWJoaW1wZGxveGdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMDAzNjksImV4cCI6MjEwNjg3NjM2OX0.JKlFUjdom0M0WV62xYvCn9vCq23O9UPisXdPdCCHGtk"
+
+    private const val RESEND_API_URL = "https://api.resend.com/emails"
+    private const val RESEND_API_KEY = "re_7HEd7Y2i_LvaH3iVPDDDKtD9wCQLQvaKA"
 
     @SuppressLint("HardwareIds")
     fun getDeviceId(context: Context): String {
@@ -376,6 +380,7 @@ object LicenseRepository {
                 val message = json.optString("message", "Respon server tidak valid.")
                 if (success) {
                     saveRecoveryEmailLocally(context, cleanEmail, false)
+                    sendOtpEmailViaResend(cleanEmail, generatedOtp, "Kode Verifikasi Email KordApp")
                 }
                 Pair(success, message)
             } else {
@@ -450,7 +455,7 @@ object LicenseRepository {
      */
     suspend fun requestLicenseResetByEmail(
         email: String,
-        resetToken: String = java.util.UUID.randomUUID().toString()
+        resetToken: String = (100000..999999).random().toString()
     ): Pair<Boolean, String> = withContext(Dispatchers.IO) {
         val cleanEmail = email.trim().lowercase()
         if (cleanEmail.isEmpty() || !cleanEmail.contains("@")) {
@@ -488,6 +493,9 @@ object LicenseRepository {
                 val json = JSONObject(responseText)
                 val success = json.optBoolean("success", false)
                 val message = json.optString("message", "Respon server tidak valid.")
+                if (success) {
+                    sendOtpEmailViaResend(cleanEmail, resetToken, "Kode Reset Lisensi KordApp")
+                }
                 Pair(success, message)
             } else {
                 Pair(false, "Gagal permintaan reset (Error $status). Periksa koneksi internet.")
@@ -598,6 +606,109 @@ object LicenseRepository {
             }
         }.getOrElse { error ->
             Triple(false, "", "Koneksi gagal: ${error.localizedMessage ?: "Periksa internet Anda."}")
+        }
+    }
+
+    /**
+     * Mengirim email OTP / kode reset melalui layanan Resend API.
+     * Menggunakan tema dark-gold KordApp (#0C0E12, #E5A93C).
+     */
+    suspend fun sendOtpEmailViaResend(
+        toEmail: String,
+        otp: String,
+        subject: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        val cleanEmail = toEmail.trim().lowercase()
+        if (cleanEmail.isEmpty() || !cleanEmail.contains("@")) {
+            return@withContext false
+        }
+
+        val htmlContent = """
+            <!DOCTYPE html>
+            <html lang="id">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>$subject</title>
+            </head>
+            <body style="margin: 0; padding: 32px 16px; background-color: #0C0E12; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #E6E9EE;">
+              <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; background-color: #161922; border: 1px solid #2B3245; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                <tr>
+                  <td style="padding: 32px 24px 20px 24px; text-align: center; border-bottom: 1px solid #222736; background: linear-gradient(180deg, #1A1F2C 0%, #161922 100%);">
+                    <div style="color: #E5A93C; font-size: 26px; font-weight: 800; letter-spacing: 3px;">KORDAPP</div>
+                    <div style="color: #8F9CAE; font-size: 12px; margin-top: 4px; letter-spacing: 1.5px; text-transform: uppercase;">Guitar Chords &amp; Lyrics Offline</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 32px 28px 20px 28px; text-align: center;">
+                    <h2 style="color: #FFFFFF; font-size: 20px; font-weight: 700; margin: 0 0 12px 0;">$subject</h2>
+                    <p style="color: #A0AAB8; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;">
+                      Gunakan kode verifikasi berikut untuk menyelesaikan permintaan Anda di aplikasi KordApp:
+                    </p>
+                    <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto 24px auto;">
+                      <tr>
+                        <td style="background-color: #0C0E12; border: 2px solid #E5A93C; border-radius: 12px; padding: 16px 36px; text-align: center;">
+                          <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #E5A93C; font-family: 'Courier New', Courier, monospace; display: inline-block;">$otp</span>
+                        </td>
+                      </tr>
+                    </table>
+                    <div style="background-color: #1F2432; border: 1px solid #2F374A; border-radius: 8px; padding: 12px 16px; margin: 0 auto; max-width: 400px;">
+                      <p style="color: #CBD5E1; font-size: 13px; line-height: 1.5; margin: 0;">
+                        &#x23F1;&#xFE0F; Kode verifikasi ini berlaku selama <strong>15 menit</strong>.<br>
+                        <span style="color: #94A3B8; font-size: 12px;">Demi keamanan lisensi Anda, jangan pernah membagikan kode ini kepada siapa pun.</span>
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 24px 28px; text-align: center; border-top: 1px solid #222736; background-color: #12141C;">
+                    <p style="color: #64748B; font-size: 11px; line-height: 1.5; margin: 0;">
+                      Pesan ini dibuat secara otomatis oleh sistem KordApp.<br>
+                      Jika Anda tidak merasa meminta kode ini, abaikan email ini.<br>
+                      &copy; 2026 KordApp. Hak Cipta Dilindungi.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </body>
+            </html>
+        """.trimIndent()
+
+        runCatching {
+            val url = URL(RESEND_API_URL)
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 10_000
+                readTimeout = 10_000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("Authorization", "Bearer $RESEND_API_KEY")
+            }
+
+            val body = JSONObject().apply {
+                put("from", "KordApp <onboarding@resend.dev>")
+                put("to", JSONArray().put(cleanEmail))
+                put("subject", subject)
+                put("html", htmlContent)
+            }
+
+            conn.outputStream.use { os ->
+                OutputStreamWriter(os, StandardCharsets.UTF_8).use { it.write(body.toString()) }
+            }
+
+            val status = conn.responseCode
+            val stream = if (status in 200..299) conn.inputStream else conn.errorStream
+            val responseText = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            conn.disconnect()
+
+            val isSuccess = status in 200..299
+            if (!isSuccess) {
+                android.util.Log.e("LicenseRepository", "Resend API error ($status): $responseText")
+            }
+            isSuccess
+        }.getOrElse { error ->
+            android.util.Log.e("LicenseRepository", "Resend API network error: ${error.localizedMessage}", error)
+            false
         }
     }
 }
