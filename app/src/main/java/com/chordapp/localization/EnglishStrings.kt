@@ -272,40 +272,43 @@ object EnglishStrings : AppStrings {
     override val feedbackBugCategory = "🐛 Bug Report"
     override val feedbackGeneralCategory = "💬 Feedback & Suggestions"
     override fun feedbackFeatureBody(version: String, device: String) = """
-Hi KordApp Team,
+[KordApp-Feature]
+------------------------------
+Hello, KordApp Team
 
-I would like to suggest a new feature:
-- Feature Name: 
-- Description / Benefit: 
+[Your Message]
 
-Device Info:
-- Device: $device
-- KordApp Version: v$version
+Device Info : 
+- Device : $device
+- KordApp Version : v$version
 
 Thank you.
 """.trimIndent()
 
     override fun feedbackBugBody(version: String, device: String) = """
-Hi KordApp Team,
+[KordApp-Bug]
+------------------------------
+Hello, KordApp Team
 
-I would like to report an issue/bug in the app:
-- Device: $device
-- KordApp Version: v$version
-- Issue Description: 
-- Steps to reproduce (if any): 
+[Your Message]
+
+Device Info : 
+- Device : $device
+- KordApp Version : v$version
 
 Thank you.
 """.trimIndent()
 
     override fun feedbackGeneralBody(version: String, device: String) = """
-Hi KordApp Team,
+[KordApp-Feedback]
+------------------------------
+Hello, KordApp Team
 
-Here is my feedback & suggestions for KordApp:
-- Feedback / Suggestions: 
+[Your Message]
 
-Device Info:
-- Device: $device
-- KordApp Version: v$version
+Device Info : 
+- Device : $device
+- KordApp Version : v$version
 
 Thank you.
 """.trimIndent()

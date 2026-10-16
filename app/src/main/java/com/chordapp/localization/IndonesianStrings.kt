@@ -272,42 +272,45 @@ object IndonesianStrings : AppStrings {
     override val feedbackBugCategory = "🐛 Laporan Kendala"
     override val feedbackGeneralCategory = "💬 Masukan & Saran"
     override fun feedbackFeatureBody(version: String, device: String) = """
-Halo Tim KordApp,
+[KordApp-Feature]
+------------------------------
+Hallo, Tim KordApp
 
-Saya ingin mengusulkan fitur baru:
-- Nama Fitur: 
-- Penjelasan / Manfaat Fitur: 
+[Isi Pesan]
 
-Info Perangkat:
-- Perangkat: $device
-- Versi KordApp: v$version
+Info Perangkat : 
+- Perangkat : $device
+- Versi KordApp : v$version
 
-Terima kasih.
+Terima Kasih.
 """.trimIndent()
 
     override fun feedbackBugBody(version: String, device: String) = """
-Halo Tim KordApp,
+[KordApp-Bug]
+------------------------------
+Hallo, Tim KordApp
 
-Saya ingin melaporkan kendala/bug pada aplikasi:
-- Perangkat: $device
-- Versi KordApp: v$version
-- Kendala yang dialami: 
-- Langkah untuk mengulang (jika ada): 
+[Isi Pesan]
 
-Terima kasih.
+Info Perangkat : 
+- Perangkat : $device
+- Versi KordApp : v$version
+
+Terima Kasih.
 """.trimIndent()
 
     override fun feedbackGeneralBody(version: String, device: String) = """
-Halo Tim KordApp,
+[KordApp-Feedback]
+------------------------------
+Hallo, Tim KordApp
 
-Berikut masukan & saran saya untuk KordApp:
-- Masukan / Saran: 
+[Isi Pesan]
 
-Info Perangkat:
-- Perangkat: $device
-- Versi KordApp: v$version
+Info Perangkat : 
+- Perangkat : $device
+- Versi KordApp : v$version
 
-Terima kasih.
+Terima Kasih.
 """.trimIndent()
 
     // Cooldown Note
