@@ -5,10 +5,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chordapp.repositories.CatalogRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
+import com.chordapp.repositories.CatalogDownloadManager
+import com.chordapp.repositories.TierDownloadState
+import com.chordapp.localization.AppLanguage
+import com.chordapp.localization.AppLanguageManager
+import com.chordapp.ui.theme.AppThemeMode
+import com.chordapp.ui.theme.AppThemeManager
 
 data class CatalogStats(
     val artists: Int = 0,
@@ -33,84 +42,46 @@ class SettingsViewModel(
         .getPackageInfo(appContext.packageName, 0)
         .versionName ?: "Unknown"
 
-    val currentLanguage: StateFlow<com.chordapp.localization.AppLanguage> =
-        com.chordapp.localization.AppLanguageManager.currentLanguage
+    val currentLanguage: StateFlow<AppLanguage> =
+        AppLanguageManager.currentLanguage
 
-    fun setLanguage(language: com.chordapp.localization.AppLanguage) {
-        com.chordapp.localization.AppLanguageManager.setLanguage(appContext, language)
+    fun setLanguage(language: AppLanguage) {
+        AppLanguageManager.setLanguage(appContext, language)
     }
 
-    val currentTheme: StateFlow<com.chordapp.ui.theme.AppThemeMode> =
-        com.chordapp.ui.theme.AppThemeManager.currentTheme
+    val currentTheme: StateFlow<AppThemeMode> =
+        AppThemeManager.currentTheme
 
-    fun setTheme(theme: com.chordapp.ui.theme.AppThemeMode) {
-        com.chordapp.ui.theme.AppThemeManager.setTheme(appContext, theme)
+    fun setTheme(theme: AppThemeMode) {
+        AppThemeManager.setTheme(appContext, theme)
     }
 
-    private val _isDownloadingCatalog = MutableStateFlow(false)
-    val isDownloadingCatalog: StateFlow<Boolean> = _isDownloadingCatalog.asStateFlow()
+    val tierDownloadState: StateFlow<TierDownloadState> =
+        CatalogDownloadManager.downloadState
 
-    private val _catalogDownloadProgress = MutableStateFlow(0)
-    val catalogDownloadProgress: StateFlow<Int> = _catalogDownloadProgress.asStateFlow()
+    val isDownloadingCatalog: StateFlow<Boolean> = CatalogDownloadManager.downloadState
+        .map { it.isDownloading }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, CatalogDownloadManager.downloadState.value.isDownloading)
 
-    private val _catalogDownloadStatus = MutableStateFlow("")
-    val catalogDownloadStatus: StateFlow<String> = _catalogDownloadStatus.asStateFlow()
+    val catalogDownloadProgress: StateFlow<Int> = CatalogDownloadManager.downloadState
+        .map { it.progress }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, CatalogDownloadManager.downloadState.value.progress)
 
-    private val _catalogDownloadError = MutableStateFlow<String?>(null)
-    val catalogDownloadError: StateFlow<String?> = _catalogDownloadError.asStateFlow()
+    val catalogDownloadStatus: StateFlow<String> = CatalogDownloadManager.downloadState
+        .map { it.statusText }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, CatalogDownloadManager.downloadState.value.statusText)
+
+    val catalogDownloadError: StateFlow<String?> = CatalogDownloadManager.downloadState
+        .map { it.error }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, CatalogDownloadManager.downloadState.value.error)
 
     fun downloadCatalog() {
-        if (_isDownloadingCatalog.value) return
-        viewModelScope.launch {
-            _isDownloadingCatalog.value = true
-            _catalogDownloadError.value = null
-            _catalogDownloadProgress.value = 0
-            _catalogDownloadStatus.value = "Menghubungkan..."
-
-            val result = com.chordapp.repositories.UpdateRepository.downloadAndInstallCatalog(
-                context = appContext,
-                onProgress = { percent, status ->
-                    _catalogDownloadProgress.value = percent
-                    _catalogDownloadStatus.value = status
-                }
-            )
-
-            result.onSuccess {
-                com.chordapp.catalog.CatalogDatabase.notifyDatabaseReloaded(appContext)
-                loadCatalogStats()
-            }.onFailure { err ->
-                _catalogDownloadError.value = err.localizedMessage ?: "Gagal mengunduh katalog"
-            }
-
-            _isDownloadingCatalog.value = false
-        }
+        downloadTier("A")
     }
 
     fun downloadTier(tier: String) {
-        if (_isDownloadingCatalog.value) return
-        viewModelScope.launch {
-            _isDownloadingCatalog.value = true
-            _catalogDownloadError.value = null
-            _catalogDownloadProgress.value = 0
-            _catalogDownloadStatus.value = "Menghubungkan..."
-
-            val result = com.chordapp.repositories.UpdateRepository.downloadAndInstallTier(
-                context = appContext,
-                tier = tier,
-                onProgress = { percent, status ->
-                    _catalogDownloadProgress.value = percent
-                    _catalogDownloadStatus.value = status
-                }
-            )
-
-            result.onSuccess {
-                loadCatalogStats()
-            }.onFailure { err ->
-                android.util.Log.e("SettingsViewModel", "Download tier $tier failed", err)
-                _catalogDownloadError.value = err.localizedMessage ?: "Gagal mengunduh paket $tier"
-            }
-
-            _isDownloadingCatalog.value = false
+        com.chordapp.repositories.CatalogDownloadManager.downloadTier(appContext, tier) {
+            loadCatalogStats()
         }
     }
 
@@ -122,7 +93,7 @@ class SettingsViewModel(
     }
 
     fun dismissCatalogError() {
-        _catalogDownloadError.value = null
+        com.chordapp.repositories.CatalogDownloadManager.dismissError()
     }
 
     fun loadCatalogStats() {
@@ -168,6 +139,13 @@ class SettingsViewModel(
         viewModelScope.launch {
             repository.catalogUpdateFlow.collect {
                 loadCatalogStats()
+            }
+        }
+        viewModelScope.launch {
+            com.chordapp.repositories.CatalogDownloadManager.downloadState.collect { state ->
+                if (!state.isDownloading && state.progress == 100) {
+                    loadCatalogStats()
+                }
             }
         }
     }

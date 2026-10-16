@@ -253,6 +253,14 @@ interface AppStrings {
     val packageB: String
     val packageC: String
     fun packageSongsCount(count: String): String
+    val tierCoreBadge: String
+    val tierProBadge: String
+    val tierArchiveBadge: String
+    val tierInstalledBadge: String
+    fun tierDownloadingBadge(percent: Int): String
+    val tierBackgroundNote: String
+    val tierSectionHint: String
+    fun downloadingTierTitle(tier: String): String
 
     // Feedback & Suggestions
     val feedbackAndSuggestions: String

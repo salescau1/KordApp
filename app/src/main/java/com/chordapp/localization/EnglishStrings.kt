@@ -255,6 +255,14 @@ object EnglishStrings : AppStrings {
     override val packageB = "Package B"
     override val packageC = "Package C"
     override fun packageSongsCount(count: String) = "$count Songs"
+    override val tierCoreBadge = "⭐ Core"
+    override val tierProBadge = "🎸 Popular"
+    override val tierArchiveBadge = "📚 Archive"
+    override val tierInstalledBadge = "✓ Installed"
+    override fun tierDownloadingBadge(percent: Int) = "$percent%"
+    override val tierBackgroundNote = "Download continues in the background even if you leave this page."
+    override val tierSectionHint = "Choose packages based on your device storage needs"
+    override fun downloadingTierTitle(tier: String) = "Downloading Package $tier"
 
     // Feedback & Suggestions
     override val feedbackAndSuggestions = "Feedback & Suggestions"

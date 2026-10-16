@@ -627,10 +627,12 @@ fun SettingsScreen(
             // =========================================================================
             // 3. MUSIC & CATALOG (Clean stats + 3 Tiers: Paket A, Paket B, Paket C)
             // =========================================================================
-            val isDownloadingCatalog by viewModel.isDownloadingCatalog.collectAsState()
-            val catalogDownloadProgress by viewModel.catalogDownloadProgress.collectAsState()
-            val catalogDownloadStatus by viewModel.catalogDownloadStatus.collectAsState()
-            val catalogDownloadError by viewModel.catalogDownloadError.collectAsState()
+            val tierDownloadState by viewModel.tierDownloadState.collectAsState()
+            val isDownloadingCatalog = tierDownloadState.isDownloading
+            val activeDownloadingTier = tierDownloadState.activeTier
+            val catalogDownloadProgress = tierDownloadState.progress
+            val catalogDownloadStatus = tierDownloadState.statusText
+            val catalogDownloadError = tierDownloadState.error
 
             SettingsSection(title = strings.musicAndCatalogSection) {
                 Column {
@@ -696,12 +698,19 @@ fun SettingsScreen(
                             .padding(top = 12.dp, bottom = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text(
-                            text = strings.downloadCatalogLabel,
-                            color = PrimaryText,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = strings.downloadCatalogLabel,
+                                color = PrimaryText,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = strings.tierSectionHint,
+                                color = MutedText,
+                                fontSize = 11.5.sp
+                            )
+                        }
 
                         // 3 Tiers Grid
                         Row(
@@ -712,13 +721,20 @@ fun SettingsScreen(
                             val isTierBInstalled = stats.tierBSongs > 0
                             val isTierCInstalled = stats.tierCSongs > 0
 
+                            val isTierADownloading = isDownloadingCatalog && activeDownloadingTier == "A"
+                            val isTierBDownloading = isDownloadingCatalog && activeDownloadingTier == "B"
+                            val isTierCDownloading = isDownloadingCatalog && activeDownloadingTier == "C"
+
                             // Paket A (50% - Easy Chord)
                             TierCatalogCard(
+                                badge = strings.tierCoreBadge,
                                 title = strings.packageA,
                                 count = strings.packageSongsCount("79k"),
                                 size = "40 MB",
                                 isInstalled = isTierAInstalled,
-                                isDownloading = isDownloadingCatalog,
+                                isThisTierDownloading = isTierADownloading,
+                                downloadPercent = catalogDownloadProgress,
+                                isAnyDownloading = isDownloadingCatalog,
                                 actionLabel = if (isTierAInstalled) strings.deleteAction else strings.downloadAction,
                                 onAction = {
                                     if (isTierAInstalled) {
@@ -732,11 +748,14 @@ fun SettingsScreen(
 
                             // Paket B (30% - Penyempurnaan & Pro)
                             TierCatalogCard(
+                                badge = strings.tierProBadge,
                                 title = strings.packageB,
                                 count = strings.packageSongsCount("47k"),
                                 size = "24 MB",
                                 isInstalled = isTierBInstalled,
-                                isDownloading = isDownloadingCatalog,
+                                isThisTierDownloading = isTierBDownloading,
+                                downloadPercent = catalogDownloadProgress,
+                                isAnyDownloading = isDownloadingCatalog,
                                 actionLabel = if (isTierBInstalled) strings.deleteAction else strings.downloadAction,
                                 onAction = {
                                     if (isTierBInstalled) {
@@ -750,11 +769,14 @@ fun SettingsScreen(
 
                             // Paket C (20% - Non-Mainstream & Arsip)
                             TierCatalogCard(
+                                badge = strings.tierArchiveBadge,
                                 title = strings.packageC,
                                 count = strings.packageSongsCount("32k"),
                                 size = "16 MB",
                                 isInstalled = isTierCInstalled,
-                                isDownloading = isDownloadingCatalog,
+                                isThisTierDownloading = isTierCDownloading,
+                                downloadPercent = catalogDownloadProgress,
+                                isAnyDownloading = isDownloadingCatalog,
                                 actionLabel = if (isTierCInstalled) strings.deleteAction else strings.downloadAction,
                                 onAction = {
                                     if (isTierCInstalled) {
@@ -767,38 +789,127 @@ fun SettingsScreen(
                             )
                         }
 
-                        // Progress Indicator if downloading
+                        // Elegant Card Progress if downloading in background
                         if (isDownloadingCatalog) {
-                            Column(
+                            Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    .padding(top = 4.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                color = RaisedSurface,
+                                border = BorderStroke(1.dp, AccentGold.copy(alpha = 0.5f))
                             ) {
-                                Text(
-                                    text = catalogDownloadStatus,
-                                    color = PrimaryText,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                LinearProgressIndicator(
-                                    progress = { catalogDownloadProgress / 100f },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(7.dp)
-                                        .clip(RoundedCornerShape(4.dp)),
-                                    color = AccentGold,
-                                    trackColor = Border
-                                )
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    // Baris atas: Icon + Nama Paket + [ XX% ]
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(15.dp),
+                                                color = AccentGold,
+                                                strokeWidth = 2.dp
+                                            )
+                                            Text(
+                                                text = strings.downloadingTierTitle(activeDownloadingTier ?: ""),
+                                                color = PrimaryText,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(AccentGold.copy(alpha = 0.15f))
+                                                .border(1.dp, AccentGold.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "$catalogDownloadProgress%",
+                                                color = AccentGold,
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.ExtraBold
+                                            )
+                                        }
+                                    }
+
+                                    // Tengah: LinearProgressIndicator (tinggi 8.dp, rounded shape, warna AccentGold, track Border)
+                                    LinearProgressIndicator(
+                                        progress = { catalogDownloadProgress / 100f },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(8.dp)
+                                            .clip(RoundedCornerShape(4.dp)),
+                                        color = AccentGold,
+                                        trackColor = Border
+                                    )
+
+                                    // Baris bawah: Teks status detail dan catatan kecil tierBackgroundNote
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        if (catalogDownloadStatus.isNotBlank()) {
+                                            Text(
+                                                text = catalogDownloadStatus,
+                                                color = PrimaryText,
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                        Text(
+                                            text = strings.tierBackgroundNote,
+                                            color = MutedText,
+                                            fontSize = 10.5.sp,
+                                            lineHeight = 14.sp
+                                        )
+                                    }
+                                }
                             }
                         }
 
                         if (catalogDownloadError != null) {
-                            Text(
-                                text = catalogDownloadError!!,
-                                color = MaterialTheme.colorScheme.error,
-                                fontSize = 12.sp
-                            )
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFEF4444).copy(alpha = 0.1f),
+                                border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = catalogDownloadError,
+                                        color = Color(0xFFEF4444),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    TextButton(
+                                        onClick = { viewModel.dismissCatalogError() },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = strings.close,
+                                            color = Color(0xFFEF4444),
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1639,11 +1750,14 @@ private fun SettingsSection(title: String, content: @Composable () -> Unit) {
 
 @Composable
 private fun TierCatalogCard(
+    badge: String,
     title: String,
     count: String,
     size: String,
     isInstalled: Boolean,
-    isDownloading: Boolean,
+    isThisTierDownloading: Boolean,
+    downloadPercent: Int,
+    isAnyDownloading: Boolean,
     actionLabel: String? = null,
     onAction: () -> Unit,
     modifier: Modifier = Modifier
@@ -1651,25 +1765,43 @@ private fun TierCatalogCard(
     val strings = LocalAppStrings.current
     val buttonText = actionLabel ?: if (isInstalled) strings.deleteAction else strings.downloadAction
     val isDanger = isInstalled
-    val isSuccess = false
 
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
             .background(RaisedSurface)
             .border(
-                width = 1.dp,
-                color = if (isInstalled) AccentGold else Border,
+                width = if (isThisTierDownloading) 1.5.dp else 1.dp,
+                color = when {
+                    isThisTierDownloading -> AccentGold
+                    isInstalled -> AccentGold.copy(alpha = 0.6f)
+                    else -> Border
+                },
                 shape = RoundedCornerShape(14.dp)
             )
             .padding(vertical = 10.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
+        // Category Badge (⭐ Inti / 🎸 Populer / 📚 Arsip)
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(AccentGold.copy(alpha = 0.12f))
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+            Text(
+                text = badge,
+                color = AccentGold,
+                fontSize = 9.5.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
         Text(
             text = title,
-            color = if (isInstalled) AccentGold else PrimaryText,
-            fontSize = 12.sp,
+            color = if (isInstalled || isThisTierDownloading) AccentGold else PrimaryText,
+            fontSize = 12.5.sp,
             fontWeight = FontWeight.Bold
         )
         Text(
@@ -1682,39 +1814,73 @@ private fun TierCatalogCard(
             color = MutedText,
             fontSize = 10.sp
         )
-        Spacer(Modifier.height(3.dp))
+
+        // Status or Downloading Indicator
+        if (isThisTierDownloading) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(AccentGold.copy(alpha = 0.18f))
+                    .border(1.dp, AccentGold, RoundedCornerShape(6.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "⏳ ${strings.tierDownloadingBadge(downloadPercent)}",
+                    color = AccentGold,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        } else if (isInstalled) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFF22C55E).copy(alpha = 0.12f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = strings.tierInstalledBadge,
+                    color = Color(0xFF22C55E),
+                    fontSize = 9.5.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        } else {
+            Spacer(Modifier.height(14.dp))
+        }
+
+        Spacer(Modifier.height(2.dp))
+
+        // Action Button (Hapus / Unduh)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .background(
                     when {
                         isDanger -> Color(0x24EF4444)
-                        isSuccess -> Color(0x1AE5A93C)
-                        else -> RaisedSurface
+                        else -> AccentGold.copy(alpha = 0.15f)
                     }
                 )
                 .border(
                     width = 1.dp,
                     color = when {
                         isDanger -> Color(0xFFEF4444)
-                        isSuccess -> AccentGold.copy(alpha = 0.5f)
-                        else -> Border
+                        else -> AccentGold
                     },
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(10.dp)
                 )
-                .clickable(enabled = !isDownloading) { onAction() }
-                .padding(vertical = 5.dp),
+                .clickable(enabled = !isAnyDownloading) { onAction() }
+                .padding(vertical = 6.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = buttonText,
                 color = when {
                     isDanger -> Color(0xFFEF4444)
-                    isSuccess -> AccentGold
-                    else -> MutedText
+                    else -> AccentGold
                 },
-                fontSize = 10.5.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold
             )
         }

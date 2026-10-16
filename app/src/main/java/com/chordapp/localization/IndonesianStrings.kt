@@ -255,6 +255,14 @@ object IndonesianStrings : AppStrings {
     override val packageB = "Paket B"
     override val packageC = "Paket C"
     override fun packageSongsCount(count: String) = "$count Lagu"
+    override val tierCoreBadge = "⭐ Inti"
+    override val tierProBadge = "🎸 Populer"
+    override val tierArchiveBadge = "📚 Arsip"
+    override val tierInstalledBadge = "✓ Terpasang"
+    override fun tierDownloadingBadge(percent: Int) = "$percent%"
+    override val tierBackgroundNote = "Unduhan tetap berjalan di latar belakang walau berpindah halaman."
+    override val tierSectionHint = "Pilih paket sesuai kebutuhan penyimpanan perangkat Anda"
+    override fun downloadingTierTitle(tier: String) = "Mengunduh Paket $tier"
 
     // Feedback & Suggestions
     override val feedbackAndSuggestions = "Masukan & Saran"
