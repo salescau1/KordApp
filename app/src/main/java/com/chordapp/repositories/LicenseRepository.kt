@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Build
 import android.provider.Settings
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -17,6 +18,8 @@ import java.nio.charset.StandardCharsets
  * Pengelola lisensi KordApp & pencatat perangkat (Supabase).
  */
 object LicenseRepository {
+
+    val licenseRevokedFlow = MutableSharedFlow<String>(extraBufferCapacity = 1)
 
     private const val PREFS_NAME = "kkc_kordapp_license_prefs"
     private const val KEY_IS_LICENSED = "is_licensed"
@@ -132,11 +135,13 @@ object LicenseRepository {
                     // Jika lisensi di-reset oleh admin atau berpindah ke HP lain
                     if (!isUsed || boundDevice != deviceId) {
                         revokeLicense(context)
+                        licenseRevokedFlow.tryEmit("Lisensi Anda telah dipindahkan ke perangkat lain.")
                         return@withContext false
                     }
                 } else {
                     // Lisensi dihapus di server
                     revokeLicense(context)
+                    licenseRevokedFlow.tryEmit("Lisensi Anda sudah tidak valid di server.")
                     return@withContext false
                 }
             } else {

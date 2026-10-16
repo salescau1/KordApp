@@ -20,7 +20,8 @@ ADD COLUMN IF NOT EXISTS email_verified boolean DEFAULT false,
 ADD COLUMN IF NOT EXISTS verification_otp text DEFAULT NULL,
 ADD COLUMN IF NOT EXISTS otp_expires_at timestamptz DEFAULT NULL,
 ADD COLUMN IF NOT EXISTS reset_token text DEFAULT NULL,
-ADD COLUMN IF NOT EXISTS reset_token_expires_at timestamptz DEFAULT NULL;
+ADD COLUMN IF NOT EXISTS reset_token_expires_at timestamptz DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS last_reset_at timestamptz DEFAULT NULL;
 
 -- ------------------------------------------------------------------------------
 -- 2. INDEXING UNTUK QUERY PERFORMA TINGGI
@@ -176,16 +177,25 @@ DECLARE
 BEGIN
     v_clean_email := LOWER(TRIM(p_email));
 
-    SELECT COUNT(*)
-    INTO v_count
+    SELECT id, last_reset_at
+    INTO v_row
     FROM public.licenses
     WHERE recovery_email = v_clean_email
-      AND email_verified = true;
+      AND email_verified = true
+    LIMIT 1;
 
-    IF v_count = 0 THEN
+    IF v_row.id IS NULL THEN
         RETURN json_build_object(
             'success', false, 
             'message', 'Tidak ditemukan lisensi aktif yang tertaut dan terverifikasi dengan email tersebut.'
+        );
+    END IF;
+
+    -- Aturan Cooldown 1x Sebulan (30 Hari)
+    IF v_row.last_reset_at IS NOT NULL AND v_row.last_reset_at > NOW() - INTERVAL '30 days' THEN
+        RETURN json_build_object(
+            'success', false, 
+            'message', 'Reset lisensi hanya dapat dilakukan 1x setiap 30 hari (1 bulan). Silakan coba lagi nanti.'
         );
     END IF;
 
@@ -193,13 +203,11 @@ BEGIN
     UPDATE public.licenses
     SET reset_token = p_reset_token,
         reset_token_expires_at = NOW() + (p_expires_minutes || ' minutes')::interval
-    WHERE recovery_email = v_clean_email
-      AND email_verified = true;
+    WHERE id = v_row.id;
 
     RETURN json_build_object(
         'success', true, 
-        'message', 'Tautan reset lisensi berhasil disiapkan.',
-        'matched_licenses', v_count
+        'message', 'Tautan reset lisensi berhasil disiapkan.'
     );
 END;
 $$;
@@ -245,7 +253,8 @@ BEGIN
         device_id = NULL,
         activated_at = NULL,
         reset_token = NULL,
-        reset_token_expires_at = NULL
+        reset_token_expires_at = NULL,
+        last_reset_at = NOW()
     WHERE id = v_row.id;
 
     RETURN json_build_object(
@@ -306,7 +315,8 @@ BEGIN
         device_id = NULL,
         activated_at = NULL,
         reset_token = NULL,
-        reset_token_expires_at = NULL
+        reset_token_expires_at = NULL,
+        last_reset_at = NOW()
     WHERE id = v_row.id;
 
     RETURN json_build_object(

@@ -33,16 +33,26 @@ import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.chordapp.repositories.LicenseRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -105,8 +115,38 @@ fun AppNavigation() {
     val exploreViewModel: ExploreViewModel = viewModel(factory = viewModelFactory)
     val isEditMode by exploreViewModel.isEditMode.collectAsState()
 
+    val scope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Lifecycle ON_RESUME listener: sync status lisensi di background setiap kali aplikasi di-resume
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (LicenseRepository.isLicensed(context)) {
+                    scope.launch(Dispatchers.IO) {
+                        LicenseRepository.syncLicenseStatusIfOnline(context)
+                    }
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Collector for license revocation event (kicks old device back to ActivationScreen immediately)
+    LaunchedEffect(Unit) {
+        LicenseRepository.licenseRevokedFlow.collect { reason ->
+            Toast.makeText(context, reason, Toast.LENGTH_LONG).show()
+            navController.navigate(Screen.Activation.route) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
     // Global listener for Band Live Sync in Client Mode (only when connected)
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
         com.chordapp.p2p.BandSessionManager.incomingSong.collect { payload ->
             if (com.chordapp.p2p.BandSessionManager.currentMode.value == com.chordapp.p2p.BandMode.CLIENT &&
                 com.chordapp.p2p.BandSessionManager.connectionState.value is com.chordapp.p2p.ClientConnectionState.Connected

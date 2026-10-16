@@ -2,7 +2,9 @@ package com.chordapp.repositories
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -103,5 +105,22 @@ class LicenseRepositoryTest {
         assertTrue("Recovery email harus terverifikasi", LicenseRepository.isEmailVerified(context))
         assertTrue("Prompt bind email harus dismissed", LicenseRepository.isBindEmailPromptDismissed(context))
         assertEquals("owner@guitar.com", LicenseRepository.getSavedRecoveryEmail(context))
+    }
+
+    @Test
+    fun testLicenseRevokedFlowEmission() = runBlocking {
+        val testReason = "Lisensi Anda telah dipindahkan ke perangkat lain."
+        var receivedReason: String? = null
+        val job = launch {
+            LicenseRepository.licenseRevokedFlow.collect { reason ->
+                receivedReason = reason
+            }
+        }
+        yield()
+        val emitted = LicenseRepository.licenseRevokedFlow.tryEmit(testReason)
+        assertTrue("tryEmit should succeed on buffer capacity >= 1", emitted)
+        yield()
+        assertEquals(testReason, receivedReason)
+        job.cancel()
     }
 }
