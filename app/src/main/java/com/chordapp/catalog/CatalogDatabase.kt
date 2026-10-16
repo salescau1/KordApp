@@ -187,7 +187,7 @@ abstract class CatalogDatabase : RoomDatabase() {
                 dao.deleteSongsByTier(tier)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     try {
-                        getDatabase(context).openHelper.writableDatabase.execSQL("VACUUM")
+                        getDatabase(context).openHelper.writableDatabase.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
                     } catch (_: Exception) {}
                 }
                 notifyDatabaseReloaded(context)

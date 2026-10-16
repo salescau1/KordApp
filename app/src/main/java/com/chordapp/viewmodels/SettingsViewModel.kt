@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chordapp.repositories.CatalogRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
+import com.chordapp.catalog.CatalogDatabase
 import com.chordapp.repositories.CatalogDownloadManager
 import com.chordapp.repositories.TierDownloadState
 import com.chordapp.localization.AppLanguage
@@ -33,10 +35,14 @@ class SettingsViewModel(
     context: Context,
     private val repository: CatalogRepository
 ) : ViewModel() {
+    companion object {
+        private val _sharedCatalogStats = MutableStateFlow(CatalogStats())
+        @Volatile private var hasInitialStatsLoaded = false
+    }
+
     private val appContext = context.applicationContext
 
-    private val _catalogStats = MutableStateFlow(CatalogStats())
-    val catalogStats: StateFlow<CatalogStats> = _catalogStats.asStateFlow()
+    val catalogStats: StateFlow<CatalogStats> = _sharedCatalogStats.asStateFlow()
 
     val versionName: String = appContext.packageManager
         .getPackageInfo(appContext.packageName, 0)
@@ -80,40 +86,52 @@ class SettingsViewModel(
     }
 
     fun downloadTier(tier: String) {
-        com.chordapp.repositories.CatalogDownloadManager.downloadTier(appContext, tier) {
-            loadCatalogStats()
+        CatalogDownloadManager.downloadTier(appContext, tier) {
+            refreshCatalogStats(force = true)
         }
     }
 
     fun deleteTier(tier: String) {
         viewModelScope.launch {
-            com.chordapp.catalog.CatalogDatabase.deleteTier(appContext, tier)
-            loadCatalogStats()
+            val success = CatalogDatabase.deleteTier(appContext, tier)
+            if (success) {
+                refreshCatalogStats(force = true)
+            }
         }
     }
 
     fun dismissCatalogError() {
-        com.chordapp.repositories.CatalogDownloadManager.dismissError()
+        CatalogDownloadManager.dismissError()
     }
 
-    fun loadCatalogStats() {
-        refreshCatalogStats()
+    fun loadCatalogStats(force: Boolean = false) {
+        refreshCatalogStats(force)
     }
 
-    fun refreshCatalogStats() {
-        viewModelScope.launch {
+    fun refreshCatalogStats(force: Boolean = false) {
+        if (!force && hasInitialStatsLoaded && _sharedCatalogStats.value.songs > 0) {
+            // Sudah ada di memory cache, tidak perlu query ulang agar tidak ada transisi visual
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
             val tierA = repository.getSongCountByTier("A")
             val tierB = repository.getSongCountByTier("B")
             val tierC = repository.getSongCountByTier("C")
-            _catalogStats.value = CatalogStats(
-                artists = repository.getUniqueArtistCount(),
-                songs = repository.getUniqueSongCount(),
-                catalogBytes = appContext.getDatabasePath("catalog.db").takeIf(File::exists)?.length() ?: 0L,
-                appBytes = File(appContext.applicationInfo.sourceDir).length(),
+            val artists = repository.getUniqueArtistCount()
+            val songs = repository.getUniqueSongCount()
+            val catalogBytes = appContext.getDatabasePath("catalog.db").takeIf(File::exists)?.length() ?: 0L
+            val appBytes = File(appContext.applicationInfo.sourceDir).length()
+
+            _sharedCatalogStats.value = CatalogStats(
+                artists = artists,
+                songs = songs,
+                catalogBytes = catalogBytes,
+                appBytes = appBytes,
                 tierASongs = tierA,
                 tierBSongs = tierB,
                 tierCSongs = tierC
             )
+            hasInitialStatsLoaded = true
         }
     }
 
@@ -135,16 +153,16 @@ class SettingsViewModel(
     fun disconnectBandClient() = com.chordapp.p2p.BandSessionManager.disconnectClient()
 
     init {
-        loadCatalogStats()
+        loadCatalogStats(force = false)
         viewModelScope.launch {
             repository.catalogUpdateFlow.collect {
-                loadCatalogStats()
+                refreshCatalogStats(force = true)
             }
         }
         viewModelScope.launch {
-            com.chordapp.repositories.CatalogDownloadManager.downloadState.collect { state ->
+            CatalogDownloadManager.downloadState.collect { state ->
                 if (!state.isDownloading && state.progress == 100) {
-                    loadCatalogStats()
+                    refreshCatalogStats(force = true)
                 }
             }
         }

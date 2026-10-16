@@ -18,7 +18,6 @@ import java.io.File
 
 class ViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        val database = CatalogDatabase.getDatabase(context)
         val repository = CatalogRepository { CatalogDatabase.getDatabase(context).catalogDao() }
         val chartRepository = ChartRepositoryImpl(
             remote = HttpChartRemoteSource(),
