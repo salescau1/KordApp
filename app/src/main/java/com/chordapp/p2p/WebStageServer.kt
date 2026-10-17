@@ -1129,13 +1129,13 @@ class WebStageServer(
     function adjustTranspose(delta) {
       if (!currentData) return;
       currentData.transpose = (currentData.transpose || 0) + delta;
-      updateUi(currentData);
+      updateUi(currentData, true);
     }
 
     function resetTranspose() {
       if (!currentData) return;
       currentData.transpose = 0;
-      updateUi(currentData);
+      updateUi(currentData, true);
     }
 
     // WakeLock API (Layar Tetap Menyala)
@@ -1816,20 +1816,18 @@ class WebStageServer(
             if (devSpan) devSpan.innerText = data.serverName;
           }
           if (data.state === 'song') {
-            updateUi(data);
+            updateUi(data, true);
           } else if (data.state === 'standby' && data.hasCachedSong) {
-            if (!currentData || !currentData.rawContent) {
-              updateUi({
-                state: 'song',
-                title: data.cachedTitle,
-                artist: data.cachedArtist,
-                effectiveKey: data.cachedEffectiveKey,
-                transpose: data.cachedTranspose || 0,
-                capo: data.cachedCapo || 0,
-                rawContent: data.cachedRawContent,
-                serverName: data.serverName
-              });
-            }
+            updateUi({
+              state: 'song',
+              title: data.cachedTitle,
+              artist: data.cachedArtist,
+              effectiveKey: data.cachedEffectiveKey,
+              transpose: data.cachedTranspose || 0,
+              capo: data.cachedCapo || 0,
+              rawContent: data.cachedRawContent,
+              serverName: data.serverName
+            }, true);
           }
         }
       } catch(err) {
@@ -1841,7 +1839,7 @@ class WebStageServer(
       }
     }
 
-    function updateUi(data) {
+    function updateUi(data, forceUpdate = false) {
       if (!data) return;
 
       if (data.serverName) {
@@ -1864,7 +1862,7 @@ class WebStageServer(
             capo: data.cachedCapo || 0,
             rawContent: data.cachedRawContent,
             serverName: data.serverName
-          });
+          }, true);
           return;
         }
 
@@ -1877,6 +1875,11 @@ class WebStageServer(
         document.getElementById('headerSubtitle').innerText = 'KordApp Stage Mirror';
         if (isScrolling) toggleScroll(false);
         if (isPageFlip) togglePageFlip(false);
+        return;
+      }
+
+      // Mode Full Manual: Jangan ganti lagu otomatis jika client sudah menampilkan lagu
+      if (!forceUpdate && currentData && currentData.rawContent) {
         return;
       }
 
@@ -2008,31 +2011,30 @@ class WebStageServer(
       evtSource.onmessage = (e) => {
         try {
           const parsed = JSON.parse(e.data);
-          updateUi(parsed);
+          if (!currentData || !currentData.rawContent) {
+            updateUi(parsed, true);
+          }
         } catch(err) {}
       };
 
       evtSource.addEventListener('SONG', (e) => {
-        try { updateUi(JSON.parse(e.data)); } catch(err) {}
-      });
-
-      evtSource.addEventListener('TRANSPOSE', (e) => {
         try {
           const parsed = JSON.parse(e.data);
-          if (currentData) {
-            currentData.transpose = parsed.transpose;
-            updateUi(currentData);
+          if (!currentData || !currentData.rawContent) {
+            updateUi(parsed, true);
           }
         } catch(err) {}
       });
 
+      evtSource.addEventListener('TRANSPOSE', (e) => {});
+
       evtSource.addEventListener('STANDBY', (e) => {
         try {
           const parsed = JSON.parse(e.data);
-          updateUi(parsed);
-        } catch(_) {
-          updateUi({ state: 'standby' });
-        }
+          if (!currentData || !currentData.rawContent) {
+            updateUi(parsed, false);
+          }
+        } catch(_) {}
       });
 
       evtSource.onerror = () => {
@@ -2053,10 +2055,8 @@ class WebStageServer(
             const devSpan = document.getElementById('serverDeviceName');
             if (devSpan) devSpan.innerText = data.serverName;
           }
-          if (data.state === 'song') {
-            if (!currentData || currentData.title !== data.title || currentData.rawContent !== data.rawContent) {
-              updateUi(data);
-            }
+          if (data.state === 'song' && (!currentData || !currentData.rawContent)) {
+            updateUi(data, true);
           }
         }
       } catch(err) {}
