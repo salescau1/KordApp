@@ -330,6 +330,8 @@ Terima Kasih.
     override fun deletePackageDialogDesc(target: String) = "Apakah Anda yakin ingin menghapus katalog lagu Paket $target dari penyimpanan perangkat?"
     override val stageMirrorInstruction = "Safari iPhone, Android lain, atau laptop di Wi-Fi / Hotspot:"
     override val stageMirrorTitle = "Akses Web Browser (Stage Mirror)"
+    override val stageMirrorOptionName = "Nama Host (Rekomendasi)"
+    override val stageMirrorOptionIp = "Alamat IP"
     override val noEmailAppFound = "Aplikasi email tidak ditemukan."
     override val transferDialogWarning = "Peringatan: Memindahkan lisensi akan menyalin kode lisensi dan melepaskan hak akses dari perangkat ini agar dapat digunakan di perangkat lain."
     override val copyingAction = "Menyalin..."

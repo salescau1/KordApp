@@ -330,6 +330,8 @@ Thank you.
     override fun deletePackageDialogDesc(target: String) = "Are you sure you want to remove Package $target songs catalog from your device storage?"
     override val stageMirrorInstruction = "Safari iPhone, another Android, or laptop on Wi-Fi / Hotspot:"
     override val stageMirrorTitle = "Web Browser Access (Stage Mirror)"
+    override val stageMirrorOptionName = "Host Name (Recommended)"
+    override val stageMirrorOptionIp = "IP Address"
     override val noEmailAppFound = "No email app found."
     override val transferDialogWarning = "Warning: Transferring the license will copy your license key and release access rights from this device so it can be used on another device."
     override val copyingAction = "Copying..."

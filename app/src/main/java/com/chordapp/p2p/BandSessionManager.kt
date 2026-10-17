@@ -131,6 +131,8 @@ object BandSessionManager {
     val connectedClients: StateFlow<List<String>> = _connectedClients.asStateFlow()
     private val _webStageUrl = MutableStateFlow<String?>(null)
     val webStageUrl: StateFlow<String?> = _webStageUrl.asStateFlow()
+    private val _webStageIpUrl = MutableStateFlow<String?>(null)
+    val webStageIpUrl: StateFlow<String?> = _webStageIpUrl.asStateFlow()
     private val serverClients = CopyOnWriteArrayList<ClientSession>()
     private var serverSocket: ServerSocket? = null
     private var webStageServer: WebStageServer? = null
@@ -164,6 +166,7 @@ object BandSessionManager {
 
     private var nsdManager: NsdManager? = null
     private var nsdRegistrationListener: NsdManager.RegistrationListener? = null
+    private var nsdHttpRegistrationListener: NsdManager.RegistrationListener? = null
     private var nsdDiscoveryListener: NsdManager.DiscoveryListener? = null
     private var multicastLock: WifiManager.MulticastLock? = null
 
@@ -264,7 +267,8 @@ object BandSessionManager {
                 start()
             }
             val ip = getLocalIpAddress() ?: "127.0.0.1"
-            _webStageUrl.value = "http://$ip:8990"
+            _webStageUrl.value = "http://kordapp.local:8990"
+            _webStageIpUrl.value = "http://$ip:8990"
             if (currentActiveSong != null && !_isBroadcastPaused.value) {
                 webStageServer?.broadcastSong(currentActiveSong!!)
             }
@@ -281,6 +285,7 @@ object BandSessionManager {
         webStageServer?.stop()
         webStageServer = null
         _webStageUrl.value = null
+        _webStageIpUrl.value = null
 
         serverClients.forEach { it.close() }
         serverClients.clear()
@@ -320,15 +325,42 @@ object BandSessionManager {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to register NSD service", e)
         }
+
+        val httpServiceInfo = NsdServiceInfo().apply {
+            serviceName = "kordapp"
+            serviceType = "_http._tcp."
+            port = 8990
+        }
+
+        nsdHttpRegistrationListener = object : NsdManager.RegistrationListener {
+            override fun onServiceRegistered(info: NsdServiceInfo?) {
+                Log.d(TAG, "NSD HTTP service registered: ${info?.serviceName}")
+            }
+            override fun onRegistrationFailed(info: NsdServiceInfo?, errorCode: Int) {
+                Log.e(TAG, "NSD HTTP registration failed: $errorCode")
+            }
+            override fun onServiceUnregistered(info: NsdServiceInfo?) {}
+            override fun onUnregistrationFailed(info: NsdServiceInfo?, errorCode: Int) {}
+        }
+
+        try {
+            manager.registerService(httpServiceInfo, NsdManager.PROTOCOL_DNS_SD, nsdHttpRegistrationListener)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to register NSD HTTP service", e)
+        }
     }
 
     private fun unregisterNsdService() {
         val manager = nsdManager ?: return
-        val listener = nsdRegistrationListener ?: return
-        try {
-            manager.unregisterService(listener)
-        } catch (_: Exception) {}
+        nsdRegistrationListener?.let {
+            try { manager.unregisterService(it) } catch (_: Exception) {}
+        }
         nsdRegistrationListener = null
+
+        nsdHttpRegistrationListener?.let {
+            try { manager.unregisterService(it) } catch (_: Exception) {}
+        }
+        nsdHttpRegistrationListener = null
     }
 
     private fun startUdpResponder() {

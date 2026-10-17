@@ -72,6 +72,7 @@ fun SettingsScreen(
     val isPinEnabled by viewModel.isPinEnabled.collectAsState()
     val connectedClients by viewModel.connectedClients.collectAsState()
     val webStageUrl by viewModel.webStageUrl.collectAsState()
+    val webStageIpUrl by viewModel.webStageIpUrl.collectAsState()
     val discoveredServers by viewModel.discoveredServers.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
 
@@ -276,7 +277,8 @@ fun SettingsScreen(
 
                                 // Link Akses Web Browser (Stage Mirror)
                                 val resolvedIp = remember { BandSessionManager.getLocalIpAddress() ?: "192.168.43.1" }
-                                val displayWebUrl = webStageUrl ?: "http://$resolvedIp:8990"
+                                val domainUrl = webStageUrl ?: "http://kordapp.local:8990"
+                                val ipUrl = webStageIpUrl ?: "http://$resolvedIp:8990"
 
                                 Column(
                                     modifier = Modifier
@@ -285,7 +287,7 @@ fun SettingsScreen(
                                         .background(RaisedSurface)
                                         .border(1.dp, Border, RoundedCornerShape(12.dp))
                                         .padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -310,6 +312,8 @@ fun SettingsScreen(
                                         color = MutedText,
                                         fontSize = 11.sp
                                     )
+
+                                    // Opsi 1: Nama Host (Rekomendasi)
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -320,21 +324,77 @@ fun SettingsScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(
-                                            text = displayWebUrl,
-                                            color = AccentGold,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = strings.stageMirrorOptionName,
+                                                color = MutedText,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = domainUrl,
+                                                color = AccentGold,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
                                         Box(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(6.dp))
                                                 .background(RaisedSurface)
                                                 .clickable {
                                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                                                    clipboard?.setPrimaryClip(ClipData.newPlainText("Stage Mirror URL", displayWebUrl))
-                                                    Toast.makeText(context, strings.linkCopiedToast(displayWebUrl), Toast.LENGTH_SHORT).show()
+                                                    clipboard?.setPrimaryClip(ClipData.newPlainText("Stage Mirror Host", domainUrl))
+                                                    Toast.makeText(context, strings.linkCopiedToast(domainUrl), Toast.LENGTH_SHORT).show()
+                                                }
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = strings.copyAction,
+                                                color = PrimaryText,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                    }
+
+                                    // Opsi 2: Alamat IP
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Background)
+                                            .border(1.dp, Border.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = strings.stageMirrorOptionIp,
+                                                color = MutedText,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = ipUrl,
+                                                color = AccentGold,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(RaisedSurface)
+                                                .clickable {
+                                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                                    clipboard?.setPrimaryClip(ClipData.newPlainText("Stage Mirror IP", ipUrl))
+                                                    Toast.makeText(context, strings.linkCopiedToast(ipUrl), Toast.LENGTH_SHORT).show()
                                                 }
                                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                                         ) {

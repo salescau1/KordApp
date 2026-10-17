@@ -290,6 +290,8 @@ interface AppStrings {
     fun deletePackageDialogDesc(target: String): String
     val stageMirrorInstruction: String
     val stageMirrorTitle: String
+    val stageMirrorOptionName: String
+    val stageMirrorOptionIp: String
     val noEmailAppFound: String
     val transferDialogWarning: String
     val copyingAction: String

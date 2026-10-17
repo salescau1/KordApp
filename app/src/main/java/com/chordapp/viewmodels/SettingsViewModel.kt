@@ -141,6 +141,7 @@ class SettingsViewModel(
     val isPinEnabled = com.chordapp.p2p.BandSessionManager.isPinEnabled
     val connectedClients = com.chordapp.p2p.BandSessionManager.connectedClients
     val webStageUrl = com.chordapp.p2p.BandSessionManager.webStageUrl
+    val webStageIpUrl = com.chordapp.p2p.BandSessionManager.webStageIpUrl
     val discoveredServers = com.chordapp.p2p.BandSessionManager.discoveredServers
     val connectionState = com.chordapp.p2p.BandSessionManager.connectionState
 
