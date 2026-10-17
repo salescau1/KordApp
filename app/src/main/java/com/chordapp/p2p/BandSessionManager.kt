@@ -279,7 +279,7 @@ object BandSessionManager {
 
     private fun startWebStageServer() {
         try {
-            webStageServer = WebStageServer(8990).apply {
+            webStageServer = WebStageServer(8990) { _deviceName.value }.apply {
                 start()
             }
             val ip = getLocalIpAddress() ?: "127.0.0.1"

@@ -71,16 +71,15 @@ fun SettingsScreen(
     val serverPin by viewModel.serverPin.collectAsState()
     val isPinEnabled by viewModel.isPinEnabled.collectAsState()
     val connectedClients by viewModel.connectedClients.collectAsState()
-    val webStageUrl by viewModel.webStageUrl.collectAsState()
-    val webStageIpUrl by viewModel.webStageIpUrl.collectAsState()
     val discoveredServers by viewModel.discoveredServers.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
 
     var editingDeviceName by remember(deviceName) { mutableStateOf(deviceName) }
-    var editingPin by remember(serverPin) { mutableStateOf(serverPin) }
     var showPinDialogForServer by remember { mutableStateOf<DiscoveredServer?>(null) }
     var pinDialogInput by remember { mutableStateOf("") }
     var pinDialogError by remember { mutableStateOf<String?>(null) }
+    var showSetPinDialog by remember { mutableStateOf(false) }
+    var pinSetupInput by remember { mutableStateOf("") }
 
     val isLicensed = remember { LicenseRepository.isLicensed(context) }
     val savedKey = remember { LicenseRepository.getSavedLicenseKey(context) }
@@ -185,40 +184,28 @@ fun SettingsScreen(
                                     .padding(top = 4.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                // Status Server
+                                // 0 Connected
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Text(
-                                        text = strings.bandServerActive,
-                                        color = PrimaryText,
-                                        fontSize = 13.5.sp,
-                                        fontWeight = FontWeight.SemiBold
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .background(Color(0xFF22C55E), CircleShape)
                                     )
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(8.dp)
-                                                .background(Color(0xFF22C55E), CircleShape)
-                                        )
-                                        Text(
-                                            text = strings.bandConnectedCount(connectedClients.size),
-                                            color = Color(0xFF22C55E),
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
+                                    Text(
+                                        text = "${connectedClients.size} Connected",
+                                        color = Color(0xFF22C55E),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
 
-                                // Nama Host
+                                // Device Name
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(
-                                        text = strings.bandServerName,
+                                        text = "Device Name",
                                         color = MutedText,
                                         fontSize = 11.5.sp
                                     )
@@ -238,16 +225,37 @@ fun SettingsScreen(
                                     )
                                 }
 
-                                // Proteksi PIN
+                                // PIN Protection
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(text = strings.bandPinProtection, color = PrimaryText, fontSize = 13.5.sp)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(text = "PIN Protection", color = PrimaryText, fontSize = 13.5.sp)
+                                        if (isPinEnabled && serverPin.isNotBlank()) {
+                                            Text(
+                                                text = "[$serverPin]",
+                                                color = AccentGold,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
                                     Switch(
                                         checked = isPinEnabled,
-                                        onCheckedChange = { viewModel.setPinEnabled(it) },
+                                        onCheckedChange = { checked ->
+                                            if (checked) {
+                                                pinSetupInput = serverPin.ifBlank { "" }
+                                                showSetPinDialog = true
+                                            } else {
+                                                viewModel.setPinEnabled(false)
+                                            }
+                                        },
                                         colors = SwitchDefaults.colors(
                                             checkedThumbColor = AccentGold,
                                             checkedTrackColor = AccentGold.copy(alpha = 0.4f)
@@ -255,30 +263,11 @@ fun SettingsScreen(
                                     )
                                 }
 
-                                if (isPinEnabled) {
-                                    OutlinedTextField(
-                                        value = editingPin,
-                                        onValueChange = {
-                                            if (it.length <= 4) {
-                                                editingPin = it
-                                                viewModel.setServerPin(it)
-                                            }
-                                        },
-                                        placeholder = { Text(strings.bandPinPlaceholder) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        singleLine = true,
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = AccentGold,
-                                            unfocusedBorderColor = Border
-                                        )
-                                    )
-                                }
-
-                                // Link Akses Web Browser (Stage Mirror)
+                                // WEB Access
                                 val resolvedIp = remember { BandSessionManager.getLocalIpAddress() ?: "192.168.43.1" }
-                                val domainUrl = webStageUrl ?: "http://kordapp.local:8990"
-                                val ipUrl = webStageIpUrl ?: "http://$resolvedIp:8990"
+                                val domainUrlToCopy = "http://kordapp.local:8990"
+                                val domainDisplayUrl = "http://kordapp.local:8990 or http://kordapp:8990"
+                                val ipUrl = "http://$resolvedIp:8990"
 
                                 Column(
                                     modifier = Modifier
@@ -289,31 +278,19 @@ fun SettingsScreen(
                                         .padding(12.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = strings.stageMirrorTitle,
-                                            color = PrimaryText,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 12.5.sp
-                                        )
-                                        Text(
-                                            text = "Port 8990",
-                                            color = AccentGold,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
                                     Text(
-                                        text = strings.stageMirrorInstruction,
+                                        text = "WEB Access",
+                                        color = PrimaryText,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                    Text(
+                                        text = "Work on same network!",
                                         color = MutedText,
                                         fontSize = 11.sp
                                     )
 
-                                    // Opsi 1: Nama Host (Rekomendasi)
+                                    // Host Name
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -326,16 +303,16 @@ fun SettingsScreen(
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
-                                                text = strings.stageMirrorOptionName,
+                                                text = "Host Name",
                                                 color = MutedText,
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                             Text(
-                                                text = domainUrl,
+                                                text = domainDisplayUrl,
                                                 color = AccentGold,
                                                 fontFamily = FontFamily.Monospace,
-                                                fontSize = 12.sp,
+                                                fontSize = 11.5.sp,
                                                 fontWeight = FontWeight.Bold
                                             )
                                         }
@@ -346,8 +323,8 @@ fun SettingsScreen(
                                                 .background(RaisedSurface)
                                                 .clickable {
                                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                                                    clipboard?.setPrimaryClip(ClipData.newPlainText("Stage Mirror Host", domainUrl))
-                                                    Toast.makeText(context, strings.linkCopiedToast(domainUrl), Toast.LENGTH_SHORT).show()
+                                                    clipboard?.setPrimaryClip(ClipData.newPlainText("Stage Mirror Host", domainUrlToCopy))
+                                                    Toast.makeText(context, strings.linkCopiedToast(domainUrlToCopy), Toast.LENGTH_SHORT).show()
                                                 }
                                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                                         ) {
@@ -360,7 +337,7 @@ fun SettingsScreen(
                                         }
                                     }
 
-                                    // Opsi 2: Alamat IP
+                                    // IP Address
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -373,7 +350,7 @@ fun SettingsScreen(
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
-                                                text = strings.stageMirrorOptionIp,
+                                                text = "IP Address",
                                                 color = MutedText,
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.SemiBold
@@ -1774,6 +1751,68 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showPinDialogForServer = null }) {
                     Text(strings.cancel, color = MutedText)
+                }
+            },
+            containerColor = CardSurface
+        )
+    }
+
+    if (showSetPinDialog) {
+        AlertDialog(
+            onDismissRequest = { showSetPinDialog = false },
+            title = {
+                Text(
+                    text = "PIN Protection",
+                    color = PrimaryText,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Masukkan 4 karakter PIN untuk mengamankan koneksi band:",
+                        color = MutedText,
+                        fontSize = 12.sp
+                    )
+                    OutlinedTextField(
+                        value = pinSetupInput,
+                        onValueChange = {
+                            if (it.length <= 4) {
+                                pinSetupInput = it
+                            }
+                        },
+                        placeholder = { Text("4 Karakter (misal: 1234)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AccentGold,
+                            unfocusedBorderColor = Border
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.setServerPin(pinSetupInput)
+                        viewModel.setPinEnabled(true)
+                        showSetPinDialog = false
+                    },
+                    enabled = pinSetupInput.length == 4,
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "Save",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSetPinDialog = false }) {
+                    Text(text = "Cancel", color = MutedText)
                 }
             },
             containerColor = CardSurface

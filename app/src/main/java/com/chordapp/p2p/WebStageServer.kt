@@ -19,7 +19,10 @@ import java.util.concurrent.CopyOnWriteArrayList
  * Android devices, and laptops on the local Wi-Fi / Hotspot.
  * Zero external internet required.
  */
-class WebStageServer(private val port: Int = 8990) {
+class WebStageServer(
+    private val port: Int = 8990,
+    private val getDeviceName: () -> String = { "Pixel 6 Pro" }
+) {
 
     companion object {
         private const val TAG = "WebStageServer"
@@ -31,6 +34,9 @@ class WebStageServer(private val port: Int = 8990) {
 
     @Volatile
     private var activePayload: LiveSongPayload? = null
+
+    @Volatile
+    private var lastActivePayload: LiveSongPayload? = null
 
     @Volatile
     private var activeTranspose: Int = 0
@@ -133,6 +139,7 @@ class WebStageServer(private val port: Int = 8990) {
 
     fun broadcastSong(payload: LiveSongPayload) {
         activePayload = payload
+        lastActivePayload = payload
         activeTranspose = payload.transpose
         isStandby = false
         val json = buildSongJson(payload, activeTranspose)
@@ -150,7 +157,20 @@ class WebStageServer(private val port: Int = 8990) {
     fun broadcastStandby() {
         isStandby = true
         activePayload = null
-        sendSseToAll("STANDBY", "{}")
+        val obj = JSONObject().apply {
+            put("type", "STANDBY")
+            put("serverName", getDeviceName())
+            if (lastActivePayload != null) {
+                put("hasCachedSong", true)
+                put("cachedTitle", lastActivePayload?.title ?: "")
+                put("cachedArtist", lastActivePayload?.artist ?: "")
+                put("cachedEffectiveKey", lastActivePayload?.effectiveKey ?: "")
+                put("cachedTranspose", activeTranspose)
+                put("cachedCapo", lastActivePayload?.capo ?: 0)
+                put("cachedRawContent", lastActivePayload?.rawContent ?: "")
+            }
+        }
+        sendSseToAll("STANDBY", obj.toString())
     }
 
     private fun sendSseToAll(event: String, data: String) {
@@ -170,6 +190,7 @@ class WebStageServer(private val port: Int = 8990) {
     private fun buildSongJson(payload: LiveSongPayload, transpose: Int): String {
         return JSONObject().apply {
             put("type", "SONG")
+            put("serverName", getDeviceName())
             put("title", payload.title)
             put("artist", payload.artist)
             put("source", payload.source)
@@ -239,7 +260,20 @@ class WebStageServer(private val port: Int = 8990) {
 
         // Send initial state immediately
         if (isStandby || activePayload == null) {
-            client.send("STANDBY", "{}")
+            val obj = JSONObject().apply {
+                put("type", "STANDBY")
+                put("serverName", getDeviceName())
+                if (lastActivePayload != null) {
+                    put("hasCachedSong", true)
+                    put("cachedTitle", lastActivePayload?.title ?: "")
+                    put("cachedArtist", lastActivePayload?.artist ?: "")
+                    put("cachedEffectiveKey", lastActivePayload?.effectiveKey ?: "")
+                    put("cachedTranspose", activeTranspose)
+                    put("cachedCapo", lastActivePayload?.capo ?: 0)
+                    put("cachedRawContent", lastActivePayload?.rawContent ?: "")
+                }
+            }
+            client.send("STANDBY", obj.toString())
         } else {
             val json = buildSongJson(activePayload!!, activeTranspose)
             client.send("SONG", json)
@@ -251,10 +285,21 @@ class WebStageServer(private val port: Int = 8990) {
         val json = if (isStandby || activePayload == null) {
             JSONObject().apply {
                 put("state", "standby")
+                put("serverName", getDeviceName())
+                if (lastActivePayload != null) {
+                    put("hasCachedSong", true)
+                    put("cachedTitle", lastActivePayload?.title ?: "")
+                    put("cachedArtist", lastActivePayload?.artist ?: "")
+                    put("cachedEffectiveKey", lastActivePayload?.effectiveKey ?: "")
+                    put("cachedTranspose", activeTranspose)
+                    put("cachedCapo", lastActivePayload?.capo ?: 0)
+                    put("cachedRawContent", lastActivePayload?.rawContent ?: "")
+                }
             }.toString()
         } else {
             JSONObject().apply {
                 put("state", "song")
+                put("serverName", getDeviceName())
                 put("title", activePayload?.title ?: "")
                 put("artist", activePayload?.artist ?: "")
                 put("effectiveKey", activePayload?.effectiveKey ?: "")
@@ -280,7 +325,12 @@ class WebStageServer(private val port: Int = 8990) {
 
     private fun handleHtmlIndex(socket: Socket) {
         val out = socket.getOutputStream()
-        val htmlBytes = HTML_PLAYER_PAGE.toByteArray(StandardCharsets.UTF_8)
+        val devName = getDeviceName().ifBlank { "Pixel 6 Pro" }
+        val html = HTML_PLAYER_PAGE.replace(
+            "<span id=\"serverDeviceName\">Pixel 6 Pro</span>",
+            "<span id=\"serverDeviceName\">${escapeHtmlServer(devName)}</span>"
+        )
+        val htmlBytes = html.toByteArray(StandardCharsets.UTF_8)
         val headers = "HTTP/1.1 200 OK\r\n" +
                 "Content-Type: text/html; charset=utf-8\r\n" +
                 "Cache-Control: no-cache\r\n" +
@@ -291,6 +341,14 @@ class WebStageServer(private val port: Int = 8990) {
         out.write(htmlBytes)
         out.flush()
         socket.close()
+    }
+
+    private fun escapeHtmlServer(text: String): String {
+        return text.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;")
     }
 
     private val HTML_PLAYER_PAGE = """
@@ -336,35 +394,31 @@ class WebStageServer(private val port: Int = 8990) {
       z-index: 100;
       background: var(--card-bg);
       border-bottom: 1px solid var(--border);
-      padding: 12px 18px;
+      padding: 10px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
-    .header-title-box h1 {
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: -0.2px;
-      color: var(--text-primary);
-    }
-    .header-title-box p {
-      font-size: 12px;
-      color: var(--gold);
-      font-weight: 600;
-      margin-top: 2px;
-    }
-    .live-pill {
-      background: rgba(34, 197, 94, 0.12);
-      border: 1px solid rgba(34, 197, 94, 0.4);
-      padding: 5px 12px;
-      border-radius: 20px;
+    .header-left {
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 11px;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+    .header-connect {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      padding: 5px 11px;
+      border-radius: 20px;
+      font-size: 12px;
       font-weight: 700;
-      color: var(--green);
+      color: #F5F8FF;
+      white-space: nowrap;
     }
     .pulse-dot {
       width: 7px;
@@ -373,10 +427,78 @@ class WebStageServer(private val port: Int = 8990) {
       border-radius: 50%;
       box-shadow: 0 0 8px var(--green);
       animation: pulseAnim 1.5s infinite;
+      flex-shrink: 0;
     }
     @keyframes pulseAnim {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    .header-center {
+      flex: 2;
+      text-align: center;
+      min-width: 0;
+      padding: 0 8px;
+    }
+    .header-center h1 {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .header-center p {
+      font-size: 11px;
+      color: var(--gold);
+      font-weight: 600;
+      margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+    .header-icon-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #D2D9E5;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.18s ease;
+      flex-shrink: 0;
+    }
+    .header-icon-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #FFFFFF;
+      border-color: rgba(229, 169, 60, 0.4);
+    }
+    .header-icon-btn:active {
+      transform: scale(0.92);
+      background: rgba(229, 169, 60, 0.2);
+    }
+    .header-icon-btn.active {
+      background: var(--gold);
+      color: #0C0E12;
+      border-color: var(--gold);
+    }
+    @keyframes spinAnim {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .spinning svg {
+      animation: spinAnim 0.6s ease-in-out;
     }
 
     /* Container Views */
@@ -618,68 +740,38 @@ class WebStageServer(private val port: Int = 8990) {
       background: rgba(229, 169, 60, 0.3);
     }
 
-    /* Speed Control Group inside Dock Bar */
-    .dock-speed-group {
-      display: flex;
-      align-items: center;
-      gap: 1px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(229, 169, 60, 0.28);
-      border-radius: 18px;
-      padding: 1px 3px;
-      margin: 0 1px;
-    }
-    .dock-btn-stepper {
+    /* Transpose Text Buttons in Dock Bar */
+    .dock-btn-text {
       background: transparent;
       border: none;
-      color: #D2D9E5;
-      width: 20px;
-      height: 26px;
-      border-radius: 12px;
+      color: var(--gold);
+      font-size: 15px;
+      font-weight: 800;
+      min-width: 28px;
+      height: 34px;
+      border-radius: 17px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
-      font-weight: 700;
-      transition: all 0.15s;
+      transition: all 0.15s ease;
+      user-select: none;
     }
-    .dock-btn-stepper:hover {
+    .dock-btn-text:hover {
+      background: rgba(229, 169, 60, 0.15);
       color: #FFF;
-      background: rgba(255,255,255,0.1);
     }
-    .dock-btn-stepper:active {
-      transform: scale(0.88);
+    .dock-btn-text:active {
+      transform: scale(0.9);
+      background: rgba(229, 169, 60, 0.25);
     }
-    .dock-speed-badge {
-      background: transparent;
-      border: none;
-      color: var(--gold);
-      font-size: 11.5px;
-      font-weight: 800;
-      padding: 0 3px;
-      min-width: 32px;
-      text-align: center;
-      cursor: pointer;
-      letter-spacing: -0.3px;
-      user-select: none;
-      transition: text-shadow 0.15s;
-    }
-    .dock-speed-badge:hover {
-      text-shadow: 0 0 8px rgba(229, 169, 60, 0.6);
-    }
-
     .transpose-badge {
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 800;
       color: var(--gold);
-      min-width: 20px;
+      min-width: 24px;
       text-align: center;
-      letter-spacing: -0.5px;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      letter-spacing: -0.3px;
     }
 
     /* Vertical Speed Rail (Slider on right screen edge) */
@@ -777,7 +869,8 @@ class WebStageServer(private val port: Int = 8990) {
       padding: 2px 6px;
       border-radius: 8px;
       white-space: nowrap;
-      pointer-events: none;
+      pointer-events: auto;
+      cursor: pointer;
       box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
 
@@ -834,13 +927,26 @@ class WebStageServer(private val port: Int = 8990) {
 <body>
 
   <header>
-    <div class="header-title-box">
+    <div class="header-left">
+      <div class="header-connect" id="headerConnect" title="Terhubung ke Server">
+        <div class="pulse-dot"></div>
+        <span id="serverDeviceName">Pixel 6 Pro</span>
+      </div>
+    </div>
+    <div class="header-center">
       <h1 id="headerTitle">Standby Panggung</h1>
       <p id="headerSubtitle">KordApp Stage Mirror</p>
     </div>
-    <div class="live-pill">
-      <div class="pulse-dot"></div>
-      <span id="syncText">Live Sync</span>
+    <div class="header-right">
+      <button class="header-icon-btn" id="btnFullscreen" onclick="toggleFullScreen()" title="Layar Penuh (Full Screen)">
+        <svg id="iconFsEnter" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        <svg id="iconFsExit" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+      </button>
+      <button class="header-icon-btn" id="btnRefresh" onclick="manualSync()" title="Sinkron Ulang (Sync)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
+        </svg>
+      </button>
     </div>
   </header>
 
@@ -864,20 +970,13 @@ class WebStageServer(private val port: Int = 8990) {
     <div id="sheetContent"></div>
   </div>
 
-  <!-- Floating Dock (Full Icon Controls) -->
+  <!-- Floating Dock (Minimalist Stage Controls) -->
   <div class="dock-bar" id="dockBar" style="display:none;">
     <!-- Auto Scroll (Play / Pause) -->
     <button class="dock-btn" id="btnScroll" onclick="toggleScroll()" title="Auto Scroll (Play / Pause)">
       <svg id="iconScrollPlay" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11.04-6.86a1 1 0 0 0 0-1.72L9.5 4.28a1 1 0 0 0-1.5.86z"/></svg>
       <svg id="iconScrollPause" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
     </button>
-
-    <!-- Speed Controls (Stepper - / Badge / Stepper +) -->
-    <div class="dock-speed-group" title="Kecepatan Auto Scroll">
-      <button class="dock-btn-stepper" onclick="adjustSpeed(-0.2)" title="Perlambat Scroll">−</button>
-      <button class="dock-speed-badge" id="dockSpeed" onclick="cycleSpeedPreset()" title="Klik untuk ganti preset kecepatan">1.0×</button>
-      <button class="dock-btn-stepper" onclick="adjustSpeed(0.2)" title="Percepat Scroll">+</button>
-    </div>
 
     <!-- Page Flip Toggle (Open Book) -->
     <button class="dock-btn" id="btnPageFlip" onclick="togglePageFlip()" title="Page Flip (Buka Halaman per Slide)">
@@ -889,14 +988,10 @@ class WebStageServer(private val port: Int = 8990) {
 
     <div class="dock-sep"></div>
 
-    <!-- Transpose Controls (Flat, Badge, Sharp) -->
-    <button class="dock-btn" onclick="adjustTranspose(-1)" title="Transpose Turun (Flat)">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><text x="6" y="17" font-size="19" font-weight="900" font-family="-apple-system, sans-serif">♭</text></svg>
-    </button>
-    <span id="dockTranspose" class="transpose-badge" title="Status Transpose">0</span>
-    <button class="dock-btn" onclick="adjustTranspose(1)" title="Transpose Naik (Sharp)">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><text x="5" y="17" font-size="18" font-weight="900" font-family="-apple-system, sans-serif">♯</text></svg>
-    </button>
+    <!-- Transpose Controls (- 0 +) -->
+    <button class="dock-btn-text" onclick="adjustTranspose(-1)" title="Transpose Turun">−</button>
+    <button class="dock-btn-text transpose-badge" id="dockTranspose" onclick="resetTranspose()" title="Reset Transpose (0)">0</button>
+    <button class="dock-btn-text" onclick="adjustTranspose(1)" title="Transpose Naik">+</button>
 
     <div class="dock-sep"></div>
 
@@ -914,14 +1009,6 @@ class WebStageServer(private val port: Int = 8990) {
     <button class="dock-btn always-lit" id="btnWake" onclick="requestWakeLock()" title="Layar Tetap Menyala (Stage Awake)">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="3.5"/><line x1="12" y1="20.5" x2="12" y2="22.5"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1.5" y1="12" x2="3.5" y2="12"/><line x1="20.5" y1="12" x2="22.5" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
     </button>
-
-    <div class="dock-sep"></div>
-
-    <!-- Full Screen Trigger -->
-    <button class="dock-btn" id="btnFullscreen" onclick="toggleFullScreen()" title="Layar Penuh (Full Screen)">
-      <svg id="iconFsEnter" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-      <svg id="iconFsExit" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
-    </button>
   </div>
 
   <!-- Vertical Speed Rail (Slider on right edge) -->
@@ -930,7 +1017,8 @@ class WebStageServer(private val port: Int = 8990) {
     <div class="rail-track" id="speedRailTrack">
       <div class="rail-track-fill" id="speedRailFill"></div>
       <div class="rail-thumb" id="speedRailThumb">
-        <span class="rail-thumb-tip" id="speedRailTip">1.0×</span>
+        <span class="rail-thumb-tip" id="dockSpeed" onclick="cycleSpeedPreset()" title="Klik untuk ganti preset kecepatan">1.0×</span>
+        <span id="speedRailTip" style="display:none;">1.0×</span>
       </div>
     </div>
     <button class="rail-btn" onclick="adjustSpeed(-0.2)" title="Perlambat">−</button>
@@ -1041,6 +1129,12 @@ class WebStageServer(private val port: Int = 8990) {
     function adjustTranspose(delta) {
       if (!currentData) return;
       currentData.transpose = (currentData.transpose || 0) + delta;
+      updateUi(currentData);
+    }
+
+    function resetTranspose() {
+      if (!currentData) return;
+      currentData.transpose = 0;
       updateUi(currentData);
     }
 
@@ -1198,6 +1292,7 @@ class WebStageServer(private val port: Int = 8990) {
       const shouldActive = (forceState !== undefined) ? forceState : !isPageFlip;
       const btn = document.getElementById('btnPageFlip');
       const rail = document.getElementById('pageFlipRail');
+      const speedRail = document.getElementById('speedRail');
 
       if (shouldActive) {
         if (isScrolling) {
@@ -1206,6 +1301,7 @@ class WebStageServer(private val port: Int = 8990) {
         isPageFlip = true;
         if (btn) btn.classList.add('active');
         if (rail) rail.classList.add('visible');
+        if (speedRail) speedRail.classList.remove('visible');
         window.scrollTo({ top: 0, behavior: 'instant' });
         paginateSheet();
         renderCurrentPage();
@@ -1213,6 +1309,7 @@ class WebStageServer(private val port: Int = 8990) {
         isPageFlip = false;
         if (btn) btn.classList.remove('active');
         if (rail) rail.classList.remove('visible');
+        if (speedRail) speedRail.classList.add('visible');
         renderContinuousSheet();
       }
     }
@@ -1707,11 +1804,75 @@ class WebStageServer(private val port: Int = 8990) {
       parsedSheetLines = combined;
     }
 
+    async function manualSync() {
+      const btn = document.getElementById('btnRefresh');
+      if (btn) btn.classList.add('spinning');
+      try {
+        const res = await fetch('/api/current');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.serverName) {
+            const devSpan = document.getElementById('serverDeviceName');
+            if (devSpan) devSpan.innerText = data.serverName;
+          }
+          if (data.state === 'song') {
+            updateUi(data);
+          } else if (data.state === 'standby' && data.hasCachedSong) {
+            if (!currentData || !currentData.rawContent) {
+              updateUi({
+                state: 'song',
+                title: data.cachedTitle,
+                artist: data.cachedArtist,
+                effectiveKey: data.cachedEffectiveKey,
+                transpose: data.cachedTranspose || 0,
+                capo: data.cachedCapo || 0,
+                rawContent: data.cachedRawContent,
+                serverName: data.serverName
+              });
+            }
+          }
+        }
+      } catch(err) {
+        console.log("Sync error:", err);
+      } finally {
+        setTimeout(() => {
+          if (btn) btn.classList.remove('spinning');
+        }, 450);
+      }
+    }
+
     function updateUi(data) {
-      if (!data || data.type === 'STANDBY' || data.state === 'standby') {
+      if (!data) return;
+
+      if (data.serverName) {
+        const devSpan = document.getElementById('serverDeviceName');
+        if (devSpan) devSpan.innerText = data.serverName;
+      }
+
+      if (data.type === 'STANDBY' || data.state === 'standby') {
+        // Jangan hapus lagu jika sudah ada lagu aktif di layar web client!
+        if (currentData && currentData.rawContent) {
+          return;
+        }
+        if (data.hasCachedSong) {
+          updateUi({
+            state: 'song',
+            title: data.cachedTitle,
+            artist: data.cachedArtist,
+            effectiveKey: data.cachedEffectiveKey,
+            transpose: data.cachedTranspose || 0,
+            capo: data.cachedCapo || 0,
+            rawContent: data.cachedRawContent,
+            serverName: data.serverName
+          });
+          return;
+        }
+
         document.getElementById('viewStandby').style.display = 'flex';
         document.getElementById('viewPlayer').style.display = 'none';
         document.getElementById('dockBar').style.display = 'none';
+        const speedRail = document.getElementById('speedRail');
+        if (speedRail) speedRail.classList.remove('visible');
         document.getElementById('headerTitle').innerText = 'Standby Panggung';
         document.getElementById('headerSubtitle').innerText = 'KordApp Stage Mirror';
         if (isScrolling) toggleScroll(false);
@@ -1728,7 +1889,7 @@ class WebStageServer(private val port: Int = 8990) {
       document.getElementById('dockBar').style.display = 'flex';
 
       document.getElementById('headerTitle').innerText = data.title || 'Tanpa Judul';
-      document.getElementById('headerSubtitle').innerText = data.artist || 'Artis';
+      document.getElementById('headerSubtitle').innerText = data.artist || 'KordApp Stage Mirror';
 
       const dockTr = document.getElementById('dockTranspose');
       if (dockTr) dockTr.innerText = trStr;
@@ -1749,6 +1910,8 @@ class WebStageServer(private val port: Int = 8990) {
         renderCurrentPage();
       } else {
         renderContinuousSheet();
+        const speedRail = document.getElementById('speedRail');
+        if (speedRail) speedRail.classList.add('visible');
       }
       updateSpeedUI();
       requestWakeLock();
@@ -1863,19 +2026,21 @@ class WebStageServer(private val port: Int = 8990) {
         } catch(err) {}
       });
 
-      evtSource.addEventListener('STANDBY', () => {
-        updateUi({ state: 'standby' });
+      evtSource.addEventListener('STANDBY', (e) => {
+        try {
+          const parsed = JSON.parse(e.data);
+          updateUi(parsed);
+        } catch(_) {
+          updateUi({ state: 'standby' });
+        }
       });
 
       evtSource.onerror = () => {
         evtSource.close();
-        document.getElementById('syncText').innerText = 'Menyambung...';
         setTimeout(connectSse, 3000);
       };
 
-      evtSource.onopen = () => {
-        document.getElementById('syncText').innerText = 'Live Sync';
-      };
+      evtSource.onopen = () => {};
     }
 
     // Polling fallback
@@ -1884,8 +2049,14 @@ class WebStageServer(private val port: Int = 8990) {
         const res = await fetch('/api/current');
         if (res.ok) {
           const data = await res.json();
-          if (data.state === 'standby' && document.getElementById('viewStandby').style.display === 'none') {
-            updateUi({ state: 'standby' });
+          if (data.serverName) {
+            const devSpan = document.getElementById('serverDeviceName');
+            if (devSpan) devSpan.innerText = data.serverName;
+          }
+          if (data.state === 'song') {
+            if (!currentData || currentData.title !== data.title || currentData.rawContent !== data.rawContent) {
+              updateUi(data);
+            }
           }
         }
       } catch(err) {}
