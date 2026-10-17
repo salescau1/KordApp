@@ -13,12 +13,13 @@ import java.net.InetAddress
 class MdnsResponderTest {
 
     @Test
-    fun testBuildMdnsResponse() {
+    fun testBuildDnsResponse() {
         val responder = MdnsResponder("kordapp.local") { "192.168.1.21" }
-        val response = responder.buildMdnsResponse(
+        val response = responder.buildDnsResponse(
             queryId = 0x1234,
             targetHost = "kordapp.local",
-            ipBytes = byteArrayOf(192.toByte(), 168.toByte(), 1.toByte(), 21.toByte())
+            ipBytes = byteArrayOf(192.toByte(), 168.toByte(), 1.toByte(), 21.toByte()),
+            isLlmnr = false
         )
 
         // 1. Transaction ID
@@ -29,9 +30,9 @@ class MdnsResponderTest {
         assertEquals(0x84.toByte(), response[2])
         assertEquals(0x00.toByte(), response[3])
 
-        // 3. QDCOUNT: 0, ANCOUNT: 1
+        // 3. QDCOUNT: 1, ANCOUNT: 1
         assertEquals(0x00.toByte(), response[4])
-        assertEquals(0x00.toByte(), response[5])
+        assertEquals(0x01.toByte(), response[5])
         assertEquals(0x00.toByte(), response[6])
         assertEquals(0x01.toByte(), response[7])
 
@@ -79,7 +80,7 @@ class MdnsResponderTest {
             }
         }
 
-        responder.handlePacket(queryPacket, mockSocket)
+        responder.handlePacket(queryPacket, mockSocket, MdnsResponder.MDNS_PORT, false)
         mockSocket.close()
 
         assertTrue("Responder should answer mDNS query for kordapp.local", answered)
