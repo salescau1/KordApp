@@ -60,7 +60,7 @@ fun ActivationScreen(
     var pinEduInput by remember { mutableStateOf("") }
 
     fun proceedAfterActivationOrEmail() {
-        if (!BandSessionManager.isPinPromptDismissed(context) && BandSessionManager.serverPin.value.isBlank()) {
+        if (!LicenseRepository.isSecurityPinPromptDismissed(context) && !LicenseRepository.isSecurityPinEnabled(context)) {
             showPinEducationDialog = true
         } else {
             onActivationSuccess()
@@ -810,7 +810,7 @@ fun ActivationScreen(
     if (showPinEducationDialog) {
         AlertDialog(
             onDismissRequest = {
-                BandSessionManager.setPinPromptDismissed(context, true)
+                LicenseRepository.setSecurityPinPromptDismissed(context, true)
                 showPinEducationDialog = false
                 onActivationSuccess()
             },
@@ -821,7 +821,7 @@ fun ActivationScreen(
                 ) {
                     Icon(Icons.Default.Lock, contentDescription = null, tint = AccentGold, modifier = Modifier.size(24.dp))
                     Text(
-                        text = strings.pinSetupEduTitle,
+                        text = strings.licensePinSecurityTitle,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = PrimaryText
@@ -834,7 +834,7 @@ fun ActivationScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = strings.pinSetupEduDesc,
+                        text = strings.licensePinSecurityDesc,
                         fontSize = 12.5.sp,
                         color = MutedText,
                         lineHeight = 17.sp
@@ -866,11 +866,9 @@ fun ActivationScreen(
                 Button(
                     onClick = {
                         if (pinEduInput.length == 4) {
-                            BandSessionManager.setPin(pinEduInput)
-                            BandSessionManager.setPinEnabled(true)
-                            BandSessionManager.setPinPromptDismissed(context, true)
+                            LicenseRepository.setSecurityPin(context, pinEduInput)
                             showPinEducationDialog = false
-                            Toast.makeText(context, strings.pinSavedToast, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, strings.pinSetupSuccessToast, Toast.LENGTH_SHORT).show()
                             onActivationSuccess()
                         }
                     },
@@ -878,13 +876,13 @@ fun ActivationScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text(strings.savePinBtn, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(strings.saveAndLockLicenseBtn, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = {
-                        BandSessionManager.setPinPromptDismissed(context, true)
+                        LicenseRepository.setSecurityPinPromptDismissed(context, true)
                         showPinEducationDialog = false
                         onActivationSuccess()
                     }

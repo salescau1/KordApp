@@ -119,7 +119,9 @@ fun HomeScreen(
     val strings = remember(currentLanguage) { AppLanguageManager.strings(currentLanguage) }
 
     LaunchedEffect(Unit) {
-        if (!BandSessionManager.isPinPromptDismissed(context) && BandSessionManager.serverPin.value.isBlank()) {
+        if (!com.chordapp.repositories.LicenseRepository.isSecurityPinPromptDismissed(context) &&
+            !com.chordapp.repositories.LicenseRepository.isSecurityPinEnabled(context)
+        ) {
             showPinEducationDialog = true
         }
     }
@@ -161,7 +163,7 @@ fun HomeScreen(
         if (showPinEducationDialog) {
             AlertDialog(
                 onDismissRequest = {
-                    BandSessionManager.setPinPromptDismissed(context, true)
+                    com.chordapp.repositories.LicenseRepository.setSecurityPinPromptDismissed(context, true)
                     showPinEducationDialog = false
                 },
                 title = {
@@ -171,7 +173,7 @@ fun HomeScreen(
                     ) {
                         Icon(Icons.Default.Lock, contentDescription = null, tint = AccentGold, modifier = Modifier.size(24.dp))
                         Text(
-                            text = strings.pinSetupEduTitle,
+                            text = strings.licensePinSecurityTitle,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = PrimaryText
@@ -184,7 +186,7 @@ fun HomeScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = strings.pinSetupEduDesc,
+                            text = strings.licensePinSecurityDesc,
                             fontSize = 12.5.sp,
                             color = MutedText,
                             lineHeight = 17.sp
@@ -216,24 +218,22 @@ fun HomeScreen(
                     Button(
                         onClick = {
                             if (pinEduInput.length == 4) {
-                                BandSessionManager.setPin(pinEduInput)
-                                BandSessionManager.setPinEnabled(true)
-                                BandSessionManager.setPinPromptDismissed(context, true)
+                                com.chordapp.repositories.LicenseRepository.setSecurityPin(context, pinEduInput)
                                 showPinEducationDialog = false
-                                Toast.makeText(context, strings.pinSavedToast, Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, strings.pinSetupSuccessToast, Toast.LENGTH_SHORT).show()
                             }
                         },
                         enabled = pinEduInput.length == 4,
                         colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
                         shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text(strings.savePinBtn, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(strings.saveAndLockLicenseBtn, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 },
                 dismissButton = {
                     TextButton(
                         onClick = {
-                            BandSessionManager.setPinPromptDismissed(context, true)
+                            com.chordapp.repositories.LicenseRepository.setSecurityPinPromptDismissed(context, true)
                             showPinEducationDialog = false
                         }
                     ) {

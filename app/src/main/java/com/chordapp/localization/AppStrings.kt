@@ -207,6 +207,21 @@ interface AppStrings {
     val savePinBtn: String
     val skipPinBtn: String
     val pinSavedToast: String
+    val licensePinSecurityTitle: String
+    val licensePinSecurityDesc: String
+    val licensePinActiveStatus: String
+    val licensePinInactiveStatus: String
+    val setPinAction: String
+    val changePinAction: String
+    val enterPinToRevealTitle: String
+    val enterPinToTransferTitle: String
+    val enterPinToDisableTitle: String
+    val enterCurrentPinPrompt: String
+    val enterNewPinPrompt: String
+    val wrongPinError: String
+    val pinSetupSuccessToast: String
+    val pinDisabledSuccessToast: String
+    val saveAndLockLicenseBtn: String
     val recoveryEmailTitle: String
     val notLinkedStatus: String
     val linkAction: String

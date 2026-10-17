@@ -236,6 +236,52 @@ object LicenseRepository {
     private const val KEY_EMAIL_VERIFIED = "email_verified"
     private const val KEY_DISMISSED_BIND_EMAIL_PROMPT = "dismissed_bind_email_prompt"
 
+    private const val KEY_SECURITY_PIN = "license_security_pin"
+    private const val KEY_SECURITY_PIN_ENABLED = "license_security_pin_enabled"
+    private const val KEY_DISMISSED_SECURITY_PIN_PROMPT = "dismissed_security_pin_prompt"
+
+    fun isSecurityPinEnabled(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val enabled = prefs.getBoolean(KEY_SECURITY_PIN_ENABLED, false)
+        val pin = prefs.getString(KEY_SECURITY_PIN, "").orEmpty()
+        return enabled && pin.length == 4
+    }
+
+    fun getSecurityPin(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_SECURITY_PIN, "").orEmpty()
+    }
+
+    fun setSecurityPin(context: Context, pin: String) {
+        val clean = pin.trim()
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString(KEY_SECURITY_PIN, clean)
+            .putBoolean(KEY_SECURITY_PIN_ENABLED, clean.length == 4)
+            .putBoolean(KEY_DISMISSED_SECURITY_PIN_PROMPT, true)
+            .apply()
+    }
+
+    fun setSecurityPinEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_SECURITY_PIN_ENABLED, enabled).apply()
+    }
+
+    fun verifySecurityPin(context: Context, inputPin: String): Boolean {
+        val saved = getSecurityPin(context)
+        return saved.isNotEmpty() && saved == inputPin.trim()
+    }
+
+    fun isSecurityPinPromptDismissed(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_DISMISSED_SECURITY_PIN_PROMPT, false)
+    }
+
+    fun setSecurityPinPromptDismissed(context: Context, dismissed: Boolean = true) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_DISMISSED_SECURITY_PIN_PROMPT, dismissed).apply()
+    }
+
     fun getSavedRecoveryEmail(context: Context): String? {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getString(KEY_RECOVERY_EMAIL, null)

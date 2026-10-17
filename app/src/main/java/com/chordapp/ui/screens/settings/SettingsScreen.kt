@@ -42,6 +42,12 @@ import com.chordapp.viewmodels.SettingsViewModel
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+private enum class SecurityPinAction {
+    REVEAL_LICENSE,
+    TRANSFER_LICENSE,
+    DISABLE_PIN
+}
+
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
@@ -68,8 +74,6 @@ fun SettingsScreen(
 
     val bandMode by viewModel.bandMode.collectAsState()
     val deviceName by viewModel.deviceName.collectAsState()
-    val serverPin by viewModel.serverPin.collectAsState()
-    val isPinEnabled by viewModel.isPinEnabled.collectAsState()
     val connectedClients by viewModel.connectedClients.collectAsState()
     val discoveredServers by viewModel.discoveredServers.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
@@ -79,8 +83,21 @@ fun SettingsScreen(
     var showPinDialogForServer by remember { mutableStateOf<DiscoveredServer?>(null) }
     var pinDialogInput by remember { mutableStateOf("") }
     var pinDialogError by remember { mutableStateOf<String?>(null) }
-    var showSetPinDialog by remember { mutableStateOf(false) }
-    var pinSetupInput by remember { mutableStateOf("") }
+
+    var isSecurityPinEnabled by remember { mutableStateOf(LicenseRepository.isSecurityPinEnabled(context)) }
+    var hasSecurityPin by remember { mutableStateOf(LicenseRepository.getSecurityPin(context).isNotEmpty()) }
+
+    var pendingSecurityPinAction by remember { mutableStateOf<SecurityPinAction?>(null) }
+    var verifyPinInput by remember { mutableStateOf("") }
+    var verifyPinError by remember { mutableStateOf<String?>(null) }
+
+    var showSetupSecurityPinDialog by remember { mutableStateOf(false) }
+    var setupSecurityPinInput by remember { mutableStateOf("") }
+
+    var showChangeSecurityPinDialog by remember { mutableStateOf(false) }
+    var changeOldPinInput by remember { mutableStateOf("") }
+    var changeNewPinInput by remember { mutableStateOf("") }
+    var changePinError by remember { mutableStateOf<String?>(null) }
 
     val isLicensed = remember { LicenseRepository.isLicensed(context) }
     val savedKey = remember { LicenseRepository.getSavedLicenseKey(context) }
@@ -258,77 +275,6 @@ fun SettingsScreen(
                                                 fontSize = 12.5.sp
                                             )
                                         }
-                                    }
-                                }
-
-                                // PIN Protection
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Text(text = "PIN Protection", color = PrimaryText, fontSize = 13.5.sp)
-                                        if (isPinEnabled && serverPin.isNotBlank()) {
-                                            Text(
-                                                text = "[$serverPin]",
-                                                color = AccentGold,
-                                                fontFamily = FontFamily.Monospace,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                modifier = Modifier.clickable {
-                                                    pinSetupInput = serverPin
-                                                    showSetPinDialog = true
-                                                }
-                                            )
-                                        }
-                                    }
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        if (serverPin.isNotBlank()) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .background(RaisedSurface)
-                                                    .border(1.dp, Border, RoundedCornerShape(8.dp))
-                                                    .clickable {
-                                                        pinSetupInput = serverPin
-                                                        showSetPinDialog = true
-                                                    }
-                                                    .padding(horizontal = 9.dp, vertical = 4.dp)
-                                            ) {
-                                                Text(
-                                                    text = "Edit",
-                                                    color = PrimaryText,
-                                                    fontSize = 11.5.sp,
-                                                    fontWeight = FontWeight.SemiBold
-                                                )
-                                            }
-                                        }
-                                        Switch(
-                                            checked = isPinEnabled,
-                                            onCheckedChange = { checked ->
-                                                if (checked) {
-                                                    if (serverPin.length == 4) {
-                                                        viewModel.setPinEnabled(true)
-                                                    } else {
-                                                        pinSetupInput = serverPin.ifBlank { "" }
-                                                        showSetPinDialog = true
-                                                    }
-                                                } else {
-                                                    viewModel.setPinEnabled(false)
-                                                }
-                                            },
-                                            colors = SwitchDefaults.colors(
-                                                checkedThumbColor = AccentGold,
-                                                checkedTrackColor = AccentGold.copy(alpha = 0.4f)
-                                            )
-                                        )
                                     }
                                 }
 
@@ -1095,7 +1041,19 @@ fun SettingsScreen(
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(RaisedSurface)
                                     .border(1.dp, Border, RoundedCornerShape(8.dp))
-                                    .clickable { isKeyRevealed = !isKeyRevealed }
+                                    .clickable {
+                                        if (isKeyRevealed) {
+                                            isKeyRevealed = false
+                                        } else {
+                                            if (isSecurityPinEnabled) {
+                                                verifyPinInput = ""
+                                                verifyPinError = null
+                                                pendingSecurityPinAction = SecurityPinAction.REVEAL_LICENSE
+                                            } else {
+                                                isKeyRevealed = true
+                                            }
+                                        }
+                                    }
                                     .padding(horizontal = 9.dp, vertical = 4.dp)
                             ) {
                                 Text(
@@ -1184,7 +1142,7 @@ fun SettingsScreen(
 
                     HorizontalDivider(color = Border)
 
-                    // Baris Proteksi PIN Panggung (duduk tenang seperti Email Pemulihan)
+                    // Baris PIN Keamanan Lisensi (Melindungi intip kode lisensi & transfer lisensi)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1192,24 +1150,23 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
                             Text(
-                                text = strings.bandPinProtection,
+                                text = strings.licensePinSecurityTitle,
                                 color = PrimaryText,
                                 fontSize = 14.5.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = if (isPinEnabled && serverPin.isNotBlank()) {
-                                    "Aktif: ••••"
-                                } else if (serverPin.isNotBlank()) {
-                                    "Tersimpan: •••• (Nonaktif)"
-                                } else {
-                                    "Belum diatur"
-                                },
-                                color = if (isPinEnabled && serverPin.isNotBlank()) Color(0xFF22C55E) else MutedText,
+                                text = if (isSecurityPinEnabled) strings.licensePinActiveStatus else strings.licensePinInactiveStatus,
+                                color = if (isSecurityPinEnabled) Color(0xFF22C55E) else MutedText,
                                 fontSize = 11.5.sp,
-                                fontFamily = if (serverPin.isNotBlank()) FontFamily.Monospace else FontFamily.Default
+                                fontWeight = if (isSecurityPinEnabled) FontWeight.SemiBold else FontWeight.Normal
                             )
                         }
 
@@ -1221,33 +1178,45 @@ fun SettingsScreen(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(RaisedSurface)
-                                    .border(1.dp, if (serverPin.isBlank()) AccentGold else Border, RoundedCornerShape(8.dp))
+                                    .border(1.dp, if (!hasSecurityPin) AccentGold else Border, RoundedCornerShape(8.dp))
                                     .clickable {
-                                        pinSetupInput = serverPin
-                                        showSetPinDialog = true
+                                        if (!hasSecurityPin) {
+                                            setupSecurityPinInput = ""
+                                            showSetupSecurityPinDialog = true
+                                        } else {
+                                            changeOldPinInput = ""
+                                            changeNewPinInput = ""
+                                            changePinError = null
+                                            showChangeSecurityPinDialog = true
+                                        }
                                     }
                                     .padding(horizontal = 11.dp, vertical = 5.dp)
                             ) {
                                 Text(
-                                    text = if (serverPin.isBlank()) "Atur PIN" else "Ganti PIN",
-                                    color = if (serverPin.isBlank()) AccentGold else PrimaryText,
+                                    text = if (!hasSecurityPin) strings.setPinAction else strings.changePinAction,
+                                    color = if (!hasSecurityPin) AccentGold else PrimaryText,
                                     fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
 
                             Switch(
-                                checked = isPinEnabled,
+                                checked = isSecurityPinEnabled,
                                 onCheckedChange = { checked ->
                                     if (checked) {
-                                        if (serverPin.length == 4) {
-                                            viewModel.setPinEnabled(true)
+                                        if (hasSecurityPin) {
+                                            LicenseRepository.setSecurityPinEnabled(context, true)
+                                            isSecurityPinEnabled = true
+                                            Toast.makeText(context, strings.pinSetupSuccessToast, Toast.LENGTH_SHORT).show()
                                         } else {
-                                            pinSetupInput = serverPin.ifBlank { "" }
-                                            showSetPinDialog = true
+                                            setupSecurityPinInput = ""
+                                            showSetupSecurityPinDialog = true
                                         }
                                     } else {
-                                        viewModel.setPinEnabled(false)
+                                        // Matikan PIN harus diverifikasi dengan PIN saat ini agar peminjam HP tidak bisa sembarangan switch off
+                                        verifyPinInput = ""
+                                        verifyPinError = null
+                                        pendingSecurityPinAction = SecurityPinAction.DISABLE_PIN
                                     }
                                 },
                                 colors = SwitchDefaults.colors(
@@ -1287,7 +1256,15 @@ fun SettingsScreen(
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(RaisedSurface)
                                 .border(1.dp, AccentGold, RoundedCornerShape(8.dp))
-                                .clickable { showTransferDialog = true }
+                                .clickable {
+                                    if (isSecurityPinEnabled) {
+                                        verifyPinInput = ""
+                                        verifyPinError = null
+                                        pendingSecurityPinAction = SecurityPinAction.TRANSFER_LICENSE
+                                    } else {
+                                        showTransferDialog = true
+                                    }
+                                }
                                 .padding(horizontal = 11.dp, vertical = 5.dp)
                         ) {
                             Text(
@@ -1902,38 +1879,177 @@ fun SettingsScreen(
         )
     }
 
-    if (showSetPinDialog) {
+    // Dialog Verifikasi PIN Keamanan Lisensi
+    if (pendingSecurityPinAction != null) {
+        val action = pendingSecurityPinAction!!
+        val titleText = when (action) {
+            SecurityPinAction.REVEAL_LICENSE -> strings.enterPinToRevealTitle
+            SecurityPinAction.TRANSFER_LICENSE -> strings.enterPinToTransferTitle
+            SecurityPinAction.DISABLE_PIN -> strings.enterPinToDisableTitle
+        }
+
         AlertDialog(
-            onDismissRequest = { showSetPinDialog = false },
+            onDismissRequest = {
+                pendingSecurityPinAction = null
+                verifyPinError = null
+            },
             title = {
-                Text(
-                    text = "PIN Protection",
-                    color = PrimaryText,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = AccentGold, modifier = Modifier.size(22.dp))
+                    Text(
+                        text = titleText,
+                        color = PrimaryText,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.5.sp
+                    )
+                }
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "Masukkan 4 karakter PIN untuk mengamankan koneksi band:",
+                        text = strings.enterCurrentPinPrompt,
                         color = MutedText,
-                        fontSize = 12.sp
+                        fontSize = 12.5.sp
                     )
+
                     OutlinedTextField(
-                        value = pinSetupInput,
+                        value = verifyPinInput,
                         onValueChange = {
                             if (it.length <= 4) {
-                                pinSetupInput = it
+                                verifyPinInput = it.filter { c -> c.isDigit() }
+                                verifyPinError = null
                             }
                         },
-                        placeholder = { Text("4 Karakter (misal: 1234)") },
+                        placeholder = { Text("••••", color = MutedText.copy(alpha = 0.5f), letterSpacing = 4.sp) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        shape = RoundedCornerShape(8.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        isError = verifyPinError != null,
+                        shape = RoundedCornerShape(10.dp),
+                        textStyle = LocalTextStyle.current.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 4.sp
+                        ),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = AccentGold,
-                            unfocusedBorderColor = Border
+                            unfocusedBorderColor = Border,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText,
+                            cursorColor = AccentGold
+                        )
+                    )
+
+                    if (verifyPinError != null) {
+                        Text(
+                            text = verifyPinError!!,
+                            color = Color(0xFFEF4444),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (LicenseRepository.verifySecurityPin(context, verifyPinInput)) {
+                            val act = action
+                            pendingSecurityPinAction = null
+                            verifyPinError = null
+                            when (act) {
+                                SecurityPinAction.REVEAL_LICENSE -> {
+                                    isKeyRevealed = true
+                                }
+                                SecurityPinAction.TRANSFER_LICENSE -> {
+                                    showTransferDialog = true
+                                }
+                                SecurityPinAction.DISABLE_PIN -> {
+                                    LicenseRepository.setSecurityPinEnabled(context, false)
+                                    isSecurityPinEnabled = false
+                                    Toast.makeText(context, strings.pinDisabledSuccessToast, Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } else {
+                            verifyPinError = strings.wrongPinError
+                        }
+                    },
+                    enabled = verifyPinInput.length == 4,
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("OK", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingSecurityPinAction = null
+                        verifyPinError = null
+                    }
+                ) {
+                    Text(strings.cancel, color = MutedText)
+                }
+            },
+            containerColor = CardSurface
+        )
+    }
+
+    // Dialog Setup PIN Baru untuk Keamanan Lisensi
+    if (showSetupSecurityPinDialog) {
+        AlertDialog(
+            onDismissRequest = { showSetupSecurityPinDialog = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = AccentGold, modifier = Modifier.size(22.dp))
+                    Text(
+                        text = strings.licensePinSecurityTitle,
+                        color = PrimaryText,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = strings.licensePinSecurityDesc,
+                        color = MutedText,
+                        fontSize = 12.5.sp,
+                        lineHeight = 17.sp
+                    )
+
+                    OutlinedTextField(
+                        value = setupSecurityPinInput,
+                        onValueChange = {
+                            if (it.length <= 4) {
+                                setupSecurityPinInput = it.filter { c -> c.isDigit() }
+                            }
+                        },
+                        placeholder = { Text("4 Digit Angka", color = MutedText.copy(alpha = 0.5f)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        shape = RoundedCornerShape(10.dp),
+                        textStyle = LocalTextStyle.current.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 4.sp
+                        ),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AccentGold,
+                            unfocusedBorderColor = Border,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText,
+                            cursorColor = AccentGold
                         )
                     )
                 }
@@ -1941,23 +2057,158 @@ fun SettingsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.setServerPin(pinSetupInput)
-                        viewModel.setPinEnabled(true)
-                        showSetPinDialog = false
+                        if (setupSecurityPinInput.length == 4) {
+                            LicenseRepository.setSecurityPin(context, setupSecurityPinInput)
+                            hasSecurityPin = true
+                            isSecurityPinEnabled = true
+                            showSetupSecurityPinDialog = false
+                            Toast.makeText(context, strings.pinSetupSuccessToast, Toast.LENGTH_SHORT).show()
+                        }
                     },
-                    enabled = pinSetupInput.length == 4,
+                    enabled = setupSecurityPinInput.length == 4,
                     colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text(
-                        text = "Save",
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(strings.saveAndLockLicenseBtn, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showSetPinDialog = false }) {
-                    Text(text = "Cancel", color = MutedText)
+                TextButton(onClick = { showSetupSecurityPinDialog = false }) {
+                    Text(strings.cancel, color = MutedText)
+                }
+            },
+            containerColor = CardSurface
+        )
+    }
+
+    // Dialog Ganti PIN Keamanan Lisensi
+    if (showChangeSecurityPinDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showChangeSecurityPinDialog = false
+                changePinError = null
+            },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = AccentGold, modifier = Modifier.size(22.dp))
+                    Text(
+                        text = strings.changePinAction,
+                        color = PrimaryText,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = strings.enterCurrentPinPrompt,
+                        color = MutedText,
+                        fontSize = 12.sp
+                    )
+                    OutlinedTextField(
+                        value = changeOldPinInput,
+                        onValueChange = {
+                            if (it.length <= 4) {
+                                changeOldPinInput = it.filter { c -> c.isDigit() }
+                                changePinError = null
+                            }
+                        },
+                        placeholder = { Text("PIN Lama (4 Digit)", color = MutedText.copy(alpha = 0.5f)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        shape = RoundedCornerShape(10.dp),
+                        textStyle = LocalTextStyle.current.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 3.sp
+                        ),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AccentGold,
+                            unfocusedBorderColor = Border,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText,
+                            cursorColor = AccentGold
+                        )
+                    )
+
+                    Text(
+                        text = strings.enterNewPinPrompt,
+                        color = MutedText,
+                        fontSize = 12.sp
+                    )
+                    OutlinedTextField(
+                        value = changeNewPinInput,
+                        onValueChange = {
+                            if (it.length <= 4) {
+                                changeNewPinInput = it.filter { c -> c.isDigit() }
+                                changePinError = null
+                            }
+                        },
+                        placeholder = { Text("PIN Baru (4 Digit)", color = MutedText.copy(alpha = 0.5f)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        shape = RoundedCornerShape(10.dp),
+                        textStyle = LocalTextStyle.current.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 3.sp
+                        ),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AccentGold,
+                            unfocusedBorderColor = Border,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText,
+                            cursorColor = AccentGold
+                        )
+                    )
+
+                    if (changePinError != null) {
+                        Text(
+                            text = changePinError!!,
+                            color = Color(0xFFEF4444),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (LicenseRepository.verifySecurityPin(context, changeOldPinInput)) {
+                            LicenseRepository.setSecurityPin(context, changeNewPinInput)
+                            hasSecurityPin = true
+                            isSecurityPinEnabled = true
+                            showChangeSecurityPinDialog = false
+                            changePinError = null
+                            Toast.makeText(context, strings.pinSetupSuccessToast, Toast.LENGTH_SHORT).show()
+                        } else {
+                            changePinError = strings.wrongPinError
+                        }
+                    },
+                    enabled = changeOldPinInput.length == 4 && changeNewPinInput.length == 4,
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(strings.save, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showChangeSecurityPinDialog = false
+                        changePinError = null
+                    }
+                ) {
+                    Text(strings.cancel, color = MutedText)
                 }
             },
             containerColor = CardSurface
