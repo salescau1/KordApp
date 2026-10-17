@@ -104,6 +104,7 @@ object BandSessionManager {
     private const val KEY_NAME = "device_name"
     private const val KEY_PIN = "server_pin"
     private const val KEY_PIN_ENABLED = "pin_enabled"
+    private const val KEY_PIN_PROMPT_DISMISSED = "pin_prompt_dismissed"
     private const val DEFAULT_TCP_PORT = 8989
     private const val UDP_DISCOVERY_PORT = 8990
     private const val NSD_SERVICE_TYPE = "_kordband._tcp."
@@ -236,13 +237,30 @@ object BandSessionManager {
         val clean = pin.trim()
         _serverPin.value = clean
         appContext?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            ?.edit()?.putString(KEY_PIN, clean)?.apply()
+            ?.edit()
+            ?.putString(KEY_PIN, clean)
+            ?.apply()
+        if (clean.isNotBlank()) {
+            setPinPromptDismissed(dismissed = true)
+        }
     }
 
     fun setPinEnabled(enabled: Boolean) {
         _isPinEnabled.value = enabled
         appContext?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             ?.edit()?.putBoolean(KEY_PIN_ENABLED, enabled)?.apply()
+    }
+
+    fun isPinPromptDismissed(context: Context? = appContext): Boolean {
+        val ctx = context ?: appContext ?: return false
+        val prefs = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_PIN_PROMPT_DISMISSED, false)
+    }
+
+    fun setPinPromptDismissed(context: Context? = appContext, dismissed: Boolean = true) {
+        val ctx = context ?: appContext ?: return
+        val prefs = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_PIN_PROMPT_DISMISSED, dismissed).apply()
     }
 
     fun toggleBroadcastPause() {

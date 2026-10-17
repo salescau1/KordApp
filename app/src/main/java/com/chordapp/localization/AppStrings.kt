@@ -202,6 +202,11 @@ interface AppStrings {
     val bindEmailNowBtn: String
     val setupLaterBtn: String
     val bindEmailSuccess: String
+    val pinSetupEduTitle: String
+    val pinSetupEduDesc: String
+    val savePinBtn: String
+    val skipPinBtn: String
+    val pinSavedToast: String
     val recoveryEmailTitle: String
     val notLinkedStatus: String
     val linkAction: String

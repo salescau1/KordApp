@@ -28,8 +28,18 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Search
+import android.widget.Toast
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -40,11 +50,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
+import com.chordapp.localization.AppLanguageManager
+import com.chordapp.p2p.BandSessionManager
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -96,6 +112,18 @@ fun HomeScreen(
     val chart by viewModel.chart.collectAsState()
     val platform by viewModel.platform.collectAsState()
 
+    val context = LocalContext.current
+    var showPinEducationDialog by remember { mutableStateOf(false) }
+    var pinEduInput by remember { mutableStateOf("") }
+    val currentLanguage by AppLanguageManager.currentLanguage.collectAsState()
+    val strings = remember(currentLanguage) { AppLanguageManager.strings(currentLanguage) }
+
+    LaunchedEffect(Unit) {
+        if (!BandSessionManager.isPinPromptDismissed(context) && BandSessionManager.serverPin.value.isBlank()) {
+            showPinEducationDialog = true
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -127,6 +155,92 @@ fun HomeScreen(
                 onRefresh = viewModel::refresh,
                 onToggleFavorite = viewModel::toggleFavorite,
                 onDownloadSong = viewModel::downloadSong
+            )
+        }
+
+        if (showPinEducationDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    BandSessionManager.setPinPromptDismissed(context, true)
+                    showPinEducationDialog = false
+                },
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = AccentGold, modifier = Modifier.size(24.dp))
+                        Text(
+                            text = strings.pinSetupEduTitle,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryText
+                        )
+                    }
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = strings.pinSetupEduDesc,
+                            fontSize = 12.5.sp,
+                            color = MutedText,
+                            lineHeight = 17.sp
+                        )
+
+                        OutlinedTextField(
+                            value = pinEduInput,
+                            onValueChange = { input ->
+                                if (input.length <= 4) {
+                                    pinEduInput = input.filter { it.isDigit() }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("4 Digit PIN (misal: 1234)", color = MutedText.copy(alpha = 0.5f), fontSize = 13.sp) },
+                            leadingIcon = { Icon(Icons.Default.Key, contentDescription = null, tint = AccentGold) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = AccentGold,
+                                unfocusedBorderColor = Border,
+                                focusedTextColor = PrimaryText,
+                                unfocusedTextColor = PrimaryText
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (pinEduInput.length == 4) {
+                                BandSessionManager.setPin(pinEduInput)
+                                BandSessionManager.setPinEnabled(true)
+                                BandSessionManager.setPinPromptDismissed(context, true)
+                                showPinEducationDialog = false
+                                Toast.makeText(context, strings.pinSavedToast, Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        enabled = pinEduInput.length == 4,
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(strings.savePinBtn, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            BandSessionManager.setPinPromptDismissed(context, true)
+                            showPinEducationDialog = false
+                        }
+                    ) {
+                        Text(strings.skipPinBtn, color = MutedText)
+                    }
+                },
+                containerColor = CardSurface
             )
         }
     }

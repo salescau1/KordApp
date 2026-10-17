@@ -49,8 +49,8 @@ fun SettingsScreen(
     onLicenseTransferred: () -> Unit = {},
     onNavigateToStandby: () -> Unit = {}
 ) {
-    val strings = LocalAppStrings.current
     val currentLanguage by viewModel.currentLanguage.collectAsState()
+    val strings = remember(currentLanguage) { com.chordapp.localization.AppLanguageManager.strings(currentLanguage) }
     val currentTheme by viewModel.currentTheme.collectAsState()
     val stats by viewModel.catalogStats.collectAsState()
     val context = LocalContext.current
@@ -74,7 +74,8 @@ fun SettingsScreen(
     val discoveredServers by viewModel.discoveredServers.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
 
-    var editingDeviceName by remember(deviceName) { mutableStateOf(deviceName) }
+    var showRenameDeviceDialog by remember { mutableStateOf(false) }
+    var renameDeviceInput by remember { mutableStateOf("") }
     var showPinDialogForServer by remember { mutableStateOf<DiscoveredServer?>(null) }
     var pinDialogInput by remember { mutableStateOf("") }
     var pinDialogError by remember { mutableStateOf<String?>(null) }
@@ -209,20 +210,55 @@ fun SettingsScreen(
                                         color = MutedText,
                                         fontSize = 11.5.sp
                                     )
-                                    OutlinedTextField(
-                                        value = editingDeviceName,
-                                        onValueChange = {
-                                            editingDeviceName = it
-                                            viewModel.setDeviceName(it)
-                                        },
+                                    Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        singleLine = true,
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = AccentGold,
-                                            unfocusedBorderColor = Border
-                                        )
-                                    )
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Surface(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(44.dp),
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = RaisedSurface,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, Border)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .padding(horizontal = 14.dp),
+                                                contentAlignment = Alignment.CenterStart
+                                            ) {
+                                                Text(
+                                                    text = deviceName,
+                                                    color = PrimaryText,
+                                                    fontSize = 13.5.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
+
+                                        Button(
+                                            onClick = {
+                                                renameDeviceInput = deviceName
+                                                showRenameDeviceDialog = true
+                                            },
+                                            modifier = Modifier.height(44.dp),
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = AccentGold,
+                                                contentColor = Color(0xFF0C0E12)
+                                            ),
+                                            contentPadding = PaddingValues(horizontal = 16.dp)
+                                        ) {
+                                            Text(
+                                                text = "Rename",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 12.5.sp
+                                            )
+                                        }
+                                    }
                                 }
 
                                 // PIN Protection
@@ -1812,6 +1848,68 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showSetPinDialog = false }) {
+                    Text(text = "Cancel", color = MutedText)
+                }
+            },
+            containerColor = CardSurface
+        )
+    }
+
+    if (showRenameDeviceDialog) {
+        AlertDialog(
+            onDismissRequest = { showRenameDeviceDialog = false },
+            title = {
+                Text(
+                    text = "Rename Device",
+                    color = PrimaryText,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Masukkan nama perangkat untuk Server Mode:",
+                        color = MutedText,
+                        fontSize = 12.sp
+                    )
+                    OutlinedTextField(
+                        value = renameDeviceInput,
+                        onValueChange = { renameDeviceInput = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AccentGold,
+                            unfocusedBorderColor = Border,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText,
+                            cursorColor = AccentGold
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val trimmed = renameDeviceInput.trim()
+                        if (trimmed.isNotBlank()) {
+                            viewModel.setDeviceName(trimmed)
+                        }
+                        showRenameDeviceDialog = false
+                    },
+                    enabled = renameDeviceInput.trim().isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "Save",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRenameDeviceDialog = false }) {
                     Text(text = "Cancel", color = MutedText)
                 }
             },

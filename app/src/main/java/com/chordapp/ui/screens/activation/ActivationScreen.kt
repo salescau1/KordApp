@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.chordapp.localization.AppLanguage
 import com.chordapp.localization.AppLanguageManager
 import com.chordapp.localization.LocalAppStrings
+import com.chordapp.p2p.BandSessionManager
 import com.chordapp.repositories.LicenseRepository
 import com.chordapp.ui.components.LicenseKeyVisualTransformation
 import com.chordapp.ui.theme.*
@@ -40,9 +41,11 @@ import kotlinx.coroutines.launch
 fun ActivationScreen(
     onActivationSuccess: () -> Unit
 ) {
-    val strings = LocalAppStrings.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val currentLanguage by AppLanguageManager.currentLanguage.collectAsState()
+    val strings = remember(currentLanguage) { AppLanguageManager.strings(currentLanguage) }
 
     var licenseInput by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
@@ -53,6 +56,16 @@ fun ActivationScreen(
     var showQrisDialog by remember { mutableStateOf(false) }
     var showResetModal by remember { mutableStateOf(false) }
     var showBindEducationDialog by remember { mutableStateOf(false) }
+    var showPinEducationDialog by remember { mutableStateOf(false) }
+    var pinEduInput by remember { mutableStateOf("") }
+
+    fun proceedAfterActivationOrEmail() {
+        if (!BandSessionManager.isPinPromptDismissed(context) && BandSessionManager.serverPin.value.isBlank()) {
+            showPinEducationDialog = true
+        } else {
+            onActivationSuccess()
+        }
+    }
 
     // State for Reset Modal
     var resetEmail by remember { mutableStateOf("") }
@@ -68,8 +81,6 @@ fun ActivationScreen(
     var isBindOtpSent by remember { mutableStateOf(false) }
     var isBindLoading by remember { mutableStateOf(false) }
     var bindError by remember { mutableStateOf<String?>(null) }
-
-    val currentLanguage by AppLanguageManager.currentLanguage.collectAsState()
 
     LaunchedEffect(Unit) {
         // Catat device di background saat layar dibuka
@@ -273,7 +284,7 @@ fun ActivationScreen(
                                     successMessage = msg
                                     delay(600)
                                     if (LicenseRepository.isEmailVerified(context) || LicenseRepository.isBindEmailPromptDismissed(context)) {
-                                        onActivationSuccess()
+                                        proceedAfterActivationOrEmail()
                                     } else {
                                         showBindEducationDialog = true
                                     }
@@ -634,7 +645,7 @@ fun ActivationScreen(
             onDismissRequest = {
                 LicenseRepository.setBindEmailPromptDismissed(context, true)
                 showBindEducationDialog = false
-                onActivationSuccess()
+                proceedAfterActivationOrEmail()
             },
             title = {
                 Row(
@@ -755,7 +766,7 @@ fun ActivationScreen(
                                     LicenseRepository.setBindEmailPromptDismissed(context, true)
                                     showBindEducationDialog = false
                                     Toast.makeText(context, strings.bindEmailSuccess, Toast.LENGTH_LONG).show()
-                                    onActivationSuccess()
+                                    proceedAfterActivationOrEmail()
                                 } else {
                                     bindError = msg
                                 }
@@ -778,11 +789,103 @@ fun ActivationScreen(
                     onClick = {
                         LicenseRepository.setBindEmailPromptDismissed(context, true)
                         showBindEducationDialog = false
-                        onActivationSuccess()
+                        proceedAfterActivationOrEmail()
                     },
                     enabled = !isBindLoading
                 ) {
                     Text(strings.setupLaterBtn, color = MutedText)
+                }
+            },
+            containerColor = CardSurface
+        )
+    }
+
+    // =========================================================================
+    // 7. POP-UP EDUKASI PIN PANGGUNG (MUNCUL SETELAH AKTIVASI / SETELAH BIND EMAIL)
+    // =========================================================================
+    if (showPinEducationDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                BandSessionManager.setPinPromptDismissed(context, true)
+                showPinEducationDialog = false
+                onActivationSuccess()
+            },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = AccentGold, modifier = Modifier.size(24.dp))
+                    Text(
+                        text = strings.pinSetupEduTitle,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryText
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = strings.pinSetupEduDesc,
+                        fontSize = 12.5.sp,
+                        color = MutedText,
+                        lineHeight = 17.sp
+                    )
+
+                    OutlinedTextField(
+                        value = pinEduInput,
+                        onValueChange = { input ->
+                            if (input.length <= 4) {
+                                pinEduInput = input.filter { it.isDigit() }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("4 Digit PIN (misal: 1234)", color = MutedText.copy(alpha = 0.5f), fontSize = 13.sp) },
+                        leadingIcon = { Icon(Icons.Default.Key, contentDescription = null, tint = AccentGold) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AccentGold,
+                            unfocusedBorderColor = Border,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (pinEduInput.length == 4) {
+                            BandSessionManager.setPin(pinEduInput)
+                            BandSessionManager.setPinEnabled(true)
+                            BandSessionManager.setPinPromptDismissed(context, true)
+                            showPinEducationDialog = false
+                            Toast.makeText(context, strings.pinSavedToast, Toast.LENGTH_SHORT).show()
+                            onActivationSuccess()
+                        }
+                    },
+                    enabled = pinEduInput.length == 4,
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(strings.savePinBtn, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        BandSessionManager.setPinPromptDismissed(context, true)
+                        showPinEducationDialog = false
+                        onActivationSuccess()
+                    }
+                ) {
+                    Text(strings.skipPinBtn, color = MutedText)
                 }
             },
             containerColor = CardSurface
