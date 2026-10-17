@@ -173,6 +173,7 @@ object BandSessionManager {
     private var clientSocket: Socket? = null
     private var clientJob: Job? = null
     private var udpJob: Job? = null
+    private var mdnsResponder: MdnsResponder? = null
 
     fun initialize(context: Context) {
         val app = context.applicationContext
@@ -256,9 +257,24 @@ object BandSessionManager {
         stopServer()
         multicastLock?.acquire()
         registerNsdService()
+        startMdnsResponder()
         startUdpResponder()
         startTcpServer()
         startWebStageServer()
+    }
+
+    private fun startMdnsResponder() {
+        stopMdnsResponder()
+        mdnsResponder = MdnsResponder("kordapp.local") {
+            getLocalIpAddress()
+        }.apply {
+            start(scope)
+        }
+    }
+
+    private fun stopMdnsResponder() {
+        mdnsResponder?.stop()
+        mdnsResponder = null
     }
 
     private fun startWebStageServer() {
@@ -279,6 +295,7 @@ object BandSessionManager {
 
     private fun stopServer() {
         unregisterNsdService()
+        stopMdnsResponder()
         udpJob?.cancel()
         udpJob = null
 
