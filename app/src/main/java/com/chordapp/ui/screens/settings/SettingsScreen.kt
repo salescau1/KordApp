@@ -278,25 +278,58 @@ fun SettingsScreen(
                                                 color = AccentGold,
                                                 fontFamily = FontFamily.Monospace,
                                                 fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.clickable {
+                                                    pinSetupInput = serverPin
+                                                    showSetPinDialog = true
+                                                }
                                             )
                                         }
                                     }
-                                    Switch(
-                                        checked = isPinEnabled,
-                                        onCheckedChange = { checked ->
-                                            if (checked) {
-                                                pinSetupInput = serverPin.ifBlank { "" }
-                                                showSetPinDialog = true
-                                            } else {
-                                                viewModel.setPinEnabled(false)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        if (serverPin.isNotBlank()) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(RaisedSurface)
+                                                    .border(1.dp, Border, RoundedCornerShape(8.dp))
+                                                    .clickable {
+                                                        pinSetupInput = serverPin
+                                                        showSetPinDialog = true
+                                                    }
+                                                    .padding(horizontal = 9.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(
+                                                    text = "Edit",
+                                                    color = PrimaryText,
+                                                    fontSize = 11.5.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
                                             }
-                                        },
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = AccentGold,
-                                            checkedTrackColor = AccentGold.copy(alpha = 0.4f)
+                                        }
+                                        Switch(
+                                            checked = isPinEnabled,
+                                            onCheckedChange = { checked ->
+                                                if (checked) {
+                                                    if (serverPin.length == 4) {
+                                                        viewModel.setPinEnabled(true)
+                                                    } else {
+                                                        pinSetupInput = serverPin.ifBlank { "" }
+                                                        showSetPinDialog = true
+                                                    }
+                                                } else {
+                                                    viewModel.setPinEnabled(false)
+                                                }
+                                            },
+                                            colors = SwitchDefaults.colors(
+                                                checkedThumbColor = AccentGold,
+                                                checkedTrackColor = AccentGold.copy(alpha = 0.4f)
+                                            )
                                         )
-                                    )
+                                    }
                                 }
 
                                 // WEB Access
@@ -1146,6 +1179,82 @@ fun SettingsScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                             }
+                        }
+                    }
+
+                    HorizontalDivider(color = Border)
+
+                    // Baris Proteksi PIN Panggung (duduk tenang seperti Email Pemulihan)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = strings.bandPinProtection,
+                                color = PrimaryText,
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = if (isPinEnabled && serverPin.isNotBlank()) {
+                                    "Aktif: ••••"
+                                } else if (serverPin.isNotBlank()) {
+                                    "Tersimpan: •••• (Nonaktif)"
+                                } else {
+                                    "Belum diatur"
+                                },
+                                color = if (isPinEnabled && serverPin.isNotBlank()) Color(0xFF22C55E) else MutedText,
+                                fontSize = 11.5.sp,
+                                fontFamily = if (serverPin.isNotBlank()) FontFamily.Monospace else FontFamily.Default
+                            )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(RaisedSurface)
+                                    .border(1.dp, if (serverPin.isBlank()) AccentGold else Border, RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        pinSetupInput = serverPin
+                                        showSetPinDialog = true
+                                    }
+                                    .padding(horizontal = 11.dp, vertical = 5.dp)
+                            ) {
+                                Text(
+                                    text = if (serverPin.isBlank()) "Atur PIN" else "Ganti PIN",
+                                    color = if (serverPin.isBlank()) AccentGold else PrimaryText,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Switch(
+                                checked = isPinEnabled,
+                                onCheckedChange = { checked ->
+                                    if (checked) {
+                                        if (serverPin.length == 4) {
+                                            viewModel.setPinEnabled(true)
+                                        } else {
+                                            pinSetupInput = serverPin.ifBlank { "" }
+                                            showSetPinDialog = true
+                                        }
+                                    } else {
+                                        viewModel.setPinEnabled(false)
+                                    }
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = AccentGold,
+                                    checkedTrackColor = AccentGold.copy(alpha = 0.4f)
+                                )
+                            )
                         }
                     }
 

@@ -87,55 +87,59 @@ fun ActivationScreen(
         LicenseRepository.recordDevice(context)
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Background)
-    ) {
-        // 1. Language Switcher Capsule at Top-Right
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(top = 16.dp, end = 20.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(RaisedSurface)
-                .border(1.dp, Border, RoundedCornerShape(18.dp))
-                .padding(3.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val langOptions = listOf(
-                AppLanguage.INDONESIAN to "ID",
-                AppLanguage.ENGLISH to "EN"
-            )
-            langOptions.forEach { (lang, label) ->
-                val isSelected = currentLanguage == lang
-                Box(
+    Scaffold(
+        containerColor = Background,
+        topBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+            ) {
+                Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isSelected) AccentGold else Color.Transparent)
-                        .clickable { AppLanguageManager.setLanguage(context, lang) }
-                        .padding(horizontal = 11.dp, vertical = 4.dp),
-                    contentAlignment = Alignment.Center
+                        .align(Alignment.CenterEnd)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(RaisedSurface)
+                        .border(1.dp, Border, RoundedCornerShape(18.dp))
+                        .padding(3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = label,
-                        color = if (isSelected) Color(0xFF0C0E12) else MutedText,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 11.5.sp
+                    val langOptions = listOf(
+                        AppLanguage.INDONESIAN to "ID",
+                        AppLanguage.ENGLISH to "EN"
                     )
+                    langOptions.forEach { (lang, label) ->
+                        val isSelected = currentLanguage == lang
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSelected) AccentGold else Color.Transparent)
+                                .clickable { AppLanguageManager.setLanguage(context, lang) }
+                                .padding(horizontal = 14.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (isSelected) Color(0xFF0C0E12) else MutedText,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
                 }
             }
         }
-
+    ) { innerPadding ->
         // Center Content Scrollable
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(top = 70.dp, bottom = 32.dp),
+                .padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
