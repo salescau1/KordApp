@@ -805,10 +805,10 @@ object LicenseRepository {
 
             val licenseObj = arr.getJSONObject(0)
             val licenseKey = licenseObj.getString("license_key")
-            val licenseId = licenseObj.getInt("id")
 
             // Lepaskan dari perangkat lama
-            val patchUrl = URL("$SUPABASE_URL/licenses?id=eq.$licenseId")
+            val encodedKey = java.net.URLEncoder.encode(licenseKey, "UTF-8")
+            val patchUrl = URL("$SUPABASE_URL/licenses?license_key=eq.$encodedKey")
             val connPatch = (patchUrl.openConnection() as HttpURLConnection).apply {
                 requestMethod = "PATCH"
                 connectTimeout = 8_000
