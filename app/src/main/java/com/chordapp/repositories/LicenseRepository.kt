@@ -490,8 +490,8 @@ object LicenseRepository {
         val savedKey = getSavedLicenseKey(context) ?: return@withContext Pair(false, "Lisensi belum aktif.")
         val pendingEmail = getSavedRecoveryEmail(context) ?: return@withContext Pair(false, "Tidak ada email yang sedang diverifikasi.")
         val cleanOtp = otp.trim()
-        if (cleanOtp.length != 6) {
-            return@withContext Pair(false, "Kode OTP harus berupa 6 digit angka.")
+        if (cleanOtp.length !in 6..8) {
+            return@withContext Pair(false, "Kode OTP harus berupa 6-8 digit angka.")
         }
 
         // 1. Verifikasi OTP ke Supabase Auth

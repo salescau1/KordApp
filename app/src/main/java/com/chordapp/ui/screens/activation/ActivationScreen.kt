@@ -536,7 +536,7 @@ fun ActivationScreen(
                     if (isResetOtpSent) {
                         OutlinedTextField(
                             value = resetOtp,
-                            onValueChange = { if (it.length <= 6) resetOtp = it.filter { c -> c.isDigit() }; resetError = null },
+                            onValueChange = { if (it.length <= 8) resetOtp = it.filter { c -> c.isDigit() }; resetError = null },
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { Text(strings.enterResetOtpTitle, color = MutedText.copy(alpha = 0.5f), fontSize = 13.sp) },
                             leadingIcon = { Icon(Icons.Default.Key, contentDescription = null, tint = AccentGold) },
@@ -700,7 +700,7 @@ fun ActivationScreen(
                     if (isBindOtpSent) {
                         OutlinedTextField(
                             value = bindOtp,
-                            onValueChange = { if (it.length <= 6) bindOtp = it.filter { c -> c.isDigit() }; bindError = null },
+                            onValueChange = { if (it.length <= 8) bindOtp = it.filter { c -> c.isDigit() }; bindError = null },
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { Text(strings.enter6DigitOtpPlaceholder, color = MutedText.copy(alpha = 0.5f), fontSize = 13.sp) },
                             leadingIcon = { Icon(Icons.Default.Key, contentDescription = null, tint = AccentGold) },

@@ -1709,7 +1709,7 @@ fun SettingsScreen(
                     if (isBindOtpSent) {
                         OutlinedTextField(
                             value = bindOtpInput,
-                            onValueChange = { if (it.length <= 6) bindOtpInput = it.filter { c -> c.isDigit() }; bindError = null },
+                            onValueChange = { if (it.length <= 8) bindOtpInput = it.filter { c -> c.isDigit() }; bindError = null },
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { Text(strings.enter6DigitOtpPlaceholder, color = MutedText.copy(alpha = 0.5f), fontSize = 13.sp) },
                             leadingIcon = { Icon(Icons.Default.Key, contentDescription = null, tint = AccentGold) },
