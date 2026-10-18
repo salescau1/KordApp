@@ -77,9 +77,13 @@ fun SettingsScreen(
     val connectedClients by viewModel.connectedClients.collectAsState()
     val discoveredServers by viewModel.discoveredServers.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
+    val serverPin by viewModel.serverPin.collectAsState()
+    val isServerPinEnabled by viewModel.isPinEnabled.collectAsState()
 
     var showRenameDeviceDialog by remember { mutableStateOf(false) }
     var renameDeviceInput by remember { mutableStateOf("") }
+    var showServerPinDialog by remember { mutableStateOf(false) }
+    var serverPinInput by remember { mutableStateOf("") }
     var showPinDialogForServer by remember { mutableStateOf<DiscoveredServer?>(null) }
     var pinDialogInput by remember { mutableStateOf("") }
     var pinDialogError by remember { mutableStateOf<String?>(null) }
@@ -275,6 +279,77 @@ fun SettingsScreen(
                                                 fontSize = 12.5.sp
                                             )
                                         }
+                                    }
+                                }
+
+                                // PIN Protection
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(text = "PIN Protection", color = PrimaryText, fontSize = 13.5.sp)
+                                        if (isServerPinEnabled && serverPin.isNotBlank()) {
+                                            Text(
+                                                text = "[$serverPin]",
+                                                color = AccentGold,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.clickable {
+                                                    serverPinInput = serverPin
+                                                    showServerPinDialog = true
+                                                }
+                                            )
+                                        }
+                                    }
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        if (serverPin.isNotBlank()) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(RaisedSurface)
+                                                    .border(1.dp, Border, RoundedCornerShape(8.dp))
+                                                    .clickable {
+                                                        serverPinInput = serverPin
+                                                        showServerPinDialog = true
+                                                    }
+                                                    .padding(horizontal = 9.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(
+                                                    text = "Edit",
+                                                    color = PrimaryText,
+                                                    fontSize = 11.5.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
+                                        }
+                                        Switch(
+                                            checked = isServerPinEnabled,
+                                            onCheckedChange = { checked ->
+                                                if (checked) {
+                                                    if (serverPin.length == 4) {
+                                                        viewModel.setPinEnabled(true)
+                                                    } else {
+                                                        serverPinInput = serverPin.ifBlank { "" }
+                                                        showServerPinDialog = true
+                                                    }
+                                                } else {
+                                                    viewModel.setPinEnabled(false)
+                                                }
+                                            },
+                                            colors = SwitchDefaults.colors(
+                                                checkedThumbColor = AccentGold,
+                                                checkedTrackColor = AccentGold.copy(alpha = 0.4f)
+                                            )
+                                        )
                                     }
                                 }
 
@@ -2270,6 +2345,71 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showRenameDeviceDialog = false }) {
+                    Text(text = "Cancel", color = MutedText)
+                }
+            },
+            containerColor = CardSurface
+        )
+    }
+
+    if (showServerPinDialog) {
+        AlertDialog(
+            onDismissRequest = { showServerPinDialog = false },
+            title = {
+                Text(
+                    text = "PIN Protection",
+                    color = PrimaryText,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Masukkan 4 karakter PIN untuk mengamankan koneksi band:",
+                        color = MutedText,
+                        fontSize = 12.sp
+                    )
+                    OutlinedTextField(
+                        value = serverPinInput,
+                        onValueChange = {
+                            if (it.length <= 4) {
+                                serverPinInput = it
+                            }
+                        },
+                        placeholder = { Text("4 Karakter (misal: 1234)", color = MutedText.copy(alpha = 0.5f)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AccentGold,
+                            unfocusedBorderColor = Border,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText,
+                            cursorColor = AccentGold
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.setServerPin(serverPinInput)
+                        viewModel.setPinEnabled(true)
+                        showServerPinDialog = false
+                    },
+                    enabled = serverPinInput.length == 4,
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF0C0E12)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "Save",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showServerPinDialog = false }) {
                     Text(text = "Cancel", color = MutedText)
                 }
             },
