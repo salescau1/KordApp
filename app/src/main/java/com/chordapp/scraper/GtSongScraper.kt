@@ -255,7 +255,6 @@ object GtSongScraper {
                 val root = JSONObject(jsonText)
                 val songs = root.optJSONArray("songs") ?: return@withContext emptyList()
 
-                val normTarget = catalogSlug(trimmed)
                 val candidatePairs = mutableListOf<Triple<String, String, String>>() // (url, artist, title)
 
                 for (i in 0 until songs.length()) {
@@ -267,7 +266,7 @@ object GtSongScraper {
                     if (hexId.isBlank() || songTitle.isBlank()) continue
 
                     val normArtist = catalogSlug(songArtist)
-                    if (!normArtist.contains(normTarget) && !normTarget.contains(normArtist)) continue
+                    if (!CiSongScraper.isArtistMatchStrict(songArtist, trimmed)) continue
 
                     val slugTitle = catalogSlug(songTitle)
                     val baseSlug = "$slugTitle-$normArtist"

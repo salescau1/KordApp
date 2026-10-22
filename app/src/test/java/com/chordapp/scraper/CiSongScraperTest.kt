@@ -31,4 +31,27 @@ class CiSongScraperTest {
         val hasSesiPotret = results.any { it.title.contains("Sesi Potret", ignoreCase = true) }
         assertTrue("Should contain Sesi Potret in results", hasSesiPotret)
     }
+
+    @Test
+    fun testArtistMatchStrict() {
+        // "A" should only match "A" or "A feat..."
+        assertTrue(CiSongScraper.isArtistMatchStrict("A", "A"))
+        assertTrue(CiSongScraper.isArtistMatchStrict("a", "A"))
+        assertTrue(CiSongScraper.isArtistMatchStrict("A feat. Someone", "A"))
+        assertTrue(CiSongScraper.isArtistMatchStrict("A ft. Someone", "A"))
+        assertTrue(CiSongScraper.isArtistMatchStrict("A & Someone", "A"))
+
+        // "A" must NOT match "AB", "AC", "AG", "AM", "Avril", etc.
+        org.junit.Assert.assertFalse(CiSongScraper.isArtistMatchStrict("AB", "A"))
+        org.junit.Assert.assertFalse(CiSongScraper.isArtistMatchStrict("AC", "A"))
+        org.junit.Assert.assertFalse(CiSongScraper.isArtistMatchStrict("AG", "A"))
+        org.junit.Assert.assertFalse(CiSongScraper.isArtistMatchStrict("AM", "A"))
+        org.junit.Assert.assertFalse(CiSongScraper.isArtistMatchStrict("Avril Lavigne", "A"))
+        org.junit.Assert.assertFalse(CiSongScraper.isArtistMatchStrict("Adele", "A"))
+
+        // Standard artist names
+        assertTrue(CiSongScraper.isArtistMatchStrict("Sheila On 7", "sheila on 7"))
+        assertTrue(CiSongScraper.isArtistMatchStrict("Ed Sheeran & Justin Bieber", "Ed Sheeran"))
+        org.junit.Assert.assertFalse(CiSongScraper.isArtistMatchStrict("Edward", "Ed"))
+    }
 }

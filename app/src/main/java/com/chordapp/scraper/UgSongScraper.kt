@@ -88,7 +88,6 @@ object UgSongScraper {
     ): List<CatalogSongEntity> =
         withContext(Dispatchers.IO) {
             try {
-                val normTargetArtist = normalizeForMatching(artistName)
                 val encodedArtist = URLEncoder.encode(artistName.trim(), "UTF-8")
                 val allCandidateTabs = mutableListOf<CandidateTab>()
                 var currentPage = 1
@@ -115,10 +114,7 @@ object UgSongScraper {
                         if (tabUrl.contains("/pro/")) continue
 
                         val itemArtist = item.optString("artist_name")
-                        val normItemArtist = normalizeForMatching(itemArtist)
-                        val isArtistMatch = normItemArtist == normTargetArtist ||
-                                normItemArtist.contains(normTargetArtist) ||
-                                normTargetArtist.contains(normItemArtist)
+                        val isArtistMatch = CiSongScraper.isArtistMatchStrict(itemArtist, artistName)
                         if (!isArtistMatch) continue
 
                         val songName = item.optString("song_name").trim()

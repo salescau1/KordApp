@@ -238,9 +238,9 @@ object CiSongScraper {
                 }
 
                 val rawArtist = when {
-                    artistHint.isNotBlank() && !artistHint.equals("CI Artist", ignoreCase = true) -> artistHint
                     parsedArtist.isNotBlank() && !parsedArtist.equals("CI Artist", ignoreCase = true) -> parsedArtist
                     categoryArtist.isNotBlank() -> categoryArtist
+                    artistHint.isNotBlank() && !artistHint.equals("CI Artist", ignoreCase = true) -> artistHint
                     else -> "CI Artist"
                 }
 
@@ -349,15 +349,47 @@ object CiSongScraper {
             val scraped = mutableListOf<CatalogSongEntity>()
             val total = songUrls.size
             for ((index, songUrl) in songUrls.withIndex()) {
-                val song = scrapeUrl(songUrl, artistHint = trimmed)
+                val song = scrapeUrl(songUrl)
                 if (song != null) {
-                    scraped.add(song)
-                    onProgress(index + 1, total, song.title)
+                    if (isArtistMatchStrict(song.artist, trimmed)) {
+                        scraped.add(song)
+                        onProgress(index + 1, total, song.title)
+                    }
                 }
             }
 
             scraped
         }
+
+    /**
+     * Memastikan artis hasil pencarian cocok persis (strict match) dengan artis target.
+     * Mencegah pencarian artis "A" menarik lagu milik "AB", "AC", "AG", "AM", dll.
+     */
+    fun isArtistMatchStrict(candidateArtist: String, targetArtist: String): Boolean {
+        val targetTrimmed = targetArtist.trim()
+        val candTrimmed = candidateArtist.trim()
+        if (targetTrimmed.isEmpty() || candTrimmed.isEmpty()) return false
+
+        val slugTarget = catalogSlug(targetTrimmed)
+        val slugCand = catalogSlug(candTrimmed)
+        if (slugTarget == slugCand) return true
+
+        val (primaryTarget, _) = normalizeFeatArtistAndTitle(targetTrimmed, "")
+        val (primaryCand, _) = normalizeFeatArtistAndTitle(candTrimmed, "")
+        val slugPrimaryTarget = catalogSlug(primaryTarget)
+        val slugPrimaryCand = catalogSlug(primaryCand)
+
+        if (slugPrimaryTarget == slugPrimaryCand || slugTarget == slugPrimaryCand) return true
+
+        // Cek pemisah kolaborasi tambahan: comma, &, x
+        val splitCand = candTrimmed.split(",", "&", " x ", " X ").firstOrNull()?.trim().orEmpty()
+        if (splitCand.isNotEmpty()) {
+            val slugSplitCand = catalogSlug(splitCand)
+            if (slugTarget == slugSplitCand || slugPrimaryTarget == slugSplitCand) return true
+        }
+
+        return false
+    }
 
     private fun normalizeText(s: String): String {
         val nfd = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
