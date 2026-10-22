@@ -141,7 +141,7 @@ object IndonesianStrings : AppStrings {
     override val settingsTitle = "PENGATURAN"
     override val settingsSubtitle = "Pengaturan preferensi dan sistem aplikasi"
     override val themeSection = "TAMPILAN"
-    override val appThemeLabel = "Tema"
+    override val appThemeLabel = "Skin"
     override val selectTheme = "Pilih Tema"
     override val themeDark = "Mode Gelap (Dark)"
     override val themeLight = "Mode Terang (Light)"
@@ -258,7 +258,7 @@ object IndonesianStrings : AppStrings {
     // Settings & Customization Strings
     override val musicAndCatalogSection = "MUSIK & KATALOG"
     override val downloadCatalogLabel = "Unduh Katalog"
-    override val themeLabel = "Tema"
+    override val themeLabel = "Skin"
     override val languageLabel = "Bahasa"
     override val revealKey = "Lihat"
     override val hideKey = "Tutup"

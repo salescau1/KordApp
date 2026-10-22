@@ -44,8 +44,12 @@ object SheetPaginator {
             return chordLine.tokens.sumOf { it.symbol.length + 3 }
         }
         val lastToken = chordLine.tokens.maxByOrNull { it.column }
-        val chordEnd = if (lastToken != null) lastToken.column + lastToken.symbol.length else 0
-        return maxOf(lyricLen, chordEnd)
+        val chordEnd = if (lastToken != null && lastToken.column > lyricLen) {
+            lyricLen + lastToken.symbol.length + 2
+        } else {
+            lyricLen
+        }
+        return chordEnd
     }
 
     /**
@@ -99,6 +103,18 @@ object SheetPaginator {
             if (current.isEmpty() && lines[i] is SheetLine.Blank) {
                 i++
                 continue
+            }
+
+            // Collapse redundant blank lines: consecutive blanks or blanks adjacent to Section headings
+            if (lines[i] is SheetLine.Blank) {
+                if (current.isNotEmpty() && (current.last() is SheetLine.Blank || current.last() is SheetLine.Section)) {
+                    i++
+                    continue
+                }
+                if (i + 1 < lines.size && lines[i + 1] is SheetLine.Section) {
+                    i++
+                    continue
+                }
             }
 
             val line = lines[i]

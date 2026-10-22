@@ -8,11 +8,16 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
-class CatalogRepository(private val daoProvider: () -> CatalogDao) {
+class CatalogRepository(
+    private val daoProvider: () -> CatalogDao,
+    private val userCatalogRepoProvider: (() -> com.chordapp.usercatalog.UserCatalogRepository)? = null
+) {
 
-    constructor(dao: CatalogDao) : this({ dao })
+    constructor(dao: CatalogDao) : this({ dao }, null)
+    constructor(dao: CatalogDao, userCatalogRepo: com.chordapp.usercatalog.UserCatalogRepository) : this({ dao }, { userCatalogRepo })
 
     private val dao: CatalogDao get() = daoProvider()
+    val userCatalogRepo: com.chordapp.usercatalog.UserCatalogRepository? get() = userCatalogRepoProvider?.invoke()
 
     val catalogUpdateFlow: SharedFlow<Long> get() = Companion.catalogUpdateFlow
 
@@ -23,13 +28,41 @@ class CatalogRepository(private val daoProvider: () -> CatalogDao) {
     suspend fun searchSongs(query: String, limit: Int = 50): List<CatalogSongGroup> {
         val trimmed = query.trim()
         if (trimmed.isBlank()) return emptyList()
+
+        val scrapedResults = userCatalogRepo?.searchScrapedSongs(trimmed, limit = 10)?.map {
+            CatalogSongGroup(
+                artistName = it.artist,
+                artistSlug = it.artistSlug,
+                title = it.title,
+                titleSlug = it.titleSlug,
+                versionCount = 1,
+                chordCount = it.chordCount
+            )
+        } ?: emptyList()
+
         val vars = com.chordapp.catalog.generateSearchVariants(trimmed)
         val q1 = vars.getOrElse(0) { "" }
         val q2 = vars.getOrElse(1) { "" }
         val q3 = vars.getOrElse(2) { "" }
         val q4 = vars.getOrElse(3) { "" }
         val q5 = vars.getOrElse(4) { "" }
-        return dao.searchSongsVariants(q1, q2, q3, q4, q5, limit = limit)
+        val officialResults = dao.searchSongsVariants(q1, q2, q3, q4, q5, limit = limit)
+
+        val seen = HashSet<String>()
+        val combined = ArrayList<CatalogSongGroup>()
+        for (item in scrapedResults) {
+            val key = "${item.artistSlug}/${item.titleSlug}"
+            if (seen.add(key)) {
+                combined.add(item)
+            }
+        }
+        for (item in officialResults) {
+            val key = "${item.artistSlug}/${item.titleSlug}"
+            if (seen.add(key)) {
+                combined.add(item)
+            }
+        }
+        return combined.take(limit)
     }
 
     suspend fun searchSongsByGt(query: String, limit: Int = 50): List<CatalogSongGroup> {
@@ -107,6 +140,8 @@ class CatalogRepository(private val daoProvider: () -> CatalogDao) {
     suspend fun getUniqueSongCount() = dao.getUniqueSongCount()
 
     suspend fun getBySourceUrl(sourceUrl: String): CatalogSongEntity? {
+        val userSong = userCatalogRepo?.getScrapedSongByUrl(sourceUrl)
+        if (userSong != null) return userSong
         return dao.getBySourceUrl(sourceUrl)
     }
 
@@ -115,7 +150,13 @@ class CatalogRepository(private val daoProvider: () -> CatalogDao) {
     }
 
     suspend fun getSongVersions(artistSlug: String, titleSlug: String): List<CatalogSongEntity> {
-        return dao.getSongVersions(artistSlug, titleSlug)
+        val userSong = userCatalogRepo?.getScrapedSongBySlugs(artistSlug, titleSlug)
+        val officialVersions = dao.getSongVersions(artistSlug, titleSlug)
+        return if (userSong != null) {
+            listOf(userSong) + officialVersions.filter { it.sourceUrl != userSong.sourceUrl }
+        } else {
+            officialVersions
+        }
     }
 
     /** Pencocokan longgar (prefix) untuk chart: hiasan bisa ada di sisi katalog. */
@@ -125,11 +166,30 @@ class CatalogRepository(private val daoProvider: () -> CatalogDao) {
 
     /** Exact (trimmed, case-insensitive) lookup of one logical song by its displayed name. */
     suspend fun findSongByExact(artist: String, title: String): CatalogSongGroup? {
-        return dao.findSongByExact(artist, title)
+        val official = dao.findSongByExact(artist, title)
+        if (official != null) return official
+        val scraped = userCatalogRepo?.searchScrapedSongs(title, limit = 10)?.firstOrNull {
+            it.artist.equals(artist, ignoreCase = true) && it.title.equals(title, ignoreCase = true)
+        }
+        return scraped?.let {
+            CatalogSongGroup(
+                artistName = it.artist,
+                artistSlug = it.artistSlug,
+                title = it.title,
+                titleSlug = it.titleSlug,
+                versionCount = 1,
+                chordCount = it.chordCount
+            )
+        }
     }
 
     suspend fun insertSong(song: CatalogSongEntity): Long {
         cachedArtists = null
+        if (userCatalogRepo != null) {
+            val id = userCatalogRepo!!.insertScrapedSong(song)
+            notifyCatalogUpdated()
+            return id
+        }
         dao.deleteBySourceUrl(song.sourceUrl)
         val id = dao.insertSong(song)
         notifyCatalogUpdated()
@@ -138,6 +198,11 @@ class CatalogRepository(private val daoProvider: () -> CatalogDao) {
 
     suspend fun insertSongs(songs: List<CatalogSongEntity>): List<Long> {
         cachedArtists = null
+        if (userCatalogRepo != null) {
+            val ids = userCatalogRepo!!.insertScrapedSongs(songs)
+            notifyCatalogUpdated()
+            return ids
+        }
         for (song in songs) {
             dao.deleteBySourceUrl(song.sourceUrl)
         }

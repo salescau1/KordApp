@@ -6,10 +6,17 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -24,10 +31,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chordapp.localization.AppLanguage
@@ -59,13 +72,29 @@ fun SettingsScreen(
     val strings = remember(currentLanguage) { com.chordapp.localization.AppLanguageManager.strings(currentLanguage) }
     val currentTheme by viewModel.currentTheme.collectAsState()
     val stats by viewModel.catalogStats.collectAsState()
+    val scrapedCount by viewModel.scrapedCount.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val importKordLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            viewModel.importScrapedFromUri(it) { count, error ->
+                if (error != null) {
+                    Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Berhasil mengimpor $count lagu ke Scraped", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
     var showTransferDialog by remember { mutableStateOf(false) }
     var isTransferring by remember { mutableStateOf(false) }
     var isKeyRevealed by remember { mutableStateOf(false) }
     var deleteTierTarget by remember { mutableStateOf<String?>(null) }
+    var showClearScrapedDialog by remember { mutableStateOf(false) }
 
     var isCheckingUpdate by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<com.chordapp.repositories.AppUpdateInfo?>(null) }
@@ -125,18 +154,61 @@ fun SettingsScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = strings.settingsTitle,
-                color = PrimaryText,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 24.sp,
-                letterSpacing = (-0.5).sp
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = strings.settingsTitle,
+                    color = PrimaryText,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 24.sp,
+                    letterSpacing = (-0.5).sp
+                )
+                Text(
+                    text = "Personal Configuration",
+                    color = MutedText,
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // Global Language Switch [ ID | EN ]
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(RaisedSurface)
+                    .border(1.dp, Border, RoundedCornerShape(16.dp))
+                    .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val langOptions = listOf(
+                    AppLanguage.INDONESIAN to "ID",
+                    AppLanguage.ENGLISH to "EN"
+                )
+                langOptions.forEach { (lang, label) ->
+                    val isSelected = currentLanguage == lang
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) AccentGold else Color.Transparent)
+                            .clickable { viewModel.setLanguage(lang) }
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            color = if (isSelected) Color(0xFF0C0E12) else MutedText,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 11.5.sp
+                        )
+                    }
+                }
+            }
         }
 
         Column(
@@ -353,10 +425,8 @@ fun SettingsScreen(
                                     }
                                 }
 
-                                // WEB Access
-                                val resolvedIp = remember { BandSessionManager.getLocalIpAddress() ?: "192.168.43.1" }
-                                val domainUrlToCopy = "http://kordapp.local:8990"
-                                val domainDisplayUrl = "http://kordapp.local:8990 or http://kordapp:8990"
+                                // WEB Access (Rapet / Compact, Pure IP Address with Refresh Button)
+                                var resolvedIp by remember { mutableStateOf(BandSessionManager.getLocalIpAddress() ?: "192.168.43.1") }
                                 val ipUrl = "http://$resolvedIp:8990"
 
                                 Column(
@@ -365,76 +435,58 @@ fun SettingsScreen(
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(RaisedSurface)
                                         .border(1.dp, Border, RoundedCornerShape(12.dp))
-                                        .padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        .padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Text(
-                                        text = "WEB Access",
-                                        color = PrimaryText,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
-                                    )
-                                    Text(
-                                        text = "Work on same network!",
-                                        color = MutedText,
-                                        fontSize = 11.sp
-                                    )
-
-                                    // Host Name
+                                    // Header Row: WEB Access + Logo Refresh
                                     Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(Background)
-                                            .border(1.dp, Border.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
-                                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                                        modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Column(modifier = Modifier.weight(1f)) {
+                                        Column {
                                             Text(
-                                                text = "Host Name",
-                                                color = MutedText,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.SemiBold
+                                                text = "WEB Access",
+                                                color = PrimaryText,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp
                                             )
                                             Text(
-                                                text = domainDisplayUrl,
-                                                color = AccentGold,
-                                                fontFamily = FontFamily.Monospace,
-                                                fontSize = 11.5.sp,
-                                                fontWeight = FontWeight.Bold
+                                                text = "Work on same network!",
+                                                color = MutedText,
+                                                fontSize = 10.5.sp
                                             )
                                         }
-                                        Spacer(modifier = Modifier.width(8.dp))
+
                                         Box(
                                             modifier = Modifier
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .background(RaisedSurface)
+                                                .size(28.dp)
+                                                .clip(CircleShape)
+                                                .background(CardSurface)
+                                                .border(0.8.dp, Border, CircleShape)
                                                 .clickable {
-                                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                                                    clipboard?.setPrimaryClip(ClipData.newPlainText("Stage Mirror Host", domainUrlToCopy))
-                                                    Toast.makeText(context, strings.linkCopiedToast(domainUrlToCopy), Toast.LENGTH_SHORT).show()
-                                                }
-                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                                    resolvedIp = BandSessionManager.getLocalIpAddress() ?: "192.168.43.1"
+                                                    Toast.makeText(context, "IP Address: $resolvedIp", Toast.LENGTH_SHORT).show()
+                                                },
+                                            contentAlignment = Alignment.Center
                                         ) {
-                                            Text(
-                                                text = strings.copyAction,
-                                                color = PrimaryText,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.SemiBold
+                                            Icon(
+                                                imageVector = Icons.Default.Refresh,
+                                                contentDescription = "Refresh IP",
+                                                tint = AccentGold,
+                                                modifier = Modifier.size(15.dp)
                                             )
                                         }
                                     }
 
-                                    // IP Address
+                                    // IP Address Row (Rapet)
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clip(RoundedCornerShape(8.dp))
                                             .background(Background)
                                             .border(1.dp, Border.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
-                                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                                            .padding(horizontal = 9.dp, vertical = 6.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -442,7 +494,7 @@ fun SettingsScreen(
                                             Text(
                                                 text = "IP Address",
                                                 color = MutedText,
-                                                fontSize = 10.sp,
+                                                fontSize = 9.5.sp,
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                             Text(
@@ -453,11 +505,12 @@ fun SettingsScreen(
                                                 fontWeight = FontWeight.Bold
                                             )
                                         }
-                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
                                         Box(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(6.dp))
                                                 .background(RaisedSurface)
+                                                .border(0.8.dp, Border.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
                                                 .clickable {
                                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
                                                     clipboard?.setPrimaryClip(ClipData.newPlainText("Stage Mirror IP", ipUrl))
@@ -639,115 +692,18 @@ fun SettingsScreen(
             }
 
             // =========================================================================
-            // 2. APPEARANCE (Theme Swatches & Language Capsule - No Dialogs!)
+            // 2. APPEARANCE (Theme Card Slider - [blackboard][leaves]<terang>[paper])
             // =========================================================================
             SettingsSection(title = strings.themeSection) {
-                Column {
-                    // Theme Row with 5 Circle Color Swatches
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = strings.themeLabel,
-                            color = PrimaryText,
-                            fontSize = 14.5.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-
-                        // 5 Circle Color Swatches: Dark, Light, Paper, Blackboard, Greenboard
-                        val themeSwatches = listOf(
-                            AppThemeMode.DARK to Color(0xFF0E1117),
-                            AppThemeMode.LIGHT to Color(0xFFF5F6F8),
-                            AppThemeMode.PAPER to Color(0xFFF4EFE6),
-                            AppThemeMode.BLACKBOARD to Color(0xFF1C2228),
-                            AppThemeMode.GREENBOARD to Color(0xFF14261C)
-                        )
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            themeSwatches.forEach { (mode, swatchColor) ->
-                                val isSelected = currentTheme == mode
-                                Box(
-                                    modifier = Modifier
-                                        .size(23.dp)
-                                        .clip(CircleShape)
-                                        .background(swatchColor)
-                                        .border(
-                                            width = if (isSelected) 2.5.dp else 1.dp,
-                                            color = if (isSelected) AccentGold else Border,
-                                            shape = CircleShape
-                                        )
-                                        .clickable { viewModel.setTheme(mode) },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (isSelected) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(5.dp)
-                                                .background(AccentGold, CircleShape)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(color = Border)
-
-                    // Language Row with Capsule Segment [ ID | EN ]
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = strings.languageLabel,
-                            color = PrimaryText,
-                            fontSize = 14.5.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(RaisedSurface)
-                                .border(1.dp, Border, RoundedCornerShape(18.dp))
-                                .padding(3.dp),
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val langOptions = listOf(
-                                AppLanguage.INDONESIAN to "ID",
-                                AppLanguage.ENGLISH to "EN"
-                            )
-                            langOptions.forEach { (lang, label) ->
-                                val isSelected = currentLanguage == lang
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(if (isSelected) AccentGold else Color.Transparent)
-                                        .clickable { viewModel.setLanguage(lang) }
-                                        .padding(horizontal = 11.dp, vertical = 4.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = label,
-                                        color = if (isSelected) Color(0xFF0C0E12) else MutedText,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 11.5.sp
-                                    )
-                                }
-                            }
-                        }
-                    }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp)
+                ) {
+                    InfiniteThemeSlider(
+                        currentTheme = currentTheme,
+                        onThemeSelect = { viewModel.setTheme(it) }
+                    )
                 }
             }
 
@@ -761,7 +717,7 @@ fun SettingsScreen(
             val catalogDownloadStatus = tierDownloadState.statusText
             val catalogDownloadError = tierDownloadState.error
 
-            SettingsSection(title = strings.musicAndCatalogSection) {
+            SettingsSection(title = "KORDAPP CATALOG") {
                 Column {
                     // Clean rows without subtitles
                     Row(
@@ -825,20 +781,6 @@ fun SettingsScreen(
                             .padding(top = 12.dp, bottom = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                text = strings.downloadCatalogLabel,
-                                color = PrimaryText,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = strings.tierSectionHint,
-                                color = MutedText,
-                                fontSize = 11.5.sp
-                            )
-                        }
-
                         // 3 Tiers Grid
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1035,6 +977,84 @@ fun SettingsScreen(
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            // =========================================================================
+            // 3.5. USER CATALOG (Dua Card Terpisah: Scraped & Created)
+            // =========================================================================
+            SettingsSection(title = "USER CATALOG") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Card 1: Scraped
+                        UserCatalogModuleCard(
+                            title = "Scraped",
+                            subtitle = "Comotan Web",
+                            countText = if (scrapedCount > 0) "$scrapedCount Lagu" else "0 Lagu",
+                            headerIcon = Icons.Default.Public,
+                            headerIconColor = Color(0xFF38BDF8),
+                            actions = listOf(
+                                UserCatalogActionItem(Icons.Default.Sync, "Sync P2P", PrimaryText) {
+                                    Toast.makeText(context, "Sync P2P (Scraped)", Toast.LENGTH_SHORT).show()
+                                },
+                                UserCatalogActionItem(Icons.Default.FileUpload, "Export", PrimaryText) {
+                                    viewModel.exportScraped(
+                                        onSuccess = { file ->
+                                            try {
+                                                val uri = FileProvider.getUriForFile(
+                                                    context,
+                                                    "${context.packageName}.fileprovider",
+                                                    file
+                                                )
+                                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                                    type = "application/octet-stream"
+                                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                                    putExtra(Intent.EXTRA_SUBJECT, file.name)
+                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                }
+                                                context.startActivity(Intent.createChooser(intent, "Bagikan file .kord"))
+                                            } catch (e: Exception) {
+                                                Toast.makeText(context, "Gagal membagikan: ${e.message}", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        onError = { msg ->
+                                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                },
+                                UserCatalogActionItem(Icons.Default.FileDownload, "Import", PrimaryText) {
+                                    importKordLauncher.launch(arrayOf("*/*"))
+                                },
+                                UserCatalogActionItem(Icons.Default.DeleteOutline, "Hapus", Color(0xFFEF4444)) {
+                                    if (scrapedCount > 0) {
+                                        showClearScrapedDialog = true
+                                    } else {
+                                        Toast.makeText(context, "Katalog Scraped masih kosong", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        // Card 2: Creator (Disabled / Gray / Coming Soon)
+                        UserCatalogModuleCard(
+                            title = "Creator",
+                            subtitle = "Karya & Aransemen",
+                            countText = "",
+                            headerIcon = Icons.Default.Create,
+                            headerIconColor = MutedText,
+                            isComingSoon = true,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }
@@ -1847,6 +1867,45 @@ fun SettingsScreen(
         )
     }
 
+    // Dialog Konfirmasi Hapus Katalog Scraped
+    if (showClearScrapedDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearScrapedDialog = false },
+            title = {
+                Text(
+                    text = "Hapus Semua Lagu Scraped?",
+                    color = PrimaryText,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "Seluruh lagu hasil comotan web ($scrapedCount lagu) akan dihapus dari penyimpanan perangkat. Database resmi dan data lainnya tetap aman.",
+                    color = MutedText,
+                    fontSize = 13.5.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearAllScraped()
+                        showClearScrapedDialog = false
+                        Toast.makeText(context, "Katalog Scraped berhasil dibersihkan", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                ) {
+                    Text(strings.deleteAction, color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearScrapedDialog = false }) {
+                    Text(strings.cancel, color = MutedText)
+                }
+            },
+            containerColor = CardSurface
+        )
+    }
+
     // Dialog Update APK Tersedia
     if (showUpdateDialog && updateInfo != null) {
         val info = updateInfo!!
@@ -2477,26 +2536,34 @@ private fun TierCatalogCard(
                 },
                 shape = RoundedCornerShape(14.dp)
             )
-            .padding(vertical = 10.dp, horizontal = 8.dp),
+            .padding(vertical = 9.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        Text(
-            text = title,
-            color = if (isInstalled || isThisTierDownloading) AccentGold else PrimaryText,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = count,
-            color = MutedText,
-            fontSize = 11.sp
-        )
-        Text(
-            text = size,
-            color = MutedText,
-            fontSize = 10.5.sp
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            Text(
+                text = title,
+                color = if (isInstalled || isThisTierDownloading) AccentGold else PrimaryText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 15.sp
+            )
+            Text(
+                text = count,
+                color = MutedText,
+                fontSize = 11.sp,
+                lineHeight = 13.sp
+            )
+            Text(
+                text = size,
+                color = MutedText,
+                fontSize = 10.sp,
+                lineHeight = 12.sp
+            )
+        }
 
         Spacer(Modifier.height(6.dp))
 
@@ -2542,3 +2609,377 @@ private fun formatBytes(bytes: Long, fallback: String): String = when {
     bytes >= 1024L -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)
     else -> "$bytes B"
 }
+
+private data class UserCatalogActionItem(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val label: String,
+    val tint: Color,
+    val onClick: () -> Unit
+)
+
+@Composable
+private fun UserCatalogModuleCard(
+    title: String,
+    subtitle: String,
+    countText: String,
+    headerIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    headerIconColor: Color,
+    actions: List<UserCatalogActionItem> = emptyList(),
+    isComingSoon: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (isComingSoon) RaisedSurface.copy(alpha = 0.5f) else RaisedSurface)
+            .border(
+                1.dp,
+                if (isComingSoon) Border.copy(alpha = 0.4f) else Border,
+                RoundedCornerShape(14.dp)
+            )
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        // Baris Header: Icon + Title + Count Badge
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            if (isComingSoon) Border.copy(alpha = 0.2f) else headerIconColor.copy(alpha = 0.15f)
+                        )
+                        .border(
+                            1.dp,
+                            if (isComingSoon) Border.copy(alpha = 0.4f) else headerIconColor.copy(alpha = 0.35f),
+                            RoundedCornerShape(8.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = headerIcon,
+                        contentDescription = null,
+                        tint = if (isComingSoon) MutedText else headerIconColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text(
+                        text = title,
+                        color = if (isComingSoon) MutedText else PrimaryText,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = subtitle,
+                        color = MutedText.copy(alpha = 0.6f),
+                        fontSize = 10.5.sp
+                    )
+                }
+            }
+
+            if (!isComingSoon && countText.isNotBlank()) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Border.copy(alpha = 0.5f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = countText,
+                        color = PrimaryText,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider(
+            color = if (isComingSoon) Border.copy(alpha = 0.3f) else Border.copy(alpha = 0.5f),
+            thickness = 0.8.dp
+        )
+
+        if (isComingSoon) {
+            // Pengganti logo/toolbar: Tulisan (Coming Soon)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(35.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(Color.White.copy(alpha = 0.02f))
+                    .border(0.8.dp, Border.copy(alpha = 0.35f), RoundedCornerShape(9.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "(Coming Soon)",
+                    color = MutedText,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.4.sp
+                )
+            }
+        } else {
+            // Baris Toolbar Aksi: 4 Icon dalam 1 baris seimbang
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                actions.forEach { action ->
+                    Box(
+                        modifier = Modifier
+                            .size(35.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(Color.White.copy(alpha = 0.04f))
+                            .border(0.8.dp, Border.copy(alpha = 0.7f), RoundedCornerShape(9.dp))
+                            .clickable { action.onClick() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = action.icon,
+                            contentDescription = action.label,
+                            tint = action.tint,
+                            modifier = Modifier.size(17.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private data class ThemeSliderCard(
+    val mode: AppThemeMode,
+    val name: String,
+    val themeType: String,
+    val drawableRes: Int?,
+    val fallbackBg: Color,
+    val fallbackBorder: Color,
+    val textColor: Color
+)
+
+@Composable
+private fun DockedThemeCard(
+    card: ThemeSliderCard,
+    isActive: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .background(card.fallbackBg)
+            .then(
+                if (isActive) Modifier.border(1.5.dp, AccentGold) else Modifier
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        // Authentic Texture Image Background if available
+        if (card.drawableRes != null) {
+            Image(
+                painter = painterResource(id = card.drawableRes),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        // Dark Scrim: active is clear/subtle, inactive is heavily dimmed
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    if (isActive)
+                        Color.Black.copy(alpha = 0.22f)
+                    else
+                        Color.Black.copy(alpha = 0.65f)
+                )
+        )
+
+        // Centered Theme Name ONLY
+        Text(
+            text = card.name.uppercase(),
+            fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Bold,
+            fontSize = if (isActive) 12.5.sp else 11.sp,
+            color = if (isActive) Color.White else Color.White.copy(alpha = 0.50f),
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 4.dp)
+        )
+    }
+}
+
+@Composable
+private fun InfiniteThemeSlider(
+    currentTheme: AppThemeMode,
+    onThemeSelect: (AppThemeMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val themeCards = remember {
+        listOf(
+            ThemeSliderCard(
+                mode = AppThemeMode.GREENBOARD,
+                name = "Green Board",
+                themeType = "Papan Tulis Hijau",
+                drawableRes = com.chordapp.R.drawable.texture_greenboard,
+                fallbackBg = Color(0xFF121C16),
+                fallbackBorder = Color(0xFF23362B),
+                textColor = Color(0xFFEAE6DF)
+            ),
+            ThemeSliderCard(
+                mode = AppThemeMode.BLACKBOARD,
+                name = "Blackboard",
+                themeType = "Papan Tulis Hitam",
+                drawableRes = com.chordapp.R.drawable.texture_blackboard,
+                fallbackBg = Color(0xFF111417),
+                fallbackBorder = Color(0xFF2C353F),
+                textColor = Color(0xFFF1F5F9)
+            ),
+            ThemeSliderCard(
+                mode = AppThemeMode.LEATHER,
+                name = "Leather",
+                themeType = "Vintage Leather",
+                drawableRes = com.chordapp.R.drawable.texture_leather,
+                fallbackBg = Color(0xFF1B130E),
+                fallbackBorder = Color(0xFF4A3528),
+                textColor = Color(0xFFFDF8F2)
+            ),
+            ThemeSliderCard(
+                mode = AppThemeMode.PAPER,
+                name = "Paper",
+                themeType = "Vintage Paper",
+                drawableRes = com.chordapp.R.drawable.texture_paper,
+                fallbackBg = Color(0xFFF2EBD9),
+                fallbackBorder = Color(0xFFD6C8AE),
+                textColor = Color(0xFF221C14)
+            ),
+            ThemeSliderCard(
+                mode = AppThemeMode.CRIMSON_SHADOW,
+                name = "Crimson Shadow",
+                themeType = "Blood Moon",
+                drawableRes = com.chordapp.R.drawable.texture_crimson_shadow,
+                fallbackBg = Color(0xFF120D12),
+                fallbackBorder = Color(0xFF4A1E27),
+                textColor = Color(0xFFF4E9DC)
+            ),
+            ThemeSliderCard(
+                mode = AppThemeMode.DARK,
+                name = "Dark",
+                themeType = "Obsidian Dark",
+                drawableRes = null,
+                fallbackBg = Color(0xFF0E1117),
+                fallbackBorder = Color(0xFF242C3D),
+                textColor = Color(0xFFF5F8FF)
+            )
+        )
+    }
+
+    val currentIndex = remember(currentTheme) {
+        val idx = themeCards.indexOfFirst { it.mode == currentTheme }
+        if (idx >= 0) idx else 0
+    }
+
+    var dragAccumulator by remember { mutableFloatStateOf(0f) }
+    val dragThreshold = 28f
+
+    val leftItem = themeCards[Math.floorMod(currentIndex - 1, themeCards.size)]
+    val centerItem = themeCards[currentIndex]
+    val rightItem = themeCards[Math.floorMod(currentIndex + 1, themeCards.size)]
+
+    Box(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, Border, RoundedCornerShape(12.dp))
+                .pointerInput(currentTheme) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = { dragAccumulator = 0f },
+                        onDragCancel = { dragAccumulator = 0f },
+                        onHorizontalDrag = { _, dragAmount ->
+                            dragAccumulator += dragAmount
+                            if (dragAccumulator > dragThreshold) {
+                                // Swiped Right -> previous
+                                val prevIdx = Math.floorMod(currentIndex - 1, themeCards.size)
+                                onThemeSelect(themeCards[prevIdx].mode)
+                                dragAccumulator = 0f
+                            } else if (dragAccumulator < -dragThreshold) {
+                                // Swiped Left -> next
+                                val nextIdx = Math.floorMod(currentIndex + 1, themeCards.size)
+                                onThemeSelect(themeCards[nextIdx].mode)
+                                dragAccumulator = 0f
+                            }
+                        }
+                    )
+                },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left Card: offset -1 (dimmed)
+            DockedThemeCard(
+                card = leftItem,
+                isActive = false,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clickable { onThemeSelect(leftItem.mode) }
+            )
+
+            // Divider
+            Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(Border))
+
+            // Center Card: active (<terang>)
+            DockedThemeCard(
+                card = centerItem,
+                isActive = true,
+                modifier = Modifier
+                    .weight(1.35f)
+                    .fillMaxHeight()
+            )
+
+            // Divider
+            Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(Border))
+
+            // Right Card: offset +1 (dimmed)
+            DockedThemeCard(
+                card = rightItem,
+                isActive = false,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clickable { onThemeSelect(rightItem.mode) }
+            )
+        }
+
+        // OVERLAY tulisan SKIN berada di kiri atas pilihan temanya
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 8.dp, top = 6.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(AccentGold.copy(alpha = 0.28f))
+                .border(0.8.dp, AccentGold, RoundedCornerShape(4.dp))
+                .padding(horizontal = 6.dp, vertical = 1.5.dp)
+        ) {
+            Text(
+                text = "SKIN",
+                color = AccentGold,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 8.5.sp,
+                letterSpacing = 1.2.sp,
+                maxLines = 1
+            )
+        }
+    }
+}
+

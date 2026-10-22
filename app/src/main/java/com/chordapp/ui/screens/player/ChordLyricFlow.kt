@@ -1,17 +1,25 @@
 package com.chordapp.ui.screens.player
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -20,6 +28,7 @@ import com.chordapp.player.ChordParser
 import com.chordapp.player.SheetLine
 import com.chordapp.player.Transposer
 import com.chordapp.ui.theme.ChordText
+import com.chordapp.ui.theme.LocalChordAppColors
 import com.chordapp.ui.theme.PrimaryText
 
 /**
@@ -50,16 +59,42 @@ internal fun buildChordLyricSegments(
         return tokens.map { ChordLyricSegment(Transposer.transpose(it.symbol, delta), "") }
     }
 
-    val segments = mutableListOf<ChordLyricSegment>()
     val firstCol = tokens[0].column
+    var firstColSnapped = firstCol
+    var prefixEnd = 0
+
     if (firstCol > 0) {
-        val prefixEnd = minOf(firstCol, lyric.length)
+        val prefixLen = minOf(firstCol, lyric.length)
+        // Check if firstCol falls in the middle of a word:
+        val inMiddleOfWord = firstCol < lyric.length &&
+            !lyric[firstCol].isWhitespace() &&
+            !lyric[firstCol - 1].isWhitespace()
+
+        if (inMiddleOfWord) {
+            val lastSpace = lyric.substring(0, prefixLen).lastIndexOf(' ')
+            if (lastSpace == -1) {
+                // Chord is placed over the very first word (e.g. [D] at col 2 over "Looks" or "Ain't").
+                // Never chop the word! The first chord applies to the whole first word.
+                prefixEnd = 0
+                firstColSnapped = 0
+            } else {
+                prefixEnd = lastSpace + 1
+                firstColSnapped = lastSpace + 1
+            }
+        } else {
+            prefixEnd = prefixLen
+            firstColSnapped = prefixLen
+        }
+    }
+
+    val segments = mutableListOf<ChordLyricSegment>()
+    if (prefixEnd > 0) {
         segments.add(ChordLyricSegment(null, lyric.substring(0, prefixEnd)))
     }
 
     for (i in tokens.indices) {
         val token = tokens[i]
-        val col = token.column
+        val col = if (i == 0) firstColSnapped else token.column
         val sym = Transposer.transpose(token.symbol, delta)
         val nextCol = if (i + 1 < tokens.size) tokens[i + 1].column else maxOf(lyric.length, col)
 
@@ -92,10 +127,20 @@ internal fun ChordLyricFlow(
     requestDiagram: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isDark = LocalChordAppColors.current.isDark
+    val textShadow = if (isDark) {
+        Shadow(
+            color = Color.Black.copy(alpha = 0.70f),
+            offset = Offset(1.5f, 1.5f),
+            blurRadius = 3f
+        )
+    } else null
+
     if (chordLine == null) {
         Text(
             text = lyric ?: "",
             color = PrimaryText,
+            style = TextStyle(shadow = textShadow),
             fontFamily = FontFamily.Monospace,
             fontSize = fontSize.sp,
             modifier = modifier.fillMaxWidth()
@@ -113,10 +158,13 @@ internal fun ChordLyricFlow(
                     text = transposed + "   ",
                     color = ChordText,
                     fontWeight = FontWeight.Bold,
+                    style = TextStyle(shadow = textShadow),
                     fontFamily = FontFamily.Monospace,
                     fontSize = fontSize.sp,
-                    modifier = Modifier.clickable {
-                        requestDiagram(ChordParser.cleanChordSymbol(transposed))
+                    modifier = Modifier.pointerInput(transposed) {
+                        detectTapGestures {
+                            requestDiagram(ChordParser.cleanChordSymbol(transposed))
+                        }
                     }
                 )
             }
@@ -128,33 +176,42 @@ internal fun ChordLyricFlow(
         buildChordLyricSegments(chordLine, lyric, transposeDelta)
     }
 
+    val chordSlotHeight = with(LocalDensity.current) { (fontSize * 1.35f).sp.toDp() }
+
     FlowRow(modifier = modifier.fillMaxWidth()) {
         segments.forEach { seg ->
             Column(horizontalAlignment = Alignment.Start) {
-                if (seg.chord != null) {
-                    val chordText = if (seg.text.isEmpty() || seg.chord.length >= seg.text.length) {
-                        seg.chord + " "
-                    } else {
-                        seg.chord
-                    }
-                    Text(
-                        text = chordText,
-                        color = ChordText,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = fontSize.sp,
-                        modifier = Modifier.clickable {
-                            requestDiagram(ChordParser.cleanChordSymbol(seg.chord.substringBefore(' ')))
+                Box(
+                    modifier = Modifier.height(chordSlotHeight),
+                    contentAlignment = Alignment.BottomStart
+                ) {
+                    if (seg.chord != null) {
+                        val chordText = if (seg.text.isEmpty() || seg.chord.length >= seg.text.length) {
+                            seg.chord + " "
+                        } else {
+                            seg.chord
                         }
-                    )
-                } else {
-                    Text(" ", fontFamily = FontFamily.Monospace, fontSize = fontSize.sp)
+                        Text(
+                            text = chordText,
+                            color = ChordText,
+                            fontWeight = FontWeight.Bold,
+                            style = TextStyle(shadow = textShadow),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = fontSize.sp,
+                            modifier = Modifier.pointerInput(seg.chord) {
+                                detectTapGestures {
+                                    requestDiagram(ChordParser.cleanChordSymbol(seg.chord.trim().substringBefore(' ')))
+                                }
+                            }
+                        )
+                    }
                 }
 
                 if (seg.text.isNotEmpty()) {
                     Text(
                         text = seg.text,
                         color = PrimaryText,
+                        style = TextStyle(shadow = textShadow),
                         fontFamily = FontFamily.Monospace,
                         fontSize = fontSize.sp
                     )
@@ -181,9 +238,17 @@ internal fun BarLineFlow(
     val segments = remember(barLine) {
         ChordParser.buildBarSegments(barLine)
     }
+    val isDark = LocalChordAppColors.current.isDark
+    val textShadow = if (isDark) {
+        Shadow(
+            color = Color.Black.copy(alpha = 0.70f),
+            offset = Offset(1.5f, 1.5f),
+            blurRadius = 3f
+        )
+    } else null
     val chordColor = ChordText
     val textColor = PrimaryText
-    val annotated = remember(segments, transposeDelta, fontSize, chordColor, textColor) {
+    val annotated = remember(segments, transposeDelta, fontSize, chordColor, textColor, textShadow) {
         buildAnnotatedString {
             for (seg in segments) {
                 if (seg.isChord) {
@@ -195,7 +260,8 @@ internal fun BarLineFlow(
                             color = chordColor,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
-                            fontSize = fontSize.sp
+                            fontSize = fontSize.sp,
+                            shadow = textShadow
                         ),
                         start,
                         length
@@ -214,7 +280,8 @@ internal fun BarLineFlow(
                             color = textColor,
                             fontWeight = FontWeight.Normal,
                             fontFamily = FontFamily.Monospace,
-                            fontSize = fontSize.sp
+                            fontSize = fontSize.sp,
+                            shadow = textShadow
                         ),
                         start,
                         length
@@ -233,4 +300,3 @@ internal fun BarLineFlow(
         modifier = modifier.fillMaxWidth()
     )
 }
-

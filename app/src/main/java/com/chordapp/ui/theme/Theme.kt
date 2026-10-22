@@ -1,7 +1,6 @@
 package com.chordapp.ui.theme
 
 import android.app.Activity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -41,10 +40,11 @@ fun ChordAppTheme(
 ) {
     val customColors = when (themeMode) {
         AppThemeMode.DARK -> DarkColors
-        AppThemeMode.LIGHT -> LightColors
+        AppThemeMode.LEATHER -> LeatherColors
         AppThemeMode.PAPER -> PaperColors
         AppThemeMode.BLACKBOARD -> BlackboardColors
         AppThemeMode.GREENBOARD -> GreenboardColors
+        AppThemeMode.CRIMSON_SHADOW -> CrimsonShadowColors
     }
     val isDark = customColors.isDark
     val colorScheme = if (isDark) createDarkColorScheme(customColors) else createLightColorScheme(customColors)
@@ -52,7 +52,8 @@ fun ChordAppTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = customColors.background.toArgb()
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
         }
     }

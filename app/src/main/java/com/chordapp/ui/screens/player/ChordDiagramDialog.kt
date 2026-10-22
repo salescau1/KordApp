@@ -1,5 +1,8 @@
 package com.chordapp.ui.screens.player
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+
 import android.content.Context
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -122,7 +125,7 @@ fun ChordDiagramCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp).clip(CircleShape)) {
                     Icon(
                         Icons.Filled.Close,
                         contentDescription = strings.close,
@@ -139,7 +142,7 @@ fun ChordDiagramCard(
                     modifier = Modifier.fillMaxWidth().height(64.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = AccentGold, modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(color = AccentGold, modifier = Modifier.size(24.dp).clip(CircleShape))
                 }
                 pos == null -> Text(
                     strings.diagramNotAvailable(symbol),
@@ -162,7 +165,7 @@ fun ChordDiagramCard(
                         ) {
                             IconButton(
                                 onClick = { index = (index - 1 + count) % count },
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(24.dp).clip(CircleShape)
                             ) {
                                 Icon(
                                     Icons.Filled.ArrowBack,
@@ -178,7 +181,7 @@ fun ChordDiagramCard(
                             )
                             IconButton(
                                 onClick = { index = (index + 1) % count },
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(24.dp).clip(CircleShape)
                             ) {
                                 Icon(
                                     Icons.Filled.ArrowForward,

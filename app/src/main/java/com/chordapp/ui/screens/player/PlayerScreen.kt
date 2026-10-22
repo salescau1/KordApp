@@ -1,5 +1,10 @@
 package com.chordapp.ui.screens.player
 
+import androidx.compose.ui.res.imageResource
+
+import com.chordapp.R
+import com.chordapp.ui.theme.ThemeTextureType
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -12,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.scrollBy
@@ -50,6 +56,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -132,6 +139,15 @@ private fun PageLine(
     transposeDelta: Int,
     requestDiagram: (String) -> Unit
 ) {
+    val isDark = LocalChordAppColors.current.isDark
+    val textShadow = if (isDark) {
+        Shadow(
+            color = Color.Black.copy(alpha = 0.70f),
+            offset = Offset(1.5f, 1.5f),
+            blurRadius = 3f
+        )
+    } else null
+
     when (line) {
         is SheetLine.Blank -> Spacer(modifier = Modifier.height(slotHeight))
         is SheetLine.Section -> Box(
@@ -143,7 +159,8 @@ private fun PageLine(
                 color = AccentGold,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
-                fontSize = fontSize.sp
+                fontSize = fontSize.sp,
+                style = TextStyle(shadow = textShadow)
             )
         }
         is SheetLine.Lyric -> Box(modifier = Modifier.fillMaxWidth().height(slotHeight)) {
@@ -151,7 +168,8 @@ private fun PageLine(
                 text = line.text,
                 color = PrimaryText,
                 fontFamily = FontFamily.Monospace,
-                fontSize = fontSize.sp
+                fontSize = fontSize.sp,
+                style = TextStyle(shadow = textShadow)
             )
         }
         is SheetLine.Chords -> {
@@ -170,7 +188,8 @@ private fun PageLine(
                     color = CtText,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = fontSize.sp
+                    fontSize = fontSize.sp,
+                    shadow = textShadow
                 )
                 Box(modifier = Modifier.fillMaxWidth().height(slotHeight)) {
                     ClickableText(
@@ -272,10 +291,10 @@ private fun PagedSheet(
     requestDiagram: (String) -> Unit
 ) {
     val density = LocalDensity.current
-    // Slot height in Dp. Ensure it never undershoots minimum monospace line height (1.6x font size).
+    // Slot height in Dp. Accurately matches ChordLyricFlow slot height (1.35x font size).
     val slotDp = with(density) {
-        val spDp = (fontSize * 1.6f).sp.toDp()
-        val minDp = (fontSize * 1.6f).dp
+        val spDp = (fontSize * 1.35f).sp.toDp()
+        val minDp = (fontSize * 1.35f).dp
         if (spDp > minDp) spDp else minDp
     }
     val slotPx = with(density) { slotDp.toPx() }
@@ -283,13 +302,11 @@ private fun PagedSheet(
     var areaHeightPx by remember { mutableStateOf(0) }
     var areaWidthPx by remember { mutableStateOf(0) }
 
-    // Column has padding(top = 8.dp, bottom = 8.dp).
-    // Reserve an extra 24.dp safety buffer so pages are guaranteed never to exceed the viewport.
-    val verticalPaddingPx = with(density) { 40.dp.toPx() }
+    // Column has padding(top = 6.dp, bottom = 6.dp) = 12.dp.
+    val verticalPaddingPx = with(density) { 12.dp.toPx() }
     val usableHeightPx = (areaHeightPx - verticalPaddingPx).coerceAtLeast(0f)
-    // Coerce capacity and subtract 1 slot headroom so page content strictly stays within the screen.
     val capacity = if (usableHeightPx > 0f && slotPx > 0f) {
-        ((usableHeightPx / slotPx).toInt() - 1).coerceAtLeast(1)
+        (usableHeightPx / slotPx).toInt().coerceAtLeast(1)
     } else 1
 
     // Horizontal padding: 16.dp start, 36.dp end (for pagination rail).
@@ -345,15 +362,15 @@ private fun PagedSheet(
                     .padding(
                         start = 16.dp,
                         end = if (pages.size > 1) 36.dp else 16.dp,
-                        top = 8.dp,
-                        bottom = 8.dp
+                        top = 6.dp,
+                        bottom = 6.dp
                     )
             ) {
                 page.forEachIndexed { idx, line ->
                     Box(modifier = Modifier.fillMaxWidth()) {
                         when (line) {
                             is SheetLine.Blank -> {
-                                Spacer(modifier = Modifier.height((fontSize * 1.2).dp))
+                                Spacer(modifier = Modifier.height((fontSize * 0.75f).dp))
                             }
                             is SheetLine.Section -> {
                                 Text(
@@ -364,7 +381,7 @@ private fun PagedSheet(
                                     fontSize = fontSize.sp,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(top = 10.dp, bottom = 4.dp)
+                                        .padding(top = 8.dp, bottom = 2.dp)
                                 )
                             }
                             is SheetLine.Lyric -> {
@@ -535,13 +552,13 @@ private fun CircularActionButton(
     onClick: () -> Unit
 ) {
     Surface(
+        onClick = onClick,
+        enabled = enabled,
         shape = CircleShape,
-        color = CardSurface.copy(alpha = 0.88f),
+        color = CardSurface.copy(alpha = 0.95f),
         border = BorderStroke(1.dp, Border),
         shadowElevation = 4.dp,
-        modifier = modifier
-            .size(size)
-            .clickable(enabled = enabled, onClick = onClick)
+        modifier = modifier.size(size)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
@@ -560,14 +577,16 @@ private fun SymbolicIconButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String?,
     active: Boolean = false,
+    activeColor: Color = AccentGold,
     onClick: () -> Unit
 ) {
-    val bg = if (active) AccentGold.copy(alpha = 0.18f) else Color.Transparent
-    val tint = if (active) AccentGold else PrimaryText
+    val bg = if (active) activeColor.copy(alpha = 0.22f) else Color.Transparent
+    val tint = if (active) activeColor else PrimaryText.copy(alpha = 0.85f)
     Box(
         modifier = Modifier
             .size(38.dp)
-            .background(bg, CircleShape)
+            .clip(CircleShape)
+            .background(bg)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -596,7 +615,8 @@ private fun TransposeSegment(
     Row(
         modifier = Modifier
             .border(1.dp, if (active) AccentGold.copy(alpha = 0.7f) else Border, shape)
-            .background(if (active) AccentGold.copy(alpha = 0.12f) else RaisedSurface.copy(alpha = 0.6f), shape)
+            .background(if (active) AccentGold.copy(alpha = 0.18f) else Border.copy(alpha = 0.22f), shape)
+            .clip(shape)
             .height(34.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -614,7 +634,7 @@ private fun TransposeSegment(
             )
         }
 
-        Box(modifier = Modifier.width(1.dp).height(18.dp).background(Border))
+        Box(modifier = Modifier.width(1.dp).height(18.dp).background(Border.copy(alpha = 0.7f)))
 
         Box(
             modifier = Modifier
@@ -633,7 +653,7 @@ private fun TransposeSegment(
             )
         }
 
-        Box(modifier = Modifier.width(1.dp).height(18.dp).background(Border))
+        Box(modifier = Modifier.width(1.dp).height(18.dp).background(Border.copy(alpha = 0.7f)))
 
         Box(
             modifier = Modifier
@@ -667,7 +687,8 @@ private fun FontSizeSegment(
     Row(
         modifier = Modifier
             .border(1.dp, if (isModified) AccentGold.copy(alpha = 0.7f) else Border, shape)
-            .background(if (isModified) AccentGold.copy(alpha = 0.12f) else RaisedSurface.copy(alpha = 0.6f), shape)
+            .background(if (isModified) AccentGold.copy(alpha = 0.18f) else Border.copy(alpha = 0.22f), shape)
+            .clip(shape)
             .height(34.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -685,7 +706,7 @@ private fun FontSizeSegment(
             )
         }
 
-        Box(modifier = Modifier.width(1.dp).height(18.dp).background(Border))
+        Box(modifier = Modifier.width(1.dp).height(18.dp).background(Border.copy(alpha = 0.7f)))
 
         Box(
             modifier = Modifier
@@ -701,7 +722,7 @@ private fun FontSizeSegment(
             )
         }
 
-        Box(modifier = Modifier.width(1.dp).height(18.dp).background(Border))
+        Box(modifier = Modifier.width(1.dp).height(18.dp).background(Border.copy(alpha = 0.7f)))
 
         Box(
             modifier = Modifier
@@ -762,11 +783,9 @@ fun PlayerScreen(
     }
     LaunchedEffect(viewModel, strings) {
         viewModel.favoriteEvents.collect { event ->
-            val message = when (event) {
-                is PlayerFavoriteEvent.Changed -> if (event.isFavorite) strings.addedToFavorites else strings.removedFromFavorites
-                PlayerFavoriteEvent.Error -> strings.failedToUpdateFavorites
+            if (event is PlayerFavoriteEvent.Error) {
+                snackbarHostState.showSnackbar(strings.failedToUpdateFavorites)
             }
-            snackbarHostState.showSnackbar(message)
         }
     }
     // Keep the screen awake only while this Player is visible and the tile is ON.
@@ -774,6 +793,19 @@ fun PlayerScreen(
     DisposableEffect(view, keepScreenAwake) {
         view.keepScreenOn = keepScreenAwake
         onDispose { view.keepScreenOn = false }
+    }
+
+    val currentActivity = view.context as? android.app.Activity
+    val isDarkTheme = com.chordapp.ui.theme.LocalChordAppColors.current.isDark
+    if (currentActivity != null) {
+        DisposableEffect(currentActivity, isDarkTheme) {
+            val insetsController = androidx.core.view.WindowCompat.getInsetsController(currentActivity.window, view)
+            val prevLightBars = insetsController.isAppearanceLightStatusBars
+            insetsController.isAppearanceLightStatusBars = !isDarkTheme
+            onDispose {
+                insetsController.isAppearanceLightStatusBars = prevLightBars
+            }
+        }
     }
 
     LaunchedEffect(sourceUrlHash, initialTranspose, initialCapo) {
@@ -968,6 +1000,14 @@ fun PlayerScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Background)) {
+        // Themed textured layer behind sheet
+        PlayerThemedTexture(textureType = com.chordapp.ui.theme.LocalChordAppColors.current.textureType)
+
+        val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val sheetTopPadding = if (isPageFlip) statusBarTop + 60.dp else statusBarTop + 76.dp
+        val sheetBottomPadding = if (isPageFlip) navBarBottom + 64.dp else navBarBottom + 88.dp
+
         // Sheet reading area
         val lines = if (hasContent) currentSheet!!.lines else emptyList()
         when {
@@ -986,7 +1026,7 @@ fun PlayerScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(top = 80.dp, bottom = 85.dp)
+                        .padding(top = sheetTopPadding, bottom = sheetBottomPadding)
                 ) {
                     PagedSheet(
                         lines = lines,
@@ -1001,7 +1041,12 @@ fun PlayerScreen(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(top = 88.dp, bottom = 96.dp, start = 16.dp, end = 16.dp)
+                    contentPadding = PaddingValues(
+                        top = sheetTopPadding,
+                        bottom = sheetBottomPadding,
+                        start = 16.dp,
+                        end = 16.dp
+                    )
                 ) {
                     itemsIndexed(
                         items = lines,
@@ -1025,12 +1070,21 @@ fun PlayerScreen(
                                     Spacer(modifier = Modifier.height((fontSize * 1.5).dp))
                                 }
                                 is SheetLine.Section -> {
+                                    val isDark = LocalChordAppColors.current.isDark
+                                    val textShadow = if (isDark) {
+                                        Shadow(
+                                            color = Color.Black.copy(alpha = 0.70f),
+                                            offset = Offset(1.5f, 1.5f),
+                                            blurRadius = 3f
+                                        )
+                                    } else null
                                     Text(
                                         text = line.text,
                                         color = AccentGold,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = fontSize.sp,
+                                        style = TextStyle(shadow = textShadow),
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(top = 16.dp, bottom = 4.dp)
@@ -1081,40 +1135,17 @@ fun PlayerScreen(
             }
         }
 
-        // Tapped-chord diagram: a small fretboard card pinned to the top-right
-        // of the sheet. The overlay consumes taps before the page-turn handler.
-        if (diagramSymbol != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { diagramSymbol = null }
-            )
-            ChordDiagramCard(
-                symbol = diagramSymbol!!,
-                db = fingeringDb,
-                onDismiss = { diagramSymbol = null },
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 80.dp, end = 12.dp)
-            )
-        }
-
-        // Top Fadeout Scrim: Lyrics scroll behind this gradient into black
+        // Top Fadeout Scrim: Universal dark vignette so lyrics scroll out cleanly across all themes
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(115.dp)
+                .height(statusBarTop + 72.dp)
                 .align(Alignment.TopCenter)
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(
-                            Background,
-                            Background.copy(alpha = 0.85f),
-                            Color.Transparent
-                        )
+                        0.0f to Color.Black.copy(alpha = 0.85f),
+                        0.55f to Color.Black.copy(alpha = 0.45f),
+                        1.0f to Color.Transparent
                     )
                 )
         )
@@ -1139,14 +1170,14 @@ fun PlayerScreen(
             // Title + Version floating capsule
             Box(modifier = Modifier.weight(1f)) {
                 Surface(
-                    shape = RoundedCornerShape(22.dp),
-                    color = CardSurface.copy(alpha = 0.88f),
+                    shape = RoundedCornerShape(23.dp),
+                    color = CardSurface.copy(alpha = 0.95f),
                     border = BorderStroke(1.dp, Border),
                     shadowElevation = 4.dp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(22.dp))
+                        .height(46.dp)
+                        .clip(RoundedCornerShape(23.dp))
                         .combinedClickable(
                             onClick = {
                                 showVersionMenu = true
@@ -1159,28 +1190,41 @@ fun PlayerScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 10.dp, vertical = 2.dp),
+                            .padding(horizontal = 12.dp, vertical = 2.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
+                        // Baris 1: Judul Lagu (Tepat di tengah, bersih tanpa versi)
+                        Text(
+                            text = currentSong.title,
+                            color = PrimaryText,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        // Baris 2: Artis - Versi (Tanpa Key: C)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
                             Text(
-                                text = currentSong.title,
-                                color = PrimaryText,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
+                                text = currentSong.artist,
+                                color = MutedText,
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false)
+                                overflow = TextOverflow.Ellipsis
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = " - ",
+                                color = MutedText.copy(alpha = 0.5f),
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp)
+                            )
                             Text(
                                 text = versionLabel,
                                 color = AccentGold,
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1
                             )
@@ -1223,17 +1267,6 @@ fun PlayerScreen(
                                 }
                             }
                         }
-                        val subtitle = buildString {
-                            append(currentSong.artist)
-                            effectiveKey?.takeIf { it.isNotBlank() }?.let { append(" • Key: $it") }
-                        }
-                        Text(
-                            text = subtitle,
-                            color = MutedText,
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
                     }
                 }
 
@@ -1244,14 +1277,25 @@ fun PlayerScreen(
                     availableVersions.forEachIndexed { index, v ->
                         val itemTag = if (v.source.contains("Ultimate Guitar", ignoreCase = true)) "UG" else v.source
                         val label = if (!v.versionName.isNullOrBlank()) "$itemTag ${v.versionName}" else "$itemTag v${index + 1}"
+                        val isSelected = v.sourceUrl == currentSong.sourceUrl
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    label,
-                                    color = if (v.sourceUrl == currentSong.sourceUrl) AccentGold else PrimaryText,
-                                    fontWeight = if (v.sourceUrl == currentSong.sourceUrl) FontWeight.Bold else FontWeight.Normal
+                                    text = label,
+                                    color = if (isSelected) PrimaryText else MutedText,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
                             },
+                            trailingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Filled.Check,
+                                        contentDescription = "Selected",
+                                        tint = AccentGold,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            } else null,
                             onClick = {
                                 showVersionMenu = false
                                 if (v.sourceUrl != currentSong.sourceUrl) {
@@ -1305,19 +1349,17 @@ fun PlayerScreen(
             )
         }
 
-        // Bottom Fadeout Scrim: Lyrics scroll behind this gradient into black
+        // Bottom Fadeout Scrim: Universal dark vignette so lyrics scroll out cleanly across all themes
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(125.dp)
+                .height(navBarBottom + 80.dp)
                 .align(Alignment.BottomCenter)
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Background.copy(alpha = 0.85f),
-                            Background
-                        )
+                        0.0f to Color.Transparent,
+                        0.45f to Color.Black.copy(alpha = 0.45f),
+                        1.0f to Color.Black.copy(alpha = 0.85f)
                     )
                 )
         )
@@ -1325,7 +1367,7 @@ fun PlayerScreen(
         // Bottom Floating Symbolic Dock: (scroll flip transpose size lampu)
         Surface(
             shape = RoundedCornerShape(32.dp),
-            color = CardSurface.copy(alpha = 0.92f),
+            color = CardSurface.copy(alpha = 0.95f),
             border = BorderStroke(1.dp, Border),
             shadowElevation = 8.dp,
             modifier = Modifier
@@ -1354,7 +1396,7 @@ fun PlayerScreen(
                     onClick = { viewModel.togglePageFlip() }
                 )
 
-                Box(modifier = Modifier.width(1.dp).height(20.dp).background(Border.copy(alpha = 0.6f)))
+                Box(modifier = Modifier.width(1.dp).height(20.dp).background(Border.copy(alpha = 0.7f)))
 
                 // Transpose (− 0 +) - tap 0 resets to 0
                 TransposeSegment(
@@ -1364,7 +1406,7 @@ fun PlayerScreen(
                     onUp = { viewModel.transposeUp() }
                 )
 
-                Box(modifier = Modifier.width(1.dp).height(20.dp).background(Border.copy(alpha = 0.6f)))
+                Box(modifier = Modifier.width(1.dp).height(20.dp).background(Border.copy(alpha = 0.7f)))
 
                 // Font Size (a 0 A) - tap 0 resets to default (14sp)
                 FontSizeSegment(
@@ -1374,16 +1416,38 @@ fun PlayerScreen(
                     onIncrease = { viewModel.increaseFontSize() }
                 )
 
-                Box(modifier = Modifier.width(1.dp).height(20.dp).background(Border.copy(alpha = 0.6f)))
+                Box(modifier = Modifier.width(1.dp).height(20.dp).background(Border.copy(alpha = 0.7f)))
 
-                // Keep Screen Awake (💡)
+                // Keep Screen Awake (💡 Lampu identik warna kuning/emas terang di semua tema)
                 SymbolicIconButton(
                     icon = if (keepScreenAwake) Icons.Filled.Lightbulb else Icons.Outlined.Lightbulb,
                     contentDescription = "Keep Screen On",
                     active = keepScreenAwake,
+                    activeColor = Color(0xFFFFD54F), // Lampu Kuning/Emas Terang Otentik
                     onClick = { viewModel.toggleKeepScreenAwake() }
                 )
             }
+        }
+
+        // Tapped-chord diagram: a small fretboard card pinned to the top-right
+        // of the sheet. Drawn at the very top of the Box to ensure highest Z-order.
+        if (diagramSymbol != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { diagramSymbol = null }
+            )
+            ChordDiagramCard(
+                symbol = diagramSymbol!!,
+                db = fingeringDb,
+                onDismiss = { diagramSymbol = null },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = statusBarTop + 66.dp, end = 14.dp)
+            )
         }
     }
 
@@ -1470,5 +1534,26 @@ fun PlayerScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
+    )
+}
+
+@Composable
+private fun PlayerThemedTexture(textureType: ThemeTextureType) {
+    if (textureType == ThemeTextureType.NONE) return
+
+    val resId = when (textureType) {
+        ThemeTextureType.LEATHER -> R.drawable.texture_leather
+        ThemeTextureType.PARCHMENT -> R.drawable.texture_paper
+        ThemeTextureType.CHALKBOARD -> R.drawable.texture_blackboard
+        ThemeTextureType.GREENBOARD -> R.drawable.texture_greenboard
+        ThemeTextureType.CRIMSON_SHADOW -> R.drawable.texture_crimson_shadow
+        ThemeTextureType.NONE -> return
+    }
+
+    androidx.compose.foundation.Image(
+        painter = androidx.compose.ui.res.painterResource(id = resId),
+        contentDescription = null,
+        modifier = Modifier.fillMaxSize(),
+        contentScale = androidx.compose.ui.layout.ContentScale.Crop
     )
 }

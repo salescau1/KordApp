@@ -41,6 +41,7 @@ import androidx.navigation.NavHostController
 import com.chordapp.R
 import com.chordapp.ui.navigation.Screen
 import com.chordapp.ui.theme.AccentGold
+import com.chordapp.ui.theme.BrandGold
 import com.chordapp.ui.theme.MutedText
 import com.chordapp.ui.theme.PrimaryText
 import kotlinx.coroutines.delay
@@ -147,7 +148,7 @@ fun SplashScreen(navController: NavHostController) {
                         text = "App",
                         fontSize = 34.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = AccentGold
+                        color = BrandGold
                     )
                 }
                 Spacer(Modifier.height(3.dp))

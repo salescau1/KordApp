@@ -141,7 +141,7 @@ object EnglishStrings : AppStrings {
     override val settingsTitle = "SETTINGS"
     override val settingsSubtitle = "Application system and display preferences"
     override val themeSection = "APPEARANCE"
-    override val appThemeLabel = "Theme"
+    override val appThemeLabel = "Skin"
     override val selectTheme = "Select Theme"
     override val themeDark = "Dark Mode"
     override val themeLight = "Light Mode"
@@ -258,7 +258,7 @@ object EnglishStrings : AppStrings {
     // Settings & Customization Strings
     override val musicAndCatalogSection = "MUSIC & CATALOG"
     override val downloadCatalogLabel = "Download Catalog"
-    override val themeLabel = "Theme"
+    override val themeLabel = "Skin"
     override val languageLabel = "Language"
     override val revealKey = "Reveal"
     override val hideKey = "Hide"

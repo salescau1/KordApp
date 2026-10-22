@@ -61,4 +61,8 @@ sealed class Screen(val route: String) {
     object BandStandby : Screen("band_standby") {
         override fun title(strings: AppStrings) = strings.bandStandbyTitle
     }
+
+    object Tuner : Screen("tuner") {
+        override fun title(strings: AppStrings) = "Tuner"
+    }
 }

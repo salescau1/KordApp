@@ -25,9 +25,15 @@ data class ChordSheet(
 
 object ChordParser {
     private val suffixAllowed = "0123456789#+-badgijmnsu()"
+    private val validLetterOnlySuffixes = setOf("", "m", "maj", "min", "dim", "aug", "sus", "add")
 
-    fun cleanChordSymbol(symbol: String): String =
-        symbol.trim().trimStart('-', '–', '~', '(').trimEnd(')')
+    fun cleanChordSymbol(symbol: String): String {
+        var s = symbol.trim().trimStart('-', '–', '~', '(').trimEnd(')')
+        while (s.isNotEmpty() && (s.last() == '.' || s.last() == '…' || s.last() == '~' || s.last() == '-')) {
+            s = s.substring(0, s.length - 1).trim()
+        }
+        return s
+    }
 
     /**
      * Strict chord-symbol test.
@@ -48,6 +54,10 @@ object ChordParser {
         if (token.startsWith("(") && token.endsWith(")")) {
             token = token.substring(1, token.length - 1).trim()
         }
+        // Allow trailing decorations like dots (...), ellipsis (…), tildes (~), or dashes (-)
+        while (token.isNotEmpty() && (token.last() == '.' || token.last() == '…' || token.last() == '~' || token.last() == '-')) {
+            token = token.substring(0, token.length - 1).trim()
+        }
         if (token.isEmpty()) return false
         if (token.contains("/")) {
             val parts = token.split("/")
@@ -67,7 +77,9 @@ object ChordParser {
         val suffix = token.substring(i).lowercase()
         if (suffix.any { it !in suffixAllowed }) return false
         val hasMarker = suffix.any { it.isDigit() || it == '#' || it == '+' || it == '-' }
-        if (!hasMarker && suffix.count { it in 'a'..'z' } > 3) return false
+        if (!hasMarker) {
+            if (suffix !in validLetterOnlySuffixes) return false
+        }
         return true
     }
 

@@ -48,6 +48,70 @@ class SettingsViewModel(
         .getPackageInfo(appContext.packageName, 0)
         .versionName ?: "Unknown"
 
+    val userCatalogRepository = repository.userCatalogRepo ?: com.chordapp.usercatalog.UserCatalogRepository(appContext)
+
+    val scrapedCount: StateFlow<Int> = userCatalogRepository.getScrapedCountFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    fun clearAllScraped() {
+        viewModelScope.launch(Dispatchers.IO) {
+            userCatalogRepository.clearAllScraped()
+            repository.notifyCatalogUpdated()
+        }
+    }
+
+    fun exportScraped(onSuccess: (File) -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val songs = userCatalogRepository.getAllScrapedSongsList()
+                if (songs.isEmpty()) {
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                        onError("Katalog Scraped kosong, tidak ada lagu untuk diekspor")
+                    }
+                    return@launch
+                }
+                val file = com.chordapp.usercatalog.KordPackageSerializer.exportScrapedToFile(appContext, songs)
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    onSuccess(file)
+                }
+            } catch (e: Exception) {
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    onError(e.localizedMessage ?: "Gagal mengekspor file .kord")
+                }
+            }
+        }
+    }
+
+    fun importScrapedFromUri(uri: android.net.Uri, onResult: (Int, String?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val content = appContext.contentResolver.openInputStream(uri)?.use { it.reader().readText() }
+                if (content.isNullOrBlank()) {
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                        onResult(0, "File kosong atau tidak dapat dibaca")
+                    }
+                    return@launch
+                }
+                val songs = com.chordapp.usercatalog.KordPackageSerializer.deserializeScrapedSongs(content)
+                if (songs.isEmpty()) {
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                        onResult(0, "Tidak ada lagu yang ditemukan dalam file")
+                    }
+                    return@launch
+                }
+                userCatalogRepository.insertScrapedSongs(songs.map { it.toCatalogSongEntity() })
+                repository.notifyCatalogUpdated()
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    onResult(songs.size, null)
+                }
+            } catch (e: Exception) {
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    onResult(0, e.localizedMessage ?: "Format file .kord tidak valid")
+                }
+            }
+        }
+    }
+
     val currentLanguage: StateFlow<AppLanguage> =
         AppLanguageManager.currentLanguage
 

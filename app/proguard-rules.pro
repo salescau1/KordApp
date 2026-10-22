@@ -14,3 +14,10 @@
 
 # XZ decompressor
 -keep class org.tukaani.xz.** { *; }
+
+# TarsosDSP Audio Processing
+-keep class be.tarsos.dsp.** { *; }
+-dontwarn be.tarsos.dsp.**
+
+# Tuner Classes & Pitch Detector
+-keep class com.chordapp.tuner.** { *; }

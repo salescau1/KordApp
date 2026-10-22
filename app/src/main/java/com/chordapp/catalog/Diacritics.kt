@@ -61,6 +61,33 @@ fun generateSearchVariants(query: String): List<String> {
         variants.add(folded)
     }
 
+    val hasSpace = trimmed.contains(' ') || trimmed.contains('\t')
+    val hasHyphen = trimmed.contains('-') || trimmed.contains('_')
+
+    // 1. Wildcard substitution for space/hyphen queries (e.g. "mesra mesra" -> "mesra%mesra", "kecil kecil" -> "kecil%kecil")
+    if (hasSpace || hasHyphen) {
+        val wildcard = trimmed.replace(Regex("[\\s_\\-]+"), "%")
+        variants.add(wildcard)
+    }
+
+    // 2. Hyphenated variant (e.g. "mesra mesra" -> "mesra-mesra")
+    if (hasSpace) {
+        val hyphenated = trimmed.replace(Regex("\\s+"), "-")
+        variants.add(hyphenated)
+    }
+
+    // 3. Spaced variant (e.g. "mesra-mesra" -> "mesra mesra")
+    if (hasHyphen) {
+        val spaced = trimmed.replace(Regex("[-_]+"), " ")
+        variants.add(spaced)
+    }
+
+    // 4. Folded wildcard
+    if (folded.isNotEmpty() && (folded.contains(' ') || folded.contains('-') || folded.contains('_'))) {
+        val foldedWildcard = folded.replace(Regex("[\\s_\\-]+"), "%")
+        variants.add(foldedWildcard)
+    }
+
     // Bentuk NFD (decomposed combining characters, misal n + acute)
     val nfd = Normalizer.normalize(trimmed, Normalizer.Form.NFD)
     if (nfd != trimmed) {

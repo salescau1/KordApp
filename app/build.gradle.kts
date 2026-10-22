@@ -15,8 +15,8 @@ android {
         applicationId = "com.kekalclip.kordapp"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "1.3.0"
+        versionCode = 5
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -92,6 +92,7 @@ dependencies {
     // XZ/LZMA2 decoder (pure Java): katalog dikirim sebagai catalog.db.xz lalu
     // di-decompress ke DB path saat pertama buka (Room.createFromInputStream).
     implementation("org.tukaani:xz:1.9")
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.11.1")

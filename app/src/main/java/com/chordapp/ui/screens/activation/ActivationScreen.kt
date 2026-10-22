@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -173,7 +175,7 @@ fun ActivationScreen(
                     text = "App",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = AccentGold
+                    color = BrandGold
                 )
             }
 
@@ -361,7 +363,7 @@ fun ActivationScreen(
                                 .clickable {
                                     runCatching {
                                         val message = strings.waOrderMessage("")
-                                        val url = "https://wa.me/?text=${Uri.encode(message)}"
+                                        val url = "https://wa.me/62895626994567?text=${Uri.encode(message)}"
                                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                                     }.onFailure {
                                         Toast.makeText(context, strings.unableToOpenBrowserOrWa, Toast.LENGTH_SHORT).show()
@@ -372,7 +374,11 @@ fun ActivationScreen(
                             border = androidx.compose.foundation.BorderStroke(1.dp, Border)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text("WA", color = Color(0xFF25D366), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                                Image(
+                                    painter = painterResource(id = com.chordapp.R.drawable.ic_whatsapp),
+                                    contentDescription = "WhatsApp",
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
 
@@ -382,7 +388,7 @@ fun ActivationScreen(
                                 .size(38.dp)
                                 .clickable {
                                     runCatching {
-                                        val url = "https://t.me/kordapp"
+                                        val url = "https://t.me/yousufMU"
                                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                                     }.onFailure {
                                         Toast.makeText(context, strings.unableToOpenBrowserOrWa, Toast.LENGTH_SHORT).show()
@@ -393,21 +399,28 @@ fun ActivationScreen(
                             border = androidx.compose.foundation.BorderStroke(1.dp, Border)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text("TG", color = Color(0xFF229ED9), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                                Image(
+                                    painter = painterResource(id = com.chordapp.R.drawable.ic_telegram),
+                                    contentDescription = "Telegram",
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
 
-                        // [ QR ] Button (QRIS Modal)
+                        // [ QR ] Button (Greyed out)
                         Surface(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clickable { showQrisDialog = true },
+                            modifier = Modifier.size(38.dp),
                             shape = RoundedCornerShape(12.dp),
-                            color = RaisedSurface,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, AccentGold.copy(alpha = 0.5f))
+                            color = RaisedSurface.copy(alpha = 0.45f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Border.copy(alpha = 0.4f))
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text("QR", color = AccentGold, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                                Icon(
+                                    imageVector = Icons.Default.QrCode2,
+                                    contentDescription = "QRIS (Nonaktif)",
+                                    tint = MutedText.copy(alpha = 0.35f),
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
                     }
@@ -988,7 +1001,7 @@ fun ActivationScreen(
                 Button(
                     onClick = {
                         runCatching {
-                            val url = "https://wa.me/?text=${Uri.encode("Halo Admin KordApp, saya sudah scan QRIS dan ingin konfirmasi pembelian lisensi.")}"
+                            val url = "https://wa.me/62895626994567?text=${Uri.encode("Halo Admin KordApp, saya sudah scan QRIS dan ingin konfirmasi pembelian lisensi.")}"
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                         }
                     },

@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
@@ -77,6 +79,7 @@ import com.chordapp.ui.theme.AccentGold
 import com.chordapp.ui.theme.Background
 import com.chordapp.ui.theme.Border
 import com.chordapp.ui.theme.CardSurface
+import com.chordapp.ui.theme.LocalChordAppColors
 import com.chordapp.ui.theme.MutedText
 import com.chordapp.viewmodels.ViewModelFactory
 
@@ -229,6 +232,7 @@ fun AppNavigation() {
                                     1.0f to Background
                                 )
                             )
+                            .navigationBarsPadding()
                             .padding(horizontal = 16.dp)
                             .padding(top = 16.dp, bottom = 12.dp)
                     ) {
@@ -355,7 +359,8 @@ private fun AppNavHost(
                 onSearchClick = { navController.navigate(Screen.Search.route) },
                 onSongClick = { artistSlug, titleSlug ->
                     navController.navigate(Screen.SongVersions.createRoute(artistSlug, titleSlug))
-                }
+                },
+                onTunerClick = { navController.navigate(Screen.Tuner.route) }
             )
             promo?.let { active ->
                 com.chordapp.ui.screens.home.PromoDialog(
@@ -565,6 +570,13 @@ private fun AppNavHost(
                 },
                 onDisconnectClick = {
                     com.chordapp.p2p.BandSessionManager.disconnectClient()
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable(Screen.Tuner.route) {
+            com.chordapp.ui.screens.tuner.TunerScreen(
+                onClose = {
                     navController.popBackStack()
                 }
             )

@@ -55,5 +55,15 @@ class DiacriticsTest {
         val bubleVariants = generateSearchVariants("michael buble")
         assertTrue(bubleVariants.contains("michael buble"))
         assertTrue(bubleVariants.any { it.contains("é") })
+
+        val mesraVariants = generateSearchVariants("mesra mesra")
+        assertTrue(mesraVariants.contains("mesra mesra"))
+        assertTrue(mesraVariants.contains("mesra%mesra"))
+        assertTrue(mesraVariants.contains("mesra-mesra"))
+
+        val kecilVariants = generateSearchVariants("kecil kecil")
+        assertTrue(kecilVariants.contains("kecil kecil"))
+        assertTrue(kecilVariants.contains("kecil%kecil"))
+        assertTrue(kecilVariants.contains("kecil-kecil"))
     }
 }

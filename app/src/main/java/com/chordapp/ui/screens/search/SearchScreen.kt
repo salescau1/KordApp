@@ -1,5 +1,8 @@
 package com.chordapp.ui.screens.search
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.draw.clip
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -95,6 +98,7 @@ fun SearchScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 10.dp)
                 .background(Background)
         ) {
@@ -104,20 +108,21 @@ fun SearchScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Circular back button
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(CardSurface, CircleShape)
-                        .border(1.dp, Border, CircleShape)
-                        .clickable(onClick = onBackClick),
-                    contentAlignment = Alignment.Center
+                Surface(
+                    onClick = onBackClick,
+                    shape = CircleShape,
+                    color = CardSurface,
+                    border = BorderStroke(1.dp, Border),
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = strings.back,
-                        tint = PrimaryText,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = strings.back,
+                            tint = PrimaryText,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
 
                 // Search pill
@@ -170,6 +175,7 @@ fun SearchScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(28.dp)
+                                        .clip(CircleShape)
                                         .clickable { viewModel.onQueryChange("") },
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -1231,7 +1237,8 @@ private fun SearchSourcePill(
     Row(
         modifier = Modifier
             .defaultMinSize(minHeight = 34.dp)
-            .background(bgColor, RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(20.dp))
+            .background(bgColor)
             .border(1.dp, borderColor, RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),

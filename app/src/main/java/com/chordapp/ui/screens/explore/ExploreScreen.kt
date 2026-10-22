@@ -1,5 +1,7 @@
 package com.chordapp.ui.screens.explore
 
+import androidx.compose.ui.draw.clip
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -158,7 +160,9 @@ fun ExploreScreen(
             .background(Background)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
         ) {
             // Header
             val strings = com.chordapp.localization.LocalAppStrings.current
@@ -711,7 +715,7 @@ private fun GenreDetailView(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                modifier = Modifier.clickable { onBack() },
+                onClick = onBack,
                 shape = RoundedCornerShape(10.dp),
                 color = RaisedSurface,
                 border = BorderStroke(1.dp, Border)
@@ -825,7 +829,7 @@ private fun OstFranchiseDetailView(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                modifier = Modifier.clickable { onBack() },
+                onClick = onBack,
                 shape = RoundedCornerShape(10.dp),
                 color = RaisedSurface,
                 border = BorderStroke(1.dp, Border)
@@ -920,7 +924,7 @@ private fun OstFranchisesOverview(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                modifier = Modifier.clickable { onBack() },
+                onClick = onBack,
                 shape = RoundedCornerShape(10.dp),
                 color = RaisedSurface,
                 border = BorderStroke(1.dp, Border)
@@ -1309,7 +1313,7 @@ private fun LetterDetailView(
         ) {
             item {
                 Surface(
-                    modifier = Modifier.clickable { onBack() },
+                    onClick = onBack,
                     shape = RoundedCornerShape(10.dp),
                     color = RaisedSurface,
                     border = BorderStroke(1.dp, Border)
@@ -1603,7 +1607,8 @@ private fun ColorCircleSwitch(
         modifier = modifier
             .width(46.dp)
             .height(26.dp)
-            .background(trackBg, CircleShape)
+            .clip(CircleShape)
+            .background(trackBg)
             .border(1.dp, trackBorder, CircleShape)
             .clickable(onClick = onToggle)
             .padding(horizontal = 3.dp),
@@ -1643,7 +1648,7 @@ private fun EditModeArtistSongDetailView(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                modifier = Modifier.clickable { onBack() },
+                onClick = onBack,
                 shape = RoundedCornerShape(10.dp),
                 color = RaisedSurface,
                 border = BorderStroke(1.dp, Border)

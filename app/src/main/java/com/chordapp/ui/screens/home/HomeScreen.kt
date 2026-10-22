@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,11 +24,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import android.widget.Toast
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.Key
@@ -81,6 +84,7 @@ import com.chordapp.ui.theme.AccentGold
 import com.chordapp.ui.theme.ActiveHeart
 import com.chordapp.ui.theme.Background
 import com.chordapp.ui.theme.Border
+import com.chordapp.ui.theme.BrandGold
 import com.chordapp.ui.theme.CardSurface
 import com.chordapp.ui.theme.MutedGold
 import com.chordapp.ui.theme.MutedText
@@ -105,7 +109,8 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     expanded: Boolean,
     onSearchClick: () -> Unit,
-    onSongClick: (artistSlug: String, titleSlug: String) -> Unit
+    onSongClick: (artistSlug: String, titleSlug: String) -> Unit,
+    onTunerClick: () -> Unit = {}
 ) {
     val recent by viewModel.recent.collectAsState()
     val catalogStats by viewModel.catalogStats.collectAsState()
@@ -139,6 +144,7 @@ fun HomeScreen(
                 platform = platform,
                 onSearchClick = onSearchClick,
                 onSongClick = onSongClick,
+                onTunerClick = onTunerClick,
                 onSelectPlatform = viewModel::selectPlatform,
                 onRetry = viewModel::retry,
                 onRefresh = viewModel::refresh,
@@ -152,6 +158,7 @@ fun HomeScreen(
                 platform = platform,
                 onSearchClick = onSearchClick,
                 onSongClick = onSongClick,
+                onTunerClick = onTunerClick,
                 onSelectPlatform = viewModel::selectPlatform,
                 onRetry = viewModel::retry,
                 onRefresh = viewModel::refresh,
@@ -253,6 +260,7 @@ private fun CompactHome(
     platform: ChartPlatform,
     onSearchClick: () -> Unit,
     onSongClick: (artistSlug: String, titleSlug: String) -> Unit,
+    onTunerClick: () -> Unit,
     onSelectPlatform: (ChartPlatform) -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
@@ -262,7 +270,7 @@ private fun CompactHome(
     var headerHeightPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val headerHeightDp = with(density) { headerHeightPx.toDp() }
-    val topPadding = if (headerHeightDp > 0.dp) headerHeightDp + 6.dp else 216.dp
+    val topPadding = if (headerHeightDp > 0.dp) headerHeightDp + 10.dp else 290.dp
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Only the chart area scrolls across the full background
@@ -293,30 +301,59 @@ private fun CompactHome(
                         1.0f to Color.Transparent
                     )
                 )
+                .statusBarsPadding()
                 .padding(horizontal = 16.dp)
                 .padding(top = 12.dp, bottom = 8.dp)
         ) {
             TopAdSlot()
 
-            // App Brand
+            // App Brand + Tuner Action
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Kord",
-                    color = PrimaryText,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold
-                )
-                Text(
-                    text = "App",
-                    color = AccentGold,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Kord",
+                        color = PrimaryText,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        text = "App",
+                        color = BrandGold,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+
+                // Tuner chip button
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(CardSurface)
+                        .border(1.dp, Border, RoundedCornerShape(20.dp))
+                        .clickable { onTunerClick() }
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = "Tuner",
+                        tint = AccentGold,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Tuner",
+                        color = PrimaryText,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             // Floating Search Pill (search)
@@ -346,13 +383,18 @@ private fun ExpandedHome(
     platform: ChartPlatform,
     onSearchClick: () -> Unit,
     onSongClick: (artistSlug: String, titleSlug: String) -> Unit,
+    onTunerClick: () -> Unit,
     onSelectPlatform: (ChartPlatform) -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
     onToggleFavorite: (ChartRowUi) -> Unit,
     onDownloadSong: (ChartRowUi) -> Unit
 ) {
-    Row(modifier = Modifier.fillMaxSize()) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+    ) {
         Column(
             modifier = Modifier
                 .width(336.dp)
@@ -361,7 +403,7 @@ private fun ExpandedHome(
                 .padding(bottom = 20.dp)
         ) {
             TopAdSlot()
-            HomeHeader(onSearchClick = onSearchClick)
+            HomeHeader(onSearchClick = onSearchClick, onTunerClick = onTunerClick)
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 RecentlyPlayedSection(
                     recent = recent.take(5),
@@ -448,29 +490,63 @@ private fun TopAdSlot(adContent: (@Composable () -> Unit)? = null) {
 }
 
 @Composable
-private fun HomeHeader(onSearchClick: () -> Unit) {
+private fun HomeHeader(
+    onSearchClick: () -> Unit,
+    onTunerClick: () -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Background)
             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)
     ) {
-        // App brand — wordmark sama seperti splash: "Kord" putih, "App" emas. Tanpa icon.
+        // App brand + Tuner Action
         Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Kord",
-                color = PrimaryText,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold
-            )
-            Text(
-                text = "App",
-                color = AccentGold,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Kord",
+                    color = PrimaryText,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    text = "App",
+                    color = BrandGold,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+
+            // Tuner button
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(CardSurface)
+                    .border(1.dp, Border, RoundedCornerShape(20.dp))
+                    .clickable { onTunerClick() }
+                    .padding(horizontal = 12.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Tune,
+                    contentDescription = "Tuner",
+                    tint = AccentGold,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = "Tuner",
+                    color = PrimaryText,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -513,7 +589,8 @@ private fun FloatingSearchBar(onSearchClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(46.dp)
-            .background(CardSurface.copy(alpha = 0.92f), searchShape)
+            .clip(searchShape)
+            .background(CardSurface.copy(alpha = 0.92f))
             .border(1.dp, Border, searchShape)
             .clickable { onSearchClick() }
             .padding(horizontal = 16.dp),

@@ -6,22 +6,27 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-enum class AppThemeMode(val code: String) {
-    DARK("dark"),
-    LIGHT("light"),
-    PAPER("paper"),
-    BLACKBOARD("blackboard"),
-    GREENBOARD("greenboard");
+enum class AppThemeMode(val code: String, val displayName: String) {
+    DARK("dark", "Dark"),
+    LEATHER("leather", "Leather"),
+    PAPER("paper", "Kertas Perkamen"),
+    BLACKBOARD("blackboard", "Papan Tulis Hitam"),
+    GREENBOARD("greenboard", "Papan Tulis Hijau"),
+    CRIMSON_SHADOW("crimson_shadow", "Crimson Shadow");
 
     companion object {
         fun fromCode(code: String): AppThemeMode {
-            return entries.firstOrNull { it.code.equals(code, ignoreCase = true) } ?: DARK
+            return when (code.lowercase()) {
+                "wood" -> LEATHER
+                "daun_kering" -> DARK
+                else -> entries.firstOrNull { it.code.equals(code, ignoreCase = true) } ?: DARK
+            }
         }
     }
 }
 
 object AppThemeManager {
-    private val _currentTheme = MutableStateFlow(AppThemeMode.BLACKBOARD)
+    private val _currentTheme = MutableStateFlow(AppThemeMode.DARK)
     val currentTheme: StateFlow<AppThemeMode> = _currentTheme.asStateFlow()
 
     fun initialize(context: Context) {
