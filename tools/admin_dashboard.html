@@ -199,7 +199,7 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <input type="text" id="searchUsed" oninput="renderUsedTable()" placeholder="Cari kode / device..." class="bg-[#0B0E14] border border-custom rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-400 w-48" />
+                    <input type="text" id="searchUsed" oninput="renderUsedTable()" placeholder="Cari kode / HP / device..." class="bg-[#0B0E14] border border-custom rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-400 w-48" />
                     <select id="filterTypeUsed" onchange="renderUsedTable()" class="bg-[#0B0E14] border border-custom rounded-xl px-2.5 py-1.5 text-xs text-white font-medium focus:outline-none">
                         <option value="ALL">Semua Kategori</option>
                         <option value="JUALAN">💰 Jualan</option>
@@ -389,7 +389,15 @@
         }
 
         async function fetchAllData() {
-            await Promise.all([loadDevices(), loadLicenses()]);
+            const btn = document.getElementById('btnRefresh');
+            if (btn) btn.classList.add('opacity-60', 'pointer-events-none');
+            try {
+                await Promise.all([loadDevices(), loadLicenses()]);
+                renderUsedTable();
+                renderAvailableTable();
+            } finally {
+                if (btn) btn.classList.remove('opacity-60', 'pointer-events-none');
+            }
         }
 
         async function loadDevices() {
@@ -397,28 +405,36 @@
                 const res = await fetch(`${SUPABASE_URL}/devices?select=*&order=last_seen.desc`, { headers });
                 rawDevices = await res.json();
                 deviceMap = {};
-                rawDevices.forEach(d => {
-                    if (d.device_id) deviceMap[d.device_id] = d;
+                (rawDevices || []).forEach(d => {
+                    if (d.device_id) {
+                        const rawId = String(d.device_id);
+                        deviceMap[rawId] = d;
+                        deviceMap[rawId.trim().toLowerCase()] = d;
+                    }
                 });
 
-                document.getElementById('statTotalDevices').innerText = rawDevices.length || 0;
-                document.getElementById('deviceCountBadge').innerText = `${rawDevices.length || 0} HP`;
+                document.getElementById('statTotalDevices').innerText = (rawDevices && rawDevices.length) || 0;
+                document.getElementById('deviceCountBadge').innerText = `${(rawDevices && rawDevices.length) || 0} HP`;
 
                 const tbody = document.getElementById('devicesTableBody');
                 if (!rawDevices || rawDevices.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-slate-500">Belum ada perangkat terdaftar.</td></tr>';
-                    return;
+                } else {
+                    tbody.innerHTML = rawDevices.map(d => `
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="py-2.5 px-3 font-semibold text-white">${escapeHtml(d.device_model || 'Unknown')}</td>
+                            <td class="py-2.5 px-3 font-mono text-[11px] text-slate-400 select-all">${escapeHtml(d.device_id || '-')}</td>
+                            <td class="py-2.5 px-3 text-slate-400">${escapeHtml(d.os_version || '-')}</td>
+                            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">v${escapeHtml(d.app_version || '1.0')}</span></td>
+                            <td class="py-2.5 px-3 text-slate-400">${formatDate(d.last_seen)}</td>
+                        </tr>
+                    `).join('');
                 }
 
-                tbody.innerHTML = rawDevices.map(d => `
-                    <tr class="hover:bg-slate-800/40 transition">
-                        <td class="py-2.5 px-3 font-semibold text-white">${escapeHtml(d.device_model || 'Unknown')}</td>
-                        <td class="py-2.5 px-3 font-mono text-[11px] text-slate-400 select-all">${escapeHtml(d.device_id || '-')}</td>
-                        <td class="py-2.5 px-3 text-slate-400">${escapeHtml(d.os_version || '-')}</td>
-                        <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">v${escapeHtml(d.app_version || '1.0')}</span></td>
-                        <td class="py-2.5 px-3 text-slate-400">${formatDate(d.last_seen)}</td>
-                    </tr>
-                `).join('');
+                // Segarkan tabel lisensi yang sedang dipakai jika lisensi sudah termuat
+                if (rawLicenses && rawLicenses.length > 0) {
+                    renderUsedTable();
+                }
             } catch (err) {
                 console.error(err);
                 document.getElementById('devicesTableBody').innerHTML = '<tr><td colspan="5" class="text-center py-6 text-rose-400">Gagal memuat perangkat.</td></tr>';
@@ -430,8 +446,8 @@
                 const res = await fetch(`${SUPABASE_URL}/licenses?select=*&order=created_at.desc`, { headers });
                 rawLicenses = await res.json();
 
-                const total = rawLicenses.length || 0;
-                const used = rawLicenses.filter(l => l.is_used).length;
+                const total = (rawLicenses && rawLicenses.length) || 0;
+                const used = (rawLicenses || []).filter(l => l.is_used).length;
                 const available = total - used;
 
                 document.getElementById('statTotalLicenses').innerText = total;
@@ -463,10 +479,11 @@
         // Render Tabel: Lisensi yang Sedang Dipakai
         function renderUsedTable() {
             const tbody = document.getElementById('tableBodyUsed');
+            if (!tbody) return;
             const search = (document.getElementById('searchUsed').value || '').trim().toLowerCase();
             const filterType = document.getElementById('filterTypeUsed').value;
 
-            const usedList = rawLicenses.filter(l => l.is_used);
+            const usedList = (rawLicenses || []).filter(l => l.is_used);
             document.getElementById('badgeActiveCount').innerText = `${usedList.length} Aktif`;
 
             let filtered = usedList.filter(l => {
@@ -478,7 +495,9 @@
                     const matchKey = (l.license_key || '').toLowerCase().includes(search);
                     const matchDev = (l.device_id || '').toLowerCase().includes(search);
                     const matchEmail = (l.recovery_email || '').toLowerCase().includes(search);
-                    if (!matchKey && !matchDev && !matchEmail) return false;
+                    const devObj = l.device_id ? (deviceMap[l.device_id.trim().toLowerCase()] || deviceMap[l.device_id]) : null;
+                    const matchModel = devObj && devObj.device_model ? devObj.device_model.toLowerCase().includes(search) : false;
+                    if (!matchKey && !matchDev && !matchEmail && !matchModel) return false;
                 }
                 return true;
             });
@@ -490,8 +509,10 @@
 
             tbody.innerHTML = filtered.map(l => {
                 const meta = getCategoryMeta(l.license_key);
-                const dev = deviceMap[l.device_id] || null;
-                const devModel = dev ? dev.device_model : 'Model tidak terdata';
+                const devKey = (l.device_id || '').trim().toLowerCase();
+                const dev = l.device_id ? (deviceMap[devKey] || deviceMap[l.device_id]) : null;
+                const devModel = dev && dev.device_model ? dev.device_model : null;
+                const devOs = dev && dev.os_version ? dev.os_version : null;
 
                 return `
                     <tr class="hover:bg-slate-800/40 transition">
@@ -516,7 +537,15 @@
                             ` : '<div class="mt-0.5 text-[10px] text-slate-500 italic font-sans">Belum bind email</div>'}
                         </td>
                         <td class="py-3 px-3 text-slate-300">
-                            ${escapeHtml(devModel)}
+                            ${devModel ? `
+                                <div class="font-semibold text-white flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                    <span>${escapeHtml(devModel)}</span>
+                                </div>
+                                ${devOs ? `<div class="text-[10px] text-slate-400 mt-0.5 ml-5">${escapeHtml(devOs)}</div>` : ''}
+                            ` : `
+                                <span class="text-slate-500 italic text-[11px]">${l.device_id ? 'Model belum sinkron' : '-'}</span>
+                            `}
                         </td>
                         <td class="py-3 px-3 text-slate-400 text-[11px]">
                             <div class="text-emerald-400 font-medium">${formatDate(l.activated_at || l.created_at)}</div>
