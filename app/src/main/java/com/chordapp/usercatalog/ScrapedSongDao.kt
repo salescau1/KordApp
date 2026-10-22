@@ -20,6 +20,33 @@ interface ScrapedSongDao {
     @Query("SELECT * FROM scraped_songs WHERE artist_slug = :artistSlug AND title_slug = :titleSlug LIMIT 1")
     suspend fun getBySlugs(artistSlug: String, titleSlug: String): ScrapedSongEntity?
 
+    @Query("SELECT * FROM scraped_songs WHERE artist_slug = :artistSlug AND title_slug = :titleSlug")
+    suspend fun getAllScrapedSongsBySlugs(artistSlug: String, titleSlug: String): List<ScrapedSongEntity>
+
+    @Query("SELECT * FROM scraped_songs WHERE artist_slug = :artistSlug ORDER BY title COLLATE NOCASE ASC")
+    suspend fun getSongsByArtist(artistSlug: String): List<ScrapedSongEntity>
+
+    @Query("SELECT * FROM scraped_songs WHERE artist_slug = :artistSlug LIMIT 1")
+    suspend fun getArtistInfo(artistSlug: String): ScrapedSongEntity?
+
+    @Query("""
+        SELECT artist as artist, artist_slug as artist_slug, COUNT(DISTINCT title_slug) as song_count, region as region
+        FROM scraped_songs
+        GROUP BY artist_slug
+        ORDER BY artist COLLATE NOCASE ASC
+    """)
+    suspend fun getAllArtists(): List<com.chordapp.catalog.CatalogArtistInfo>
+
+    @Query("""
+        SELECT artist as artist, artist_slug as artist_slug, COUNT(DISTINCT title_slug) as song_count, region as region
+        FROM scraped_songs
+        WHERE artist LIKE '%' || :query || '%'
+        GROUP BY artist_slug
+        ORDER BY artist COLLATE NOCASE ASC
+        LIMIT :limit
+    """)
+    suspend fun searchArtists(query: String, limit: Int = 10): List<com.chordapp.catalog.CatalogArtistInfo>
+
     @Query("SELECT * FROM scraped_songs ORDER BY created_at DESC")
     fun getAllScrapedSongs(): Flow<List<ScrapedSongEntity>>
 

@@ -27,9 +27,15 @@ data class SetlistItemResolution(
 
 class UserdataRepository(
     private val userDao: UserdataDao,
-    private val catalogDaoProvider: () -> CatalogDao
+    private val catalogDaoProvider: () -> CatalogDao,
+    private val userCatalogRepoProvider: (() -> com.chordapp.usercatalog.UserCatalogRepository?)? = null
 ) {
-    constructor(userDao: UserdataDao, catalogDao: CatalogDao) : this(userDao, { catalogDao })
+    constructor(userDao: UserdataDao, catalogDao: CatalogDao) : this(userDao, { catalogDao }, null)
+    constructor(
+        userDao: UserdataDao,
+        catalogDao: CatalogDao,
+        userCatalogRepo: com.chordapp.usercatalog.UserCatalogRepository?
+    ) : this(userDao, { catalogDao }, { userCatalogRepo })
 
     private val catalogDao: CatalogDao get() = catalogDaoProvider()
 
@@ -203,6 +209,19 @@ class UserdataRepository(
     ): ResolutionResult {
         var found = catalogDao.getBySourceUrl(sourceUrl)
         if (found != null) return ResolutionResult.Success(found, false)
+
+        val userRepo = userCatalogRepoProvider?.invoke()
+        if (userRepo != null) {
+            val userSong = userRepo.getScrapedSongByUrl(sourceUrl)
+            if (userSong != null) return ResolutionResult.Success(userSong, false)
+            val userVersions = userRepo.getAllScrapedSongsBySlugs(artistSlug, titleSlug)
+            val userMatched = userVersions.firstOrNull { it.source == source && it.contentHash == contentHash }
+                ?: userVersions.firstOrNull { it.source == source }
+                ?: userVersions.firstOrNull()
+            if (userMatched != null) {
+                return ResolutionResult.Success(userMatched, false)
+            }
+        }
 
         val versions = catalogDao.getSongVersions(artistSlug, titleSlug)
         found = versions.firstOrNull { it.source == source && it.contentHash == contentHash }

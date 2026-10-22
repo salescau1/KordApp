@@ -86,7 +86,23 @@ class CatalogRepository(
         val q3 = vars.getOrElse(2) { "" }
         val q4 = vars.getOrElse(3) { "" }
         val q5 = vars.getOrElse(4) { "" }
-        return dao.searchArtistsVariants(q1, q2, q3, q4, q5, limit = limit)
+        val official = dao.searchArtistsVariants(q1, q2, q3, q4, q5, limit = limit)
+        val scraped = userCatalogRepo?.searchArtists(trimmed, limit = limit) ?: emptyList()
+        if (scraped.isEmpty()) return official
+
+        val map = LinkedHashMap<String, CatalogArtistInfo>()
+        for (item in scraped) {
+            map[item.artistSlug] = item
+        }
+        for (item in official) {
+            val existing = map[item.artistSlug]
+            if (existing != null) {
+                map[item.artistSlug] = existing.copy(songCount = existing.songCount + item.songCount)
+            } else {
+                map[item.artistSlug] = item
+            }
+        }
+        return map.values.take(limit)
     }
 
     suspend fun searchArtistsByGt(query: String, limit: Int = 5): List<CatalogArtistInfo> {
@@ -98,29 +114,48 @@ class CatalogRepository(
         val q3 = vars.getOrElse(2) { "" }
         val q4 = vars.getOrElse(3) { "" }
         val q5 = vars.getOrElse(4) { "" }
-        return dao.searchArtistsByGtVariants(q1, q2, q3, q4, q5, limit = limit)
+        val official = dao.searchArtistsByGtVariants(q1, q2, q3, q4, q5, limit = limit)
+        val scraped = userCatalogRepo?.searchArtists(trimmed, limit = limit) ?: emptyList()
+        if (scraped.isEmpty()) return official
+
+        val map = LinkedHashMap<String, CatalogArtistInfo>()
+        for (item in scraped) {
+            map[item.artistSlug] = item
+        }
+        for (item in official) {
+            val existing = map[item.artistSlug]
+            if (existing != null) {
+                map[item.artistSlug] = existing.copy(songCount = existing.songCount + item.songCount)
+            } else {
+                map[item.artistSlug] = item
+            }
+        }
+        return map.values.take(limit)
     }
     
     suspend fun getArtistInfo(artistSlug: String): CatalogSongEntity? {
-        return dao.getArtistInfo(artistSlug)
+        return dao.getArtistInfo(artistSlug) ?: userCatalogRepo?.getArtistInfo(artistSlug)
     }
 
     suspend fun getArtistSongs(artistSlug: String): Map<CatalogSongGroup, List<CatalogSongEntity>> {
-        val rawSongs = dao.getArtistSongsRaw(artistSlug)
+        val officialRaw = dao.getArtistSongsRaw(artistSlug)
+        val scrapedRaw = userCatalogRepo?.getSongsByArtist(artistSlug) ?: emptyList()
+        val rawSongs = scrapedRaw + officialRaw
         val grouped = rawSongs.groupBy { it.titleSlug }
         val result = mutableMapOf<CatalogSongGroup, List<CatalogSongEntity>>()
         
         for ((_, versions) in grouped) {
-            val first = versions.first()
+            val distinctVersions = versions.distinctBy { it.sourceUrl }
+            val first = distinctVersions.first()
             val group = CatalogSongGroup(
                 artistName = first.artist,
                 artistSlug = first.artistSlug,
                 title = first.title,
                 titleSlug = first.titleSlug,
-                versionCount = versions.size,
-                chordCount = versions.minByOrNull { it.chordCount }?.chordCount ?: 0
+                versionCount = distinctVersions.size,
+                chordCount = distinctVersions.minByOrNull { it.chordCount }?.chordCount ?: 0
             )
-            result[group] = versions
+            result[group] = distinctVersions
         }
         return result
     }
@@ -132,12 +167,34 @@ class CatalogRepository(
      */
     suspend fun getAllArtists(): List<CatalogArtistInfo> {
         cachedArtists?.let { return it }
-        return dao.getAllArtists().also { cachedArtists = it }
+        val official = dao.getAllArtists()
+        val scraped = userCatalogRepo?.getAllArtists() ?: emptyList()
+        if (scraped.isEmpty()) {
+            return official.also { cachedArtists = it }
+        }
+        val map = LinkedHashMap<String, CatalogArtistInfo>()
+        for (item in official) {
+            map[item.artistSlug] = item
+        }
+        for (item in scraped) {
+            val existing = map[item.artistSlug]
+            if (existing != null) {
+                map[item.artistSlug] = existing.copy(songCount = existing.songCount + item.songCount)
+            } else {
+                map[item.artistSlug] = item
+            }
+        }
+        val sorted = map.values.sortedBy { it.artistName.lowercase() }
+        return sorted.also { cachedArtists = it }
     }
 
-    suspend fun getUniqueArtistCount() = dao.getUniqueArtistCount()
+    suspend fun getUniqueArtistCount() = getAllArtists().size
 
-    suspend fun getUniqueSongCount() = dao.getUniqueSongCount()
+    suspend fun getUniqueSongCount(): Int {
+        val officialCount = dao.getUniqueSongCount()
+        val scrapedCount = userCatalogRepo?.getScrapedCount() ?: 0
+        return officialCount + scrapedCount
+    }
 
     suspend fun getBySourceUrl(sourceUrl: String): CatalogSongEntity? {
         val userSong = userCatalogRepo?.getScrapedSongByUrl(sourceUrl)
@@ -150,13 +207,11 @@ class CatalogRepository(
     }
 
     suspend fun getSongVersions(artistSlug: String, titleSlug: String): List<CatalogSongEntity> {
-        val userSong = userCatalogRepo?.getScrapedSongBySlugs(artistSlug, titleSlug)
+        val userSongs = userCatalogRepo?.getAllScrapedSongsBySlugs(artistSlug, titleSlug) ?: emptyList()
         val officialVersions = dao.getSongVersions(artistSlug, titleSlug)
-        return if (userSong != null) {
-            listOf(userSong) + officialVersions.filter { it.sourceUrl != userSong.sourceUrl }
-        } else {
-            officialVersions
-        }
+        if (userSongs.isEmpty()) return officialVersions
+        val userUrls = userSongs.map { it.sourceUrl }.toSet()
+        return userSongs + officialVersions.filter { it.sourceUrl !in userUrls }
     }
 
     /** Pencocokan longgar (prefix) untuk chart: hiasan bisa ada di sisi katalog. */

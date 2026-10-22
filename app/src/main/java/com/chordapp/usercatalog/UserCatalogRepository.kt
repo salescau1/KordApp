@@ -30,6 +30,38 @@ class UserCatalogRepository(
         return scrapedDao.getBySlugs(artistSlug, titleSlug)?.toCatalogSongEntity()
     }
 
+    suspend fun getAllScrapedSongsBySlugs(artistSlug: String, titleSlug: String): List<CatalogSongEntity> {
+        return scrapedDao.getAllScrapedSongsBySlugs(artistSlug, titleSlug).map { it.toCatalogSongEntity() }
+    }
+
+    suspend fun getSongsByArtist(artistSlug: String): List<CatalogSongEntity> {
+        return scrapedDao.getSongsByArtist(artistSlug).map { it.toCatalogSongEntity() }
+    }
+
+    suspend fun getArtistInfo(artistSlug: String): CatalogSongEntity? {
+        return scrapedDao.getArtistInfo(artistSlug)?.toCatalogSongEntity()
+    }
+
+    suspend fun getAllArtists(): List<com.chordapp.catalog.CatalogArtistInfo> {
+        return scrapedDao.getAllArtists()
+    }
+
+    suspend fun searchArtists(query: String, limit: Int = 10): List<com.chordapp.catalog.CatalogArtistInfo> {
+        val variants = com.chordapp.catalog.generateSearchVariants(query)
+        val seen = HashSet<String>()
+        val results = mutableListOf<com.chordapp.catalog.CatalogArtistInfo>()
+        for (v in variants) {
+            val list = scrapedDao.searchArtists(v, limit)
+            for (item in list) {
+                if (seen.add(item.artistSlug)) {
+                    results.add(item)
+                    if (results.size >= limit) return results
+                }
+            }
+        }
+        return results
+    }
+
     suspend fun searchScrapedSongs(query: String, limit: Int = 20): List<CatalogSongEntity> {
         val variants = com.chordapp.catalog.generateSearchVariants(query)
         val seen = HashSet<String>()
