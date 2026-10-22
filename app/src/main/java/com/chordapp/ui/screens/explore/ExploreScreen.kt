@@ -427,7 +427,7 @@ fun ExploreScreen(
                 },
                 text = {
                     Text(
-                        "Tindakan ini akan menghapus ${deletedArtists.size} Artis, ${deletedSongs.size} Lagu, dan ${deletedVersions.size} Versi secara permanen dari database lokal perangkat.",
+                        "Tindakan ini akan menghapus ${deletedArtists.size} Artis, ${deletedSongs.size} Lagu, dan ${deletedVersions.size} Versi secara permanen dari memori HP.",
                         color = MutedText
                     )
                 },

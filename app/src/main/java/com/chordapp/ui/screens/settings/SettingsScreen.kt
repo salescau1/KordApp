@@ -1880,7 +1880,7 @@ fun SettingsScreen(
             },
             text = {
                 Text(
-                    text = "Seluruh lagu hasil comotan web ($scrapedCount lagu) akan dihapus dari penyimpanan perangkat. Database resmi dan data lainnya tetap aman.",
+                    text = "Seluruh lagu hasil comotan web ($scrapedCount lagu) akan dihapus dari memori HP. Database resmi dan data lainnya tetap aman.",
                     color = MutedText,
                     fontSize = 13.5.sp
                 )
@@ -2363,7 +2363,7 @@ fun SettingsScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Masukkan nama perangkat untuk Server Mode:",
+                        text = "Masukkan nama HP untuk Server Mode:",
                         color = MutedText,
                         fontSize = 12.sp
                     )

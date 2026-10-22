@@ -154,7 +154,7 @@ object IndonesianStrings : AppStrings {
     override val selectLanguage = "Pilih Bahasa"
     override val offlineCatalogSection = "KATALOG OFFLINE"
     override val catalogSize = "Ukuran katalog"
-    override val licenseAndDeviceSection = "LISENSI & PERANGKAT"
+    override val licenseAndDeviceSection = "LISENSI & HP"
     override val licenseStatus = "Status Lisensi"
     override val licenseActivePro = "PRO AKTIF"
     override val licenseInactive = "INAKTIF"
@@ -192,7 +192,7 @@ object IndonesianStrings : AppStrings {
     override val buyLicenseLabel = "Beli Lisensi"
     override val lostAccessLabel = "Akses Hilang?"
     override val resetKeyAction = "Reset Lisensi"
-    override val resetKeyDialogTitle = "Reset Perangkat & Pulihkan Lisensi"
+    override val resetKeyDialogTitle = "Reset HP & Pulihkan Lisensi"
     override val resetKeyDialogDesc = "Jika HP lama Anda rusak, hilang, atau ganti baru, masukkan email pemulihan yang telah terdaftar untuk melepaskan lisensi dan mengaktifkannya di HP ini."
     override val sendResetVerificationBtn = "Kirim Verifikasi Reset ke Email"
     override val enterResetOtpTitle = "Masukkan 6-Digit Kode dari Email"
@@ -200,7 +200,7 @@ object IndonesianStrings : AppStrings {
     override val recoveryEmailPlaceholder = "nama@email.com"
     override val resetSuccessMsg = "Lisensi berhasil dilepas dari HP lama! Kode siap diaktifkan."
     override val bindEmailEduTitle = "Amankan Lisensi Anda!"
-    override val bindEmailEduDesc = "Tautkan email Anda sekarang. Jika suatu saat HP Anda hilang atau ganti perangkat baru, Anda dapat memindahkan lisensi secara mandiri tanpa repot."
+    override val bindEmailEduDesc = "Tautkan email Anda sekarang. Jika suatu saat HP Anda hilang atau ganti HP baru, Anda dapat memindahkan lisensi secara mandiri tanpa repot."
     override val bindEmailNowBtn = "Tautkan Email Sekarang"
     override val setupLaterBtn = "Nanti Saja"
     override val bindEmailSuccess = "Email pemulihan berhasil diverifikasi dan ditautkan!"
@@ -236,7 +236,7 @@ object IndonesianStrings : AppStrings {
     override val bandModeServer = "Server"
     override val bandModeNormal = "Normal"
     override val bandModeClient = "Client"
-    override val bandServerName = "Nama Perangkat / Leader"
+    override val bandServerName = "Nama HP / Leader"
     override val bandPinProtection = "Proteksi PIN (4 Digit)"
     override val bandPinPlaceholder = "Contoh: 1234"
     override val bandServerActive = "Server Aktif (Menyiarkan Sesi)"
@@ -281,7 +281,7 @@ object IndonesianStrings : AppStrings {
     override val tierInstalledBadge = "✓ Terpasang"
     override fun tierDownloadingBadge(percent: Int) = "$percent%"
     override val tierBackgroundNote = "Unduhan tetap berjalan di latar belakang walau berpindah halaman."
-    override val tierSectionHint = "Pilih paket sesuai kebutuhan penyimpanan perangkat Anda"
+    override val tierSectionHint = "Pilih paket sesuai sisa memori HP Anda"
     override fun downloadingTierTitle(tier: String) = "Mengunduh Paket $tier"
 
     // Feedback & Suggestions
@@ -298,8 +298,8 @@ Hallo, Tim KordApp
 
 [Isi Pesan]
 
-Info Perangkat : 
-- Perangkat : $device
+Info HP : 
+- Tipe HP : $device
 - Versi KordApp : v$version
 
 Terima Kasih.
@@ -312,8 +312,8 @@ Hallo, Tim KordApp
 
 [Isi Pesan]
 
-Info Perangkat : 
-- Perangkat : $device
+Info HP : 
+- Tipe HP : $device
 - Versi KordApp : v$version
 
 Terima Kasih.
@@ -326,8 +326,8 @@ Hallo, Tim KordApp
 
 [Isi Pesan]
 
-Info Perangkat : 
-- Perangkat : $device
+Info HP : 
+- Tipe HP : $device
 - Versi KordApp : v$version
 
 Terima Kasih.
@@ -342,18 +342,18 @@ Terima Kasih.
     override fun linkCopiedToast(url: String) = "Link disalin: $url"
     override val keyCopiedToast = "Kode lisensi berhasil disalin!"
     override val bindEmailDialogTitle = "Tautkan Email Pemulihan"
-    override val bindEmailDialogDesc = "Tautkan email Anda agar Anda dapat mereset dan memindahkan lisensi secara mandiri jika perangkat ini hilang atau rusak."
+    override val bindEmailDialogDesc = "Tautkan email Anda agar Anda dapat mereset dan memindahkan lisensi secara mandiri jika HP ini hilang atau rusak."
     override val enter6DigitOtpPlaceholder = "Masukkan 6 Digit OTP"
     override val sendOtpBtn = "Kirim OTP"
     override val verifyBtn = "Verifikasi"
     override fun deletePackageDialogTitle(target: String) = "Hapus Database Paket $target?"
-    override fun deletePackageDialogDesc(target: String) = "Apakah Anda yakin ingin menghapus katalog lagu Paket $target dari penyimpanan perangkat?"
+    override fun deletePackageDialogDesc(target: String) = "Apakah Anda yakin ingin menghapus katalog lagu Paket $target dari memori HP?"
     override val stageMirrorInstruction = "Safari iPhone, Android lain, atau laptop di Wi-Fi / Hotspot:"
     override val stageMirrorTitle = "Akses Web Browser (Stage Mirror)"
     override val stageMirrorOptionName = "Nama Host (Rekomendasi)"
     override val stageMirrorOptionIp = "Alamat IP"
     override val noEmailAppFound = "Aplikasi email tidak ditemukan."
-    override val transferDialogWarning = "Peringatan: Memindahkan lisensi akan menyalin kode lisensi dan melepaskan hak akses dari perangkat ini agar dapat digunakan di perangkat lain."
+    override val transferDialogWarning = "Peringatan: Memindahkan lisensi akan menyalin kode lisensi dan melepaskan lisensi dari HP ini agar dapat digunakan di HP lain."
     override val copyingAction = "Menyalin..."
     override val invalidEmailError = "Masukkan alamat email yang valid."
     override fun otpSentToast(email: String) = "Kode OTP telah dikirim ke $email. Periksa kotak masuk atau spam email Anda."

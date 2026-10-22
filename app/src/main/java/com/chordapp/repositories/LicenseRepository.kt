@@ -137,7 +137,7 @@ object LicenseRepository {
                     // Jika lisensi di-reset oleh admin atau berpindah ke HP lain
                     if (!isUsed || boundDevice != deviceId) {
                         revokeLicense(context)
-                        licenseRevokedFlow.tryEmit("Lisensi Anda telah dipindahkan ke perangkat lain.")
+                        licenseRevokedFlow.tryEmit("Lisensi Anda telah dipindahkan ke HP lain.")
                         return@withContext false
                     }
                 } else {
@@ -838,7 +838,7 @@ object LicenseRepository {
             connPatch.disconnect()
 
             if (patchStatus in 200..299) {
-                Triple(true, licenseKey, "Perangkat lama berhasil dilepas! Lisensi siap diaktifkan.")
+                Triple(true, licenseKey, "HP lama berhasil dilepas! Lisensi siap diaktifkan.")
             } else {
                 Triple(false, "", "Gagal melepas lisensi dari server (Error $patchStatus).")
             }

@@ -109,7 +109,7 @@ class LicenseRepositoryTest {
 
     @Test
     fun testLicenseRevokedFlowEmission() = runBlocking {
-        val testReason = "Lisensi Anda telah dipindahkan ke perangkat lain."
+        val testReason = "Lisensi Anda telah dipindahkan ke HP lain."
         var receivedReason: String? = null
         val job = launch {
             LicenseRepository.licenseRevokedFlow.collect { reason ->
