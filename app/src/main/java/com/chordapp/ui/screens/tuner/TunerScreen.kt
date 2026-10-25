@@ -10,9 +10,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -50,10 +52,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -77,6 +81,18 @@ import com.chordapp.tuner.PitchReading
 import com.chordapp.tuner.TunerInstrumentType
 import com.chordapp.tuner.TunerPresets
 import com.chordapp.tuner.TunerString
+import java.io.File
+import coil.compose.AsyncImage
+import com.chordapp.R
+import com.chordapp.localization.LocalAppStrings
+import com.chordapp.settings.CustomPlayerManager
+import com.chordapp.ui.theme.Background
+import com.chordapp.ui.theme.Border
+import com.chordapp.ui.theme.CardSurface
+import com.chordapp.ui.theme.LocalChordAppColors
+import com.chordapp.ui.theme.MutedText
+import com.chordapp.ui.theme.PrimaryText
+import com.chordapp.ui.theme.ThemeTextureType
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -121,38 +137,78 @@ fun TunerScreen(
 
     var selectedInstrument by remember { mutableStateOf(TunerInstrumentType.GUITAR_6) }
     var isAutoMode by remember { mutableStateOf(true) }
-    var manualSelectedString by remember { mutableStateOf<TunerString?>(null) }
     var instrumentMenuExpanded by remember { mutableStateOf(false) }
 
     val reading by pitchDetector.pitchState.collectAsState()
 
-    // Chime feedback when in tune
-    var lastChimeTime by remember { mutableLongStateOf(0L) }
-    var wasInTune by remember { mutableStateOf(false) }
-
-    LaunchedEffect(reading.isInTune, reading.isSilent) {
-        val now = System.currentTimeMillis()
-        if (reading.isInTune && !reading.isSilent && !wasInTune && (now - lastChimeTime > 1200L)) {
-            lastChimeTime = now
-            audioPlayer.playInTuneChime()
-        }
-        wasInTune = reading.isInTune && !reading.isSilent
+    val strings = remember(selectedInstrument) {
+        TunerPresets.getStringsFor(selectedInstrument)
     }
 
-    // Detector updates
-    LaunchedEffect(selectedInstrument) {
-        pitchDetector.currentInstrument = selectedInstrument
-        manualSelectedString = TunerPresets.getStringsFor(selectedInstrument).firstOrNull()
-        pitchDetector.targetString = manualSelectedString
+    // Strictly ordered sequence 6 -> 5 -> 4 -> 3 -> 2 -> 1
+    val sortedStrings = remember(strings) {
+        strings.sortedByDescending { it.stringNumber }
     }
 
-    LaunchedEffect(isAutoMode) {
+    var tunedStrings by remember { mutableStateOf(setOf<Int>()) }
+    var currentTargetNumber by remember {
+        mutableIntStateOf(sortedStrings.firstOrNull()?.stringNumber ?: 6)
+    }
+
+    val allTuned = remember(tunedStrings, strings) {
+        strings.isNotEmpty() && strings.all { it.stringNumber in tunedStrings }
+    }
+
+    val currentTargetString = remember(currentTargetNumber, sortedStrings) {
+        sortedStrings.find { it.stringNumber == currentTargetNumber } ?: sortedStrings.firstOrNull()
+    }
+
+    // Keep detector target synchronized
+    LaunchedEffect(currentTargetString, isAutoMode) {
+        pitchDetector.targetString = currentTargetString
         pitchDetector.isAutoMode = isAutoMode
     }
 
-    LaunchedEffect(manualSelectedString) {
-        if (!isAutoMode) {
-            pitchDetector.targetString = manualSelectedString
+    // Reset when instrument changes
+    LaunchedEffect(selectedInstrument) {
+        tunedStrings = emptySet()
+        val firstStr = TunerPresets.getStringsFor(selectedInstrument).maxOfOrNull { it.stringNumber } ?: 1
+        currentTargetNumber = firstStr
+        pitchDetector.currentInstrument = selectedInstrument
+    }
+
+    // When Auto mode is toggled ON: advance to first untuned string in sequence
+    LaunchedEffect(isAutoMode) {
+        if (isAutoMode) {
+            val nextUntuned = sortedStrings.firstOrNull { it.stringNumber !in tunedStrings }
+            if (nextUntuned != null) {
+                currentTargetNumber = nextUntuned.stringNumber
+            }
+        }
+    }
+
+    // In-tune stability & Auto sequence progression 6 -> 5 -> 4 -> 3 -> 2 -> 1
+    // In both Auto and Manual: string turns green ONLY when tuner reaches sempurna
+    LaunchedEffect(reading.isInTune, reading.isSilent, reading.matchedString?.stringNumber) {
+        if (reading.isInTune && !reading.isSilent && reading.matchedString != null) {
+            val matchedNum = reading.matchedString!!.stringNumber
+            if (matchedNum == currentTargetNumber) {
+                delay(350L)
+                if (reading.isInTune && !reading.isSilent && reading.matchedString?.stringNumber == matchedNum) {
+                    if (matchedNum !in tunedStrings) {
+                        audioPlayer.playInTuneChime()
+                        tunedStrings = tunedStrings + matchedNum
+
+                        if (isAutoMode) {
+                            // Advance to next string in sequence 6 -> 5 -> 4 -> 3 -> 2 -> 1
+                            val curIdx = sortedStrings.indexOfFirst { it.stringNumber == matchedNum }
+                            if (curIdx >= 0 && curIdx + 1 < sortedStrings.size) {
+                                currentTargetNumber = sortedStrings[curIdx + 1].stringNumber
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -167,28 +223,102 @@ fun TunerScreen(
         }
     }
 
-    val strings = remember(selectedInstrument) {
-        TunerPresets.getStringsFor(selectedInstrument)
-    }
-
-    val activeHighlightString = if (isAutoMode) {
-        reading.matchedString
-    } else {
-        manualSelectedString
-    }
-
     val headstockDrawable = when (selectedInstrument) {
         TunerInstrumentType.GUITAR_6 -> com.chordapp.R.drawable.guitar_headstock
         TunerInstrumentType.BASS_4 -> com.chordapp.R.drawable.bass_headstock
         TunerInstrumentType.UKULELE -> com.chordapp.R.drawable.ukulele_headstock
     }
 
-    Column(
+    val customConfig by CustomPlayerManager.config.collectAsState()
+    val isCustomActive = customConfig.enabled
+    val colors = LocalChordAppColors.current
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TunerDarkBg)
-            .statusBarsPadding()
+            .background(Background)
     ) {
+        // (1) Custom Player Background Photo / Textures
+        if (isCustomActive && customConfig.bgEnabled && customConfig.bgPath != null && File(customConfig.bgPath!!).exists()) {
+            AsyncImage(
+                model = File(customConfig.bgPath!!),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = customConfig.bgDimmer))
+            )
+            if (customConfig.textureEnabled) {
+                when (customConfig.textureType) {
+                    "paper" -> {
+                        Image(
+                            painter = painterResource(id = R.drawable.texture_paper),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                            alpha = 0.40f
+                        )
+                    }
+                    "canvas" -> {
+                        Image(
+                            painter = painterResource(id = R.drawable.texture_leather),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                            alpha = 0.40f
+                        )
+                    }
+                    "halftone" -> {
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val dotSpacing = 16f
+                            val dotRadius = 2.2f
+                            var y = 0f
+                            while (y < size.height) {
+                                var x = 0f
+                                while (x < size.width) {
+                                    drawCircle(
+                                        color = Color.Black.copy(alpha = 0.45f),
+                                        radius = dotRadius,
+                                        center = Offset(x, y)
+                                    )
+                                    x += dotSpacing
+                                }
+                                y += dotSpacing
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // (2) Themed Background Texture (Parchment, Leather, Blackboard, etc.)
+            if (colors.textureType != ThemeTextureType.NONE) {
+                val resId = when (colors.textureType) {
+                    ThemeTextureType.LEATHER -> R.drawable.texture_leather
+                    ThemeTextureType.PARCHMENT -> R.drawable.texture_paper
+                    ThemeTextureType.CHALKBOARD -> R.drawable.texture_blackboard
+                    ThemeTextureType.GREENBOARD -> R.drawable.texture_greenboard
+                    ThemeTextureType.CRIMSON_SHADOW -> R.drawable.texture_crimson_shadow
+                    ThemeTextureType.NONE -> null
+                }
+                resId?.let {
+                    Image(
+                        painter = painterResource(id = it),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
         // =======================================================================
         // 1. TOP BAR: (x) KordApp Tuner            Auto (0-0)
         // =======================================================================
@@ -246,28 +376,28 @@ fun TunerScreen(
                     .alpha(0.20f)
             )
 
-            // (b) Top Fade-Out Gradient Line
+            // (b) Top Fade-Out Gradient Line: Black Vignette Shadow (Blends across all themes)
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .height(56.dp)
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(TunerDarkBg, Color.Transparent)
+                            colors = listOf(Color.Black.copy(alpha = 0.65f), Color.Transparent)
                         )
                     )
             )
 
-            // (c) Bottom Fade-Out Gradient Line
+            // (c) Bottom Fade-Out Gradient Line: Black Vignette Shadow (Blends across all themes)
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .height(56.dp)
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, TunerDarkBg)
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f))
                         )
                     )
             )
@@ -283,7 +413,10 @@ fun TunerScreen(
                 // Giant Active Note Readout (e.g. E, A, D, G, B)
                 BigNoteDisplay(
                     reading = reading,
-                    isSilent = reading.isSilent
+                    isSilent = reading.isSilent,
+                    targetString = currentTargetString,
+                    isAutoMode = isAutoMode,
+                    allTuned = allTuned
                 )
 
                 Spacer(modifier = Modifier.height(18.dp))
@@ -299,25 +432,34 @@ fun TunerScreen(
                 // Status message & Frequency
                 TunerStatusReadout(
                     reading = reading,
-                    isSilent = reading.isSilent
+                    isSilent = reading.isSilent,
+                    targetString = currentTargetString,
+                    isAutoMode = isAutoMode,
+                    allTuned = allTuned,
+                    onReset = {
+                        tunedStrings = emptySet()
+                        currentTargetNumber = sortedStrings.firstOrNull()?.stringNumber ?: 6
+                    },
+                    showReset = tunedStrings.isNotEmpty()
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Horizontal String Selector Row (Clean borderless pills)
+                // Horizontal String Selector Row (6 -> 5 -> 4 -> 3 -> 2 -> 1)
                 TunerStringsRow(
                     strings = strings,
-                    activeString = activeHighlightString,
-                    isInTune = reading.isInTune && !reading.isSilent,
+                    currentTargetNumber = currentTargetNumber,
+                    tunedStrings = tunedStrings,
                     onSelect = { str ->
                         audioPlayer.playStringNote(selectedInstrument, str.stringNumber)
-                        if (!isAutoMode) {
-                            manualSelectedString = str
-                        }
+                        currentTargetNumber = str.stringNumber
+                        // When tapped, it is NOT green until tuned to perfection:
+                        tunedStrings = tunedStrings - str.stringNumber
                     }
                 )
             }
         }
+    }
     }
 }
 
@@ -330,6 +472,7 @@ private fun TunerTopBar(
     onAutoToggle: (Boolean) -> Unit,
     onClose: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -344,12 +487,13 @@ private fun TunerTopBar(
                 modifier = Modifier
                     .size(38.dp)
                     .clip(CircleShape)
-                    .background(TunerCardBg)
+                    .background(CardSurface.copy(alpha = 0.90f))
+                    .border(1.dp, Border.copy(alpha = 0.70f), CircleShape)
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Close Tuner",
-                    tint = Color.White
+                    contentDescription = strings.close,
+                    tint = PrimaryText
                 )
             }
 
@@ -358,7 +502,7 @@ private fun TunerTopBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "Kord",
-                    color = Color.White,
+                    color = PrimaryText,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold
                 )
@@ -369,8 +513,8 @@ private fun TunerTopBar(
                     fontWeight = FontWeight.ExtraBold
                 )
                 Text(
-                    text = " Tuner",
-                    color = Color(0xFFD0D7E2),
+                    text = " " + strings.tunerTitle.lowercase().replaceFirstChar { it.uppercase() },
+                    color = MutedText,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -382,12 +526,13 @@ private fun TunerTopBar(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
-                .background(TunerCardBg)
+                .background(CardSurface.copy(alpha = 0.90f))
+                .border(1.dp, Border.copy(alpha = 0.70f), RoundedCornerShape(20.dp))
                 .padding(start = 12.dp, end = 6.dp, top = 2.dp, bottom = 2.dp)
         ) {
             Text(
-                text = "AUTO",
-                color = if (isAutoMode) TunerEmerald else TunerMuted,
+                text = strings.tunerAutoMode.uppercase(),
+                color = if (isAutoMode) TunerEmerald else MutedText,
                 fontSize = 11.5.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
@@ -399,8 +544,8 @@ private fun TunerTopBar(
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
                     checkedTrackColor = TunerEmerald,
-                    uncheckedThumbColor = TunerMuted,
-                    uncheckedTrackColor = Color(0xFF20252C),
+                    uncheckedThumbColor = MutedText,
+                    uncheckedTrackColor = CardSurface,
                     uncheckedBorderColor = Color.Transparent
                 )
             )
@@ -426,7 +571,8 @@ private fun InstrumentSelectorRow(
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
-                .background(TunerCardBg)
+                .background(CardSurface.copy(alpha = 0.90f))
+                .border(1.dp, Border.copy(alpha = 0.70f), RoundedCornerShape(10.dp))
                 .clickable { onExpandChange(true) }
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -435,21 +581,21 @@ private fun InstrumentSelectorRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = currentInstrument.displayName,
-                        color = Color.White,
+                        color = PrimaryText,
                         fontSize = 13.5.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Pilih Instrumen",
-                        tint = TunerMuted,
+                        contentDescription = null,
+                        tint = MutedText,
                         modifier = Modifier.size(17.dp)
                     )
                 }
                 Text(
                     text = currentInstrument.subtitle,
-                    color = TunerMuted,
+                    color = MutedText,
                     fontSize = 10.5.sp
                 )
             }
@@ -459,7 +605,8 @@ private fun InstrumentSelectorRow(
             expanded = isMenuExpanded,
             onDismissRequest = { onExpandChange(false) },
             modifier = Modifier
-                .background(TunerCardBg)
+                .background(CardSurface)
+                .border(1.dp, Border, RoundedCornerShape(8.dp))
         ) {
             TunerInstrumentType.values().forEach { type ->
                 DropdownMenuItem(
@@ -467,12 +614,12 @@ private fun InstrumentSelectorRow(
                         Column {
                             Text(
                                 text = type.displayName,
-                                color = if (type == currentInstrument) TunerGold else Color.White,
+                                color = if (type == currentInstrument) TunerGold else PrimaryText,
                                 fontWeight = if (type == currentInstrument) FontWeight.Bold else FontWeight.Normal
                             )
                             Text(
                                 text = type.subtitle,
-                                color = TunerMuted,
+                                color = MutedText,
                                 fontSize = 11.sp
                             )
                         }
@@ -528,14 +675,18 @@ private fun MicPermissionBanner(onRequestPermission: () -> Unit) {
 @Composable
 private fun BigNoteDisplay(
     reading: PitchReading,
-    isSilent: Boolean
+    isSilent: Boolean,
+    targetString: TunerString?,
+    isAutoMode: Boolean,
+    allTuned: Boolean
 ) {
     val isInTune = reading.isInTune && !isSilent
     val noteColor by animateColorAsState(
         targetValue = when {
-            isSilent -> Color(0xFF6B7280)
+            allTuned -> TunerEmerald
+            isSilent -> MutedText
             isInTune -> TunerEmerald
-            else -> Color.White
+            else -> PrimaryText
         },
         label = "noteColor"
     )
@@ -543,24 +694,72 @@ private fun BigNoteDisplay(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = if (isSilent) "--" else reading.noteName.ifEmpty { "--" },
-                color = noteColor,
-                fontSize = 68.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = (-1).sp
-            )
-            if (!isSilent && reading.octave > 0) {
+        if (isAutoMode && allTuned) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
                 Text(
-                    text = "${reading.octave}",
-                    color = noteColor.copy(alpha = 0.7f),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 12.dp, start = 2.dp)
+                    text = "PAS",
+                    color = TunerEmerald,
+                    fontSize = 58.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.sp
+                )
+            }
+        } else if (!isSilent) {
+            val stringNum = reading.matchedString?.stringNumber ?: targetString?.stringNumber
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = reading.noteName.ifEmpty { "--" },
+                    color = noteColor,
+                    fontSize = 68.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-1).sp
+                )
+                if (stringNum != null) {
+                    Text(
+                        text = "$stringNum",
+                        color = noteColor.copy(alpha = 0.7f),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
+                    )
+                }
+            }
+        } else {
+            // Silent state: show guided or manual target note faintly
+            val targetNote = targetString
+            if (targetNote != null) {
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = targetNote.noteName,
+                        color = TunerGold.copy(alpha = 0.45f),
+                        fontSize = 68.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = (-1).sp
+                    )
+                    Text(
+                        text = "${targetNote.stringNumber}",
+                        color = TunerGold.copy(alpha = 0.30f),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
+                    )
+                }
+            } else {
+                Text(
+                    text = "--",
+                    color = noteColor,
+                    fontSize = 68.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-1).sp
                 )
             }
         }
@@ -578,9 +777,9 @@ private fun TunerDiagramMeter(
     val rawDev = reading.centsDeviation
     val absDev = abs(rawDev)
     val displayedCents = when {
-        absDev <= 2.5f -> 0f
-        absDev <= 6.0f -> {
-            val t = (absDev - 2.5f) / 3.5f
+        absDev <= 2.0f -> 0f
+        absDev <= 5.0f -> {
+            val t = (absDev - 2.0f) / 3.0f
             val smoothT = t * t * (3f - 2f * t)
             kotlin.math.sign(rawDev) * (absDev * smoothT)
         }
@@ -593,11 +792,14 @@ private fun TunerDiagramMeter(
     }
     val targetCents = if (isSilent) lastHeldCents else displayedCents
 
+    // GuitarTuna Grade Calm Analog Needle:
+    // Critically damped (dampingRatio = 1.0f, no bounce) with low stiffness (140f)
+    // gives that signature smooth, heavy, luxury VU-meter glide.
     val animatedCents by animateFloatAsState(
         targetValue = targetCents,
         animationSpec = spring(
             dampingRatio = 1.0f,
-            stiffness = 220f
+            stiffness = 140f
         ),
         label = "diagramCents"
     )
@@ -716,10 +918,10 @@ private fun TunerDiagramMeter(
                 ) {
                     if (isInTune) {
                         Text(
-                            text = "✓",
+                            text = "0",
                             color = Color.Black,
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 17.sp
+                            fontSize = 15.sp
                         )
                     } else if (!isSilent) {
                         Text(
@@ -741,18 +943,54 @@ private fun TunerDiagramMeter(
 @Composable
 private fun TunerStatusReadout(
     reading: PitchReading,
-    isSilent: Boolean
+    isSilent: Boolean,
+    targetString: TunerString?,
+    isAutoMode: Boolean,
+    allTuned: Boolean,
+    onReset: () -> Unit,
+    showReset: Boolean
 ) {
+    val strings = LocalAppStrings.current
     val isInTune = reading.isInTune && !isSilent
+
     val statusText = when {
-        isSilent -> "Petik senar..."
-        isInTune -> "✓ PAS! (In Tune)"
-        reading.centsDeviation < -4f -> "Terlalu Rendah (${reading.centsDeviation.roundToInt()} cents)"
-        else -> "Terlalu Tinggi (+${reading.centsDeviation.roundToInt()} cents)"
+        isAutoMode && allTuned -> strings.tunerAllInTune
+        isSilent -> {
+            if (targetString != null) {
+                strings.tunerPluckTarget(targetString.stringNumber, targetString.noteName)
+            } else {
+                strings.tunerPluckString
+            }
+        }
+        isInTune -> {
+            val str = reading.matchedString
+            if (str != null) {
+                strings.tunerInTune(str.stringNumber, str.noteName)
+            } else {
+                "PAS! ${reading.noteName}"
+            }
+        }
+        reading.centsDeviation < -4f -> {
+            val str = reading.matchedString
+            if (str != null) {
+                strings.tunerTooLow(str.stringNumber, kotlin.math.abs(reading.centsDeviation.roundToInt()))
+            } else {
+                "${reading.noteName}: (${reading.centsDeviation.roundToInt()} cents)"
+            }
+        }
+        else -> {
+            val str = reading.matchedString
+            if (str != null) {
+                strings.tunerTooHigh(str.stringNumber, kotlin.math.abs(reading.centsDeviation.roundToInt()))
+            } else {
+                "${reading.noteName}: (+${reading.centsDeviation.roundToInt()} cents)"
+            }
+        }
     }
 
     val statusColor = when {
-        isSilent -> TunerMuted
+        isAutoMode && allTuned -> TunerEmerald
+        isSilent -> if (targetString != null) TunerGold else MutedText
         isInTune -> TunerEmerald
         else -> TunerGold
     }
@@ -770,9 +1008,27 @@ private fun TunerStatusReadout(
         if (!isSilent && reading.frequencyHz > 0f) {
             Text(
                 text = " • ${String.format("%.1f", reading.frequencyHz)} Hz",
-                color = TunerMuted,
+                color = MutedText,
                 fontSize = 12.5.sp
             )
+        }
+        if (showReset) {
+            Spacer(modifier = Modifier.width(10.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(CardSurface)
+                    .border(1.dp, Border, RoundedCornerShape(6.dp))
+                    .clickable { onReset() }
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = strings.tunerReset,
+                    color = MutedText,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 }
@@ -783,8 +1039,8 @@ private fun TunerStatusReadout(
 @Composable
 private fun TunerStringsRow(
     strings: List<TunerString>,
-    activeString: TunerString?,
-    isInTune: Boolean,
+    currentTargetNumber: Int,
+    tunedStrings: Set<Int>,
     onSelect: (TunerString) -> Unit
 ) {
     // Sort strings logically from lowest string (6) to highest (1)
@@ -800,22 +1056,32 @@ private fun TunerStringsRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         sortedStrings.forEach { stringItem ->
-            val isCurrent = activeString?.stringIndex == stringItem.stringIndex
+            val isTuned = stringItem.stringNumber in tunedStrings
+            val isCurrent = stringItem.stringNumber == currentTargetNumber
 
             val badgeBg by animateColorAsState(
                 targetValue = when {
-                    isCurrent && isInTune -> TunerEmerald.copy(alpha = 0.30f)
-                    isCurrent -> TunerCardBg
-                    else -> Color(0xFF14171C)
+                    isTuned -> TunerEmerald.copy(alpha = 0.20f)
+                    isCurrent -> TunerGold.copy(alpha = 0.20f)
+                    else -> CardSurface.copy(alpha = 0.85f)
                 },
                 label = "pillBg"
             )
 
+            val badgeBorderColor by animateColorAsState(
+                targetValue = when {
+                    isTuned -> TunerEmerald
+                    isCurrent -> TunerGold
+                    else -> Border
+                },
+                label = "pillBorder"
+            )
+
             val badgeTextColor by animateColorAsState(
                 targetValue = when {
-                    isCurrent && isInTune -> TunerEmerald
+                    isTuned -> TunerEmerald
                     isCurrent -> TunerGold
-                    else -> Color(0xFFA0ACBC)
+                    else -> PrimaryText
                 },
                 label = "pillText"
             )
@@ -824,11 +1090,18 @@ private fun TunerStringsRow(
                 modifier = Modifier
                     .clip(RoundedCornerShape(14.dp))
                     .background(badgeBg)
+                    .border(
+                        border = BorderStroke(
+                            width = if (isTuned || isCurrent) 1.5.dp else 1.dp,
+                            color = badgeBorderColor
+                        ),
+                        shape = RoundedCornerShape(14.dp)
+                    )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) { onSelect(stringItem) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -836,12 +1109,15 @@ private fun TunerStringsRow(
                         text = stringItem.noteName,
                         color = badgeTextColor,
                         fontSize = 18.sp,
-                        fontWeight = if (isCurrent) FontWeight.ExtraBold else FontWeight.Bold
+                        fontWeight = if (isTuned || isCurrent) FontWeight.ExtraBold else FontWeight.Bold
                     )
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
                     Text(
                         text = "${stringItem.stringNumber}",
-                        color = TunerMuted,
-                        fontSize = 10.sp,
+                        color = if (isTuned) TunerEmerald.copy(alpha = 0.8f) else TunerMuted,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     )
                 }

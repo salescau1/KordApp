@@ -1,6 +1,11 @@
 package com.chordapp.ui.screens.player
 
 import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
+import coil.compose.AsyncImage
+import com.chordapp.settings.CustomPlayerManager
+import java.io.File
 
 import com.chordapp.R
 import com.chordapp.ui.theme.ThemeTextureType
@@ -156,7 +161,7 @@ private fun PageLine(
         ) {
             Text(
                 text = line.text,
-                color = AccentGold,
+                color = PrimaryText,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
                 fontSize = fontSize.sp,
@@ -348,6 +353,8 @@ private fun PagedSheet(
     ) {
         VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { pageIndex ->
             val page = pages.getOrNull(pageIndex) ?: return@VerticalPager
+            val customConfig by CustomPlayerManager.config.collectAsState()
+            val sectionColor = if (customConfig.enabled) customConfig.getSectionColor() else PrimaryText
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -373,12 +380,11 @@ private fun PagedSheet(
                                 Spacer(modifier = Modifier.height((fontSize * 0.75f).dp))
                             }
                             is SheetLine.Section -> {
-                                Text(
+                                AppSheetText(
                                     text = line.text,
-                                    color = AccentGold,
+                                    color = sectionColor,
                                     fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = fontSize.sp,
+                                    fontSize = fontSize,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(top = 8.dp, bottom = 2.dp)
@@ -999,9 +1005,67 @@ fun PlayerScreen(
         }
     }
 
+    val customConfig by CustomPlayerManager.config.collectAsState()
+    val isCustomActive = customConfig.enabled
+
     Box(modifier = Modifier.fillMaxSize().background(Background)) {
-        // Themed textured layer behind sheet
-        PlayerThemedTexture(textureType = com.chordapp.ui.theme.LocalChordAppColors.current.textureType)
+        // Custom background photo or themed textured layer behind sheet
+        if (isCustomActive && customConfig.bgEnabled && customConfig.bgPath != null && File(customConfig.bgPath!!).exists()) {
+            AsyncImage(
+                model = File(customConfig.bgPath!!),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = customConfig.bgDimmer))
+            )
+            if (customConfig.textureEnabled) {
+                when (customConfig.textureType) {
+                    "paper" -> {
+                        Image(
+                            painter = painterResource(id = R.drawable.texture_paper),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            alpha = 0.40f
+                        )
+                    }
+                    "canvas" -> {
+                        Image(
+                            painter = painterResource(id = R.drawable.texture_leather),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            alpha = 0.40f
+                        )
+                    }
+                    "halftone" -> {
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val dotSpacing = 16f
+                            val dotRadius = 2.2f
+                            var y = 0f
+                            while (y < size.height) {
+                                var x = 0f
+                                while (x < size.width) {
+                                    drawCircle(
+                                        color = Color.Black.copy(alpha = 0.45f),
+                                        radius = dotRadius,
+                                        center = Offset(x, y)
+                                    )
+                                    x += dotSpacing
+                                }
+                                y += dotSpacing
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            PlayerThemedTexture(textureType = com.chordapp.ui.theme.LocalChordAppColors.current.textureType)
+        }
 
         val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -1070,21 +1134,12 @@ fun PlayerScreen(
                                     Spacer(modifier = Modifier.height((fontSize * 1.5).dp))
                                 }
                                 is SheetLine.Section -> {
-                                    val isDark = LocalChordAppColors.current.isDark
-                                    val textShadow = if (isDark) {
-                                        Shadow(
-                                            color = Color.Black.copy(alpha = 0.70f),
-                                            offset = Offset(1.5f, 1.5f),
-                                            blurRadius = 3f
-                                        )
-                                    } else null
-                                    Text(
+                                    val sectionColor = if (isCustomActive) customConfig.getSectionColor() else PrimaryText
+                                    AppSheetText(
                                         text = line.text,
-                                        color = AccentGold,
+                                        color = sectionColor,
                                         fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = fontSize.sp,
-                                        style = TextStyle(shadow = textShadow),
+                                        fontSize = fontSize,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(top = 16.dp, bottom = 4.dp)

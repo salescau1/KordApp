@@ -52,6 +52,8 @@ import com.chordapp.p2p.DiscoveredServer
 import com.chordapp.repositories.LicenseRepository
 import com.chordapp.ui.theme.*
 import com.chordapp.viewmodels.SettingsViewModel
+import com.chordapp.settings.CustomPlayerManager
+import com.chordapp.settings.CustomPlayerConfig
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -73,6 +75,8 @@ fun SettingsScreen(
     val currentTheme by viewModel.currentTheme.collectAsState()
     val stats by viewModel.catalogStats.collectAsState()
     val scrapedCount by viewModel.scrapedCount.collectAsState()
+    val customConfig by CustomPlayerManager.config.collectAsState()
+    var showCustomPlayerDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -99,7 +103,6 @@ fun SettingsScreen(
     var isCheckingUpdate by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<com.chordapp.repositories.AppUpdateInfo?>(null) }
     var showUpdateDialog by remember { mutableStateOf(false) }
-    var isDownloadingUpdate by remember { mutableStateOf(false) }
 
     val bandMode by viewModel.bandMode.collectAsState()
     val deviceName by viewModel.deviceName.collectAsState()
@@ -704,6 +707,60 @@ fun SettingsScreen(
                         currentTheme = currentTheme,
                         onThemeSelect = { viewModel.setTheme(it) }
                     )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                    HorizontalDivider(color = Border, thickness = 0.8.dp)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Custom Player Row: [Edit] and [0-0] Switch
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                            Text(
+                                text = "Custom Player",
+                                color = PrimaryText,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Kustomisasi chord, lirik & background",
+                                color = MutedText,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { showCustomPlayerDialog = true },
+                                modifier = Modifier.height(34.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                                border = BorderStroke(1.dp, BrandGold)
+                            ) {
+                                Text(
+                                    text = "Edit",
+                                    color = BrandGold,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Switch(
+                                checked = customConfig.enabled,
+                                onCheckedChange = { enabled ->
+                                    CustomPlayerManager.setEnabled(context, enabled)
+                                }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -716,6 +773,17 @@ fun SettingsScreen(
             val catalogDownloadProgress = tierDownloadState.progress
             val catalogDownloadStatus = tierDownloadState.statusText
             val catalogDownloadError = tierDownloadState.error
+
+            if (showCustomPlayerDialog) {
+                CustomPlayerDialog(
+                    initialConfig = customConfig,
+                    onDismiss = { showCustomPlayerDialog = false },
+                    onApply = { newConfig ->
+                        CustomPlayerManager.updateConfig(context, newConfig)
+                        showCustomPlayerDialog = false
+                    }
+                )
+            }
 
             SettingsSection(title = "KORDAPP CATALOG") {
                 Column {
@@ -1909,54 +1977,9 @@ fun SettingsScreen(
     // Dialog Update APK Tersedia
     if (showUpdateDialog && updateInfo != null) {
         val info = updateInfo!!
-        AlertDialog(
-            onDismissRequest = {
-                if (!info.isForceUpdate && !isDownloadingUpdate) showUpdateDialog = false
-            },
-            title = {
-                Text(strings.updateAvailableTitle, color = PrimaryText, fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = strings.newVersionAvailable(info.latestVersionName),
-                        color = AccentGold,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = info.changelog,
-                        color = MutedText,
-                        fontSize = 13.sp
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        isDownloadingUpdate = true
-                        com.chordapp.repositories.UpdateRepository.startDownloadAndInstall(
-                            context,
-                            info.downloadUrl,
-                            "KordApp-v${info.latestVersionName}.apk"
-                        )
-                        Toast.makeText(context, strings.downloadStartedToast, Toast.LENGTH_LONG).show()
-                        if (!info.isForceUpdate) {
-                            showUpdateDialog = false
-                            isDownloadingUpdate = false
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentGold),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(strings.updateAction, color = Color(0xFF0C0E12), fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showUpdateDialog = false }) {
-                    Text(strings.laterAction, color = MutedText)
-                }
-            },
-            containerColor = CardSurface
+        com.chordapp.ui.components.UpdateNotificationDialog(
+            updateInfo = info,
+            onDismiss = { showUpdateDialog = false }
         )
     }
 

@@ -295,9 +295,8 @@ private fun CompactHome(
                 }
                 .background(
                     Brush.verticalGradient(
-                        0.0f to Background,
-                        0.80f to Background.copy(alpha = 0.96f),
-                        0.95f to Background.copy(alpha = 0.85f),
+                        0.0f to Color.Black.copy(alpha = 0.85f),
+                        0.60f to Color.Black.copy(alpha = 0.50f),
                         1.0f to Color.Transparent
                     )
                 )

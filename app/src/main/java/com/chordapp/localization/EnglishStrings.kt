@@ -366,4 +366,19 @@ Thank you.
     override val downloadStartedToast = "Download started. Check notifications."
     override val verifyAndContinueBtn = "Verify & Continue"
     override val confirmToWhatsApp = "Confirm via WhatsApp"
+    override val dontShowAgain = "Don't show this again"
+
+    // Tuner Strings
+    override val tunerTitle = "TUNER"
+    override val tunerAutoMode = "Auto"
+    override val tunerManualMode = "Manual"
+    override val tunerPluckString = "Pluck a string..."
+    override val tunerAllInTune = "🎉 All Strings In Tune! Ready to Play"
+    override val tunerReset = "Reset"
+    override val tunerMicPermissionRequired = "Microphone Permission Required"
+    override val tunerEnableMic = "Enable Mic"
+    override fun tunerPluckTarget(stringNum: Int, note: String) = "Pluck String $stringNum ($note)"
+    override fun tunerInTune(stringNum: Int, note: String) = "IN TUNE! String $stringNum ($note)"
+    override fun tunerTooLow(stringNum: Int, cents: Int) = "String $stringNum: Too Low ($cents cents)"
+    override fun tunerTooHigh(stringNum: Int, cents: Int) = "String $stringNum: Too High (+$cents cents)"
 }

@@ -37,6 +37,7 @@ class MainActivity : ComponentActivity() {
         optimizeRefreshRate()
         AppLanguageManager.initialize(this)
         AppThemeManager.initialize(this)
+        com.chordapp.settings.CustomPlayerManager.initialize(this)
         setContent {
             val currentLanguage by AppLanguageManager.currentLanguage.collectAsState()
             val currentTheme by AppThemeManager.currentTheme.collectAsState()

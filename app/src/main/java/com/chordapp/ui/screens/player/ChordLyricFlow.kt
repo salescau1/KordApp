@@ -10,12 +10,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import com.chordapp.settings.CustomPlayerManager
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
@@ -23,6 +29,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chordapp.player.ChordParser
 import com.chordapp.player.SheetLine
@@ -30,6 +37,7 @@ import com.chordapp.player.Transposer
 import com.chordapp.ui.theme.ChordText
 import com.chordapp.ui.theme.LocalChordAppColors
 import com.chordapp.ui.theme.PrimaryText
+import com.chordapp.ui.theme.UnifiedChordGold
 
 /**
  * One wrap unit: a lyric word (or an empty string for a chord that sits past the
@@ -111,6 +119,112 @@ internal fun buildChordLyricSegments(
 }
 
 /**
+ * Renders text with optional diffuse centered ambient shadow and/or outline,
+ * reacting dynamically to Custom Player styling if enabled, or falling back to theme defaults.
+ */
+@Composable
+internal fun AppSheetText(
+    text: String,
+    color: Color,
+    fontSize: Float,
+    modifier: Modifier = Modifier,
+    fontWeight: FontWeight = FontWeight.SemiBold,
+    isDark: Boolean = LocalChordAppColors.current.isDark,
+    shadowEnabled: Boolean? = null,
+    shadowLevel: String? = null,
+    outlineEnabled: Boolean? = null,
+    outlineLevel: String? = null
+) {
+    val customConfig by CustomPlayerManager.config.collectAsState()
+    val isCustomActive = customConfig.enabled
+
+    val effectiveShadowEnabled = shadowEnabled ?: if (isCustomActive) customConfig.shadowEnabled else true
+    val effectiveShadowLevel = shadowLevel ?: if (isCustomActive) customConfig.shadowLevel else "medium"
+
+    val effectiveOutlineEnabled = outlineEnabled ?: if (isCustomActive) customConfig.outlineEnabled else false
+    val effectiveOutlineLevel = outlineLevel ?: if (isCustomActive) customConfig.outlineLevel else "medium"
+
+    val density = LocalDensity.current
+
+    val (wideBlurPx, coreBlurPx, shadowAlpha) = remember(density, effectiveShadowLevel, isDark) {
+        with(density) {
+            when (effectiveShadowLevel) {
+                "thin" -> Triple(5.dp.toPx(), 2.dp.toPx(), if (isDark) 0.65f else 0.40f)
+                "thick" -> Triple(16.dp.toPx(), 6.dp.toPx(), if (isDark) 1.0f else 0.85f)
+                else -> Triple(10.dp.toPx(), 4.dp.toPx(), if (isDark) 0.95f else 0.70f)
+            }
+        }
+    }
+
+    val outlineStrokePx = remember(density, effectiveOutlineLevel) {
+        with(density) {
+            when (effectiveOutlineLevel) {
+                "thin" -> 2.2.dp.toPx()
+                "thick" -> 4.5.dp.toPx()
+                else -> 3.2.dp.toPx()
+            }
+        }
+    }
+
+    val shadowColor = remember(isDark, color, shadowAlpha) {
+        if (isDark) {
+            Color.Black.copy(alpha = shadowAlpha)
+        } else {
+            if (color == UnifiedChordGold) Color.Black.copy(alpha = (shadowAlpha * 0.9f).coerceIn(0f, 1f))
+            else Color.Black.copy(alpha = (shadowAlpha * 0.4f).coerceIn(0f, 1f))
+        }
+    }
+
+    val shadowObj = if (effectiveShadowEnabled) {
+        Shadow(color = shadowColor, offset = Offset.Zero, blurRadius = coreBlurPx)
+    } else null
+
+    val wideShadowObj = if (effectiveShadowEnabled) {
+        Shadow(color = shadowColor, offset = Offset.Zero, blurRadius = wideBlurPx)
+    } else null
+
+    Box(modifier = modifier) {
+        if (effectiveOutlineEnabled) {
+            // Outline layer with stroke + outer shadow
+            Text(
+                text = text,
+                color = Color.Black.copy(alpha = 0.95f),
+                fontWeight = fontWeight,
+                fontFamily = FontFamily.Monospace,
+                fontSize = fontSize.sp,
+                style = TextStyle(
+                    drawStyle = Stroke(width = outlineStrokePx, join = StrokeJoin.Round),
+                    shadow = wideShadowObj
+                )
+            )
+        } else if (effectiveShadowEnabled) {
+            // Wide ambient blur cloud layer
+            Text(
+                text = text,
+                color = shadowColor,
+                fontWeight = fontWeight,
+                fontFamily = FontFamily.Monospace,
+                fontSize = fontSize.sp,
+                style = TextStyle(shadow = wideShadowObj)
+            )
+        }
+
+        // Top Fill layer
+        Text(
+            text = text,
+            color = color,
+            fontWeight = fontWeight,
+            fontFamily = FontFamily.Monospace,
+            fontSize = fontSize.sp,
+            style = TextStyle(
+                drawStyle = Fill,
+                shadow = if (!effectiveOutlineEnabled && effectiveShadowEnabled) shadowObj else null
+            )
+        )
+    }
+}
+
+/**
  * Renders a chord row glued to its lyric so each chord stays above its own word
  * and a chord+word block wraps down as a unit when the line runs out of width —
  * instead of the chord line and the lyric line wrapping independently and
@@ -128,21 +242,18 @@ internal fun ChordLyricFlow(
     modifier: Modifier = Modifier
 ) {
     val isDark = LocalChordAppColors.current.isDark
-    val textShadow = if (isDark) {
-        Shadow(
-            color = Color.Black.copy(alpha = 0.70f),
-            offset = Offset(1.5f, 1.5f),
-            blurRadius = 3f
-        )
-    } else null
+    val customConfig by CustomPlayerManager.config.collectAsState()
+    val isCustomActive = customConfig.enabled
+
+    val chordColor = if (isCustomActive) customConfig.getChordColor() else ChordText
+    val lyricColor = if (isCustomActive) customConfig.getLyricColor() else PrimaryText
 
     if (chordLine == null) {
-        Text(
+        AppSheetText(
             text = lyric ?: "",
-            color = PrimaryText,
-            style = TextStyle(shadow = textShadow),
-            fontFamily = FontFamily.Monospace,
-            fontSize = fontSize.sp,
+            color = lyricColor,
+            fontSize = fontSize,
+            isDark = isDark,
             modifier = modifier.fillMaxWidth()
         )
         return
@@ -154,13 +265,12 @@ internal fun ChordLyricFlow(
         FlowRow(modifier = modifier.fillMaxWidth()) {
             chordLine.tokens.sortedBy { it.column }.forEach { token ->
                 val transposed = Transposer.transpose(token.symbol, transposeDelta)
-                Text(
+                AppSheetText(
                     text = transposed + "   ",
-                    color = ChordText,
+                    color = chordColor,
                     fontWeight = FontWeight.Bold,
-                    style = TextStyle(shadow = textShadow),
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = fontSize.sp,
+                    fontSize = fontSize,
+                    isDark = isDark,
                     modifier = Modifier.pointerInput(transposed) {
                         detectTapGestures {
                             requestDiagram(ChordParser.cleanChordSymbol(transposed))
@@ -191,13 +301,12 @@ internal fun ChordLyricFlow(
                         } else {
                             seg.chord
                         }
-                        Text(
+                        AppSheetText(
                             text = chordText,
-                            color = ChordText,
+                            color = chordColor,
                             fontWeight = FontWeight.Bold,
-                            style = TextStyle(shadow = textShadow),
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = fontSize.sp,
+                            fontSize = fontSize,
+                            isDark = isDark,
                             modifier = Modifier.pointerInput(seg.chord) {
                                 detectTapGestures {
                                     requestDiagram(ChordParser.cleanChordSymbol(seg.chord.trim().substringBefore(' ')))
@@ -208,12 +317,11 @@ internal fun ChordLyricFlow(
                 }
 
                 if (seg.text.isNotEmpty()) {
-                    Text(
+                    AppSheetText(
                         text = seg.text,
-                        color = PrimaryText,
-                        style = TextStyle(shadow = textShadow),
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = fontSize.sp
+                        color = lyricColor,
+                        fontSize = fontSize,
+                        isDark = isDark
                     )
                 }
             }
@@ -225,8 +333,9 @@ internal fun ChordLyricFlow(
  * Renders an instrumental / bar notation line (`| C G | Am  | Dm  | G   |`)
  * as a single monospace row. Chords are highlighted, bold, clickable, and transposed,
  * while bar delimiters (`|`), measure spaces, and performance annotations remain
- * in plain text on the same row.
+ * in plain text on the same row with consistent outline and ambient shadow.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun BarLineFlow(
     barLine: SheetLine.Chords,
@@ -239,64 +348,39 @@ internal fun BarLineFlow(
         ChordParser.buildBarSegments(barLine)
     }
     val isDark = LocalChordAppColors.current.isDark
-    val textShadow = if (isDark) {
-        Shadow(
-            color = Color.Black.copy(alpha = 0.70f),
-            offset = Offset(1.5f, 1.5f),
-            blurRadius = 3f
-        )
-    } else null
-    val chordColor = ChordText
-    val textColor = PrimaryText
-    val annotated = remember(segments, transposeDelta, fontSize, chordColor, textColor, textShadow) {
-        buildAnnotatedString {
-            for (seg in segments) {
-                if (seg.isChord) {
-                    val start = length
-                    val transposed = Transposer.transpose(seg.text, transposeDelta)
-                    append(transposed)
-                    addStyle(
-                        SpanStyle(
-                            color = chordColor,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = fontSize.sp,
-                            shadow = textShadow
-                        ),
-                        start,
-                        length
-                    )
-                    addStringAnnotation(
-                        tag = "CHORD",
-                        annotation = transposed,
-                        start = start,
-                        end = length
-                    )
-                } else {
-                    val start = length
-                    append(seg.text)
-                    addStyle(
-                        SpanStyle(
-                            color = textColor,
-                            fontWeight = FontWeight.Normal,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = fontSize.sp,
-                            shadow = textShadow
-                        ),
-                        start,
-                        length
-                    )
+    val customConfig by CustomPlayerManager.config.collectAsState()
+    val isCustomActive = customConfig.enabled
+
+    val chordColor = if (isCustomActive) customConfig.getChordColor() else ChordText
+    val textColor = if (isCustomActive) customConfig.getLyricColor() else PrimaryText
+
+    FlowRow(modifier = modifier.fillMaxWidth()) {
+        segments.forEach { seg ->
+            if (seg.isChord) {
+                val transposed = remember(seg.text, transposeDelta) {
+                    Transposer.transpose(seg.text, transposeDelta)
                 }
+                AppSheetText(
+                    text = transposed,
+                    color = chordColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = fontSize,
+                    isDark = isDark,
+                    modifier = Modifier.pointerInput(transposed) {
+                        detectTapGestures {
+                            requestDiagram(ChordParser.cleanChordSymbol(transposed))
+                        }
+                    }
+                )
+            } else {
+                AppSheetText(
+                    text = seg.text,
+                    color = textColor,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = fontSize,
+                    isDark = isDark
+                )
             }
         }
     }
-
-    ClickableText(
-        text = annotated,
-        onClick = { offset ->
-            annotated.getStringAnnotations(tag = "CHORD", start = offset, end = offset)
-                .firstOrNull()?.let { requestDiagram(ChordParser.cleanChordSymbol(it.item)) }
-        },
-        modifier = modifier.fillMaxWidth()
-    )
 }

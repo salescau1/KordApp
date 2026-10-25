@@ -16,6 +16,7 @@ enum class ThemeTextureType {
 
 // Brand signature colors - NEVER change across themes
 val BrandGold = Color(0xFFE5A93C)
+val UnifiedChordGold = Color(0xFFFDE047) // Universal bright chord color across all themes
 
 data class ChordAppColors(
     val background: Color,
@@ -42,7 +43,7 @@ val DarkColors = ChordAppColors(
     primaryText = Color(0xFFF5F8FF),
     mutedText = Color(0xFF8E9AA8),
     activeHeart = Color(0xFFFF4D6D),
-    chordText = Color(0xFFFFB74D),
+    chordText = UnifiedChordGold,
     isDark = true,
     textureType = ThemeTextureType.NONE
 )
@@ -57,7 +58,7 @@ val LeatherColors = ChordAppColors(
     primaryText = Color(0xFFFDF8F2),
     mutedText = Color(0xFFA89485),
     activeHeart = Color(0xFFFF5252),
-    chordText = Color(0xFFFFA726),
+    chordText = UnifiedChordGold,
     isDark = true,
     textureType = ThemeTextureType.LEATHER
 )
@@ -72,7 +73,7 @@ val PaperColors = ChordAppColors(
     primaryText = Color(0xFF221C14),
     mutedText = Color(0xFF6B5E4F),
     activeHeart = Color(0xFFC0392B),
-    chordText = Color(0xFFB45309), // Warm amber burnt orange on parchment paper
+    chordText = UnifiedChordGold,
     isDark = false,
     textureType = ThemeTextureType.PARCHMENT
 )
@@ -87,7 +88,7 @@ val BlackboardColors = ChordAppColors(
     primaryText = Color(0xFFF1F5F9),
     mutedText = Color(0xFF94A3B8),
     activeHeart = Color(0xFFFB7185),
-    chordText = Color(0xFFFDE047), // Golden yellow chalk on slate
+    chordText = UnifiedChordGold,
     isDark = true,
     textureType = ThemeTextureType.CHALKBOARD
 )
@@ -102,7 +103,7 @@ val GreenboardColors = ChordAppColors(
     primaryText = Color(0xFFEAE6DF),      // Kapur Tulis Putih (Soft Chalk White)
     mutedText = Color(0xFF8A998F),        // Debu Bekas Hapus Kapur (Chalk Dust Muted)
     activeHeart = Color(0xFFE05A47),      // Kapur Tulis Merah Pudar
-    chordText = Color(0xFFF2D06B),        // Kapur Tulis Kuning (Warm School Chalk Yellow)
+    chordText = UnifiedChordGold,
     isDark = true,
     textureType = ThemeTextureType.GREENBOARD
 )
@@ -117,7 +118,7 @@ val CrimsonShadowColors = ChordAppColors(
     primaryText = Color(0xFFF4E9DC), // Porcelain Mask Ivory
     mutedText = Color(0xFF9E8A86), // Muted Burlap
     activeHeart = Color(0xFFE63946),
-    chordText = Color(0xFFEE8944), // Toasted Sunset Ochre
+    chordText = UnifiedChordGold,
     isDark = true,
     textureType = ThemeTextureType.CRIMSON_SHADOW
 )

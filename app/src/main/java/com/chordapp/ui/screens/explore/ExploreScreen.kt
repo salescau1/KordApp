@@ -369,9 +369,9 @@ fun ExploreScreen(
                     .background(
                         Brush.verticalGradient(
                             0.0f to Color.Transparent,
-                            0.30f to Background.copy(alpha = 0.65f),
-                            0.65f to Background.copy(alpha = 0.90f),
-                            1.0f to Background
+                            0.30f to Color.Black.copy(alpha = 0.45f),
+                            0.65f to Color.Black.copy(alpha = 0.80f),
+                            1.0f to Color.Black.copy(alpha = 0.95f)
                         )
                     )
                     .padding(horizontal = 16.dp)

@@ -97,12 +97,13 @@ class PitchDetector {
             )
             val recBufSize = maxOf(minBuf * 2, hopSize * 4 * 2)
 
-            // Prioritize standard raw acoustic MIC
+            // Prioritize clean acoustic microphone (unprocessed / voice recognition avoids aggressive AGC pumping)
             var record: AudioRecord? = null
             val audioSources = listOf(
+                MediaRecorder.AudioSource.UNPROCESSED,
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
                 MediaRecorder.AudioSource.MIC,
-                MediaRecorder.AudioSource.DEFAULT,
-                MediaRecorder.AudioSource.UNPROCESSED
+                MediaRecorder.AudioSource.DEFAULT
             )
 
             for (src in audioSources) {
@@ -133,7 +134,7 @@ class PitchDetector {
             }
             audioRecord = record
 
-            // FastYin at full 44.1 kHz with optimal threshold for acoustic instruments
+            // FastYin at 44.1 kHz with standard 0.20 threshold for robust fundamental detection
             val yinDetector = FastYin(sampleRate, bufferSize, 0.20)
 
             // Audio buffers
@@ -169,11 +170,11 @@ class PitchDetector {
                         windowSumSq += (s * s)
                     }
 
-                    // 4. RMS Energy check with Schmitt trigger
+                    // 4. RMS Energy check with Schmitt trigger (picks up soft string plucks, rejects room background noise)
                     val rms = sqrt(windowSumSq / bufferSize)
                     val now = System.currentTimeMillis()
 
-                    val minRmsThreshold = if (isTracking) 12.0 else 24.0
+                    val minRmsThreshold = if (isTracking) 12.0 else 20.0
                     if (rms < minRmsThreshold) {
                         handleSilenceOrHold(now)
                         continue
@@ -184,8 +185,10 @@ class PitchDetector {
                     val rawPitch = yinResult.pitch
                     val probability = yinResult.probability
 
-                    if (rawPitch in 30f..1200f && probability >= 0.50f) {
-                        // 6. Running 5-frame median filter (filters single-frame octave jumps or pick noise)
+                    // Probability filter (allows natural string decay while rejecting non-tonal noise)
+                    val minProb = if (isTracking) 0.55f else 0.65f
+                    if (rawPitch in 30f..1200f && probability >= minProb) {
+                        // 6. Running 5-frame median filter (filters single-frame glitch transients)
                         medianBuffer.add(rawPitch)
                         if (medianBuffer.size > 5) medianBuffer.removeAt(0)
                         val sorted = medianBuffer.sorted()
@@ -198,7 +201,7 @@ class PitchDetector {
                         val generalNoteName = noteNames[noteIdx]
                         val generalOctave = (roundedMidi / 12) - 1
 
-                        // 8. String & Harmonic Matching (GuitarTuna Grade)
+                        // 8. String & Harmonic Matching (GuitarTuna Grade Target-First with Octave/Overtone Folding)
                         val activeStrings = TunerPresets.getStringsFor(currentInstrument)
                         val matchResult = resolveStringMatch(
                             pitch = filteredPitch,
@@ -209,36 +212,41 @@ class PitchDetector {
 
                         val matchedStr = matchResult?.targetString
                         val rawCents = matchResult?.centsDeviation ?: ((midi - roundedMidi) * 100.0).toFloat().coerceIn(-50f, 50f)
+                        val reportedPitch = matchResult?.normalizedFrequency ?: filteredPitch
                         val finalNoteName = matchedStr?.noteName ?: generalNoteName
                         val finalOctave = matchedStr?.octave ?: generalOctave
 
-                        // 9. Adaptive Multi-Stage Damping & Deadband Filtering
+                        // 9. Adaptive Multi-Stage Damping & Deadband Filtering (GuitarTuna Grade Calm Needle)
                         if (!isFilterInitialized || !isTracking) {
                             smoothedCents = rawCents
                             isFilterInitialized = true
                         } else {
                             val error = abs(rawCents - smoothedCents)
                             val alpha = when {
-                                error > 20f -> 0.45f // Fast tracking on big frequency changes
-                                error > 8f -> 0.25f  // Smooth transition
-                                error > 3f -> 0.14f  // Gentle approach to target
-                                else -> 0.08f        // Rock-solid stillness near center
+                                error > 20f -> 0.20f // Smooth tracking on big peg turns (gentle, no snapping)
+                                error > 8f  -> 0.14f // Smooth approach
+                                error > 3f  -> 0.08f // Calm glide
+                                else        -> 0.04f // Rock-solid sweet spot near center
                             }
-                            // Micro-deadband: ignore tiny thermal noise < 0.3 cents to prevent jitter
-                            if (error > 0.30f) {
+                            // Deadband: ignore micro noise < 0.15 cents to eliminate all jitter
+                            if (error > 0.15f) {
                                 smoothedCents += alpha * (rawCents - smoothedCents)
+                            }
+                            // Center magnet: subtle pull towards 0 when within in-tune sweet spot
+                            if (abs(smoothedCents) <= 2.2f) {
+                                smoothedCents *= 0.92f
                             }
                         }
 
-                        // 10. In-tune Hysteresis (Enter at <= 3.5 cents, exit at > 5.5 cents)
+                        // 10. In-tune Hysteresis (Enter at <= 3.0 cents, exit at > 4.5 cents)
                         inTuneState = if (inTuneState) {
-                            abs(smoothedCents) <= 5.5f
+                            abs(smoothedCents) <= 4.5f
                         } else {
-                            abs(smoothedCents) <= 3.5f
+                            abs(smoothedCents) <= 3.0f
                         }
 
                         val reading = PitchReading(
-                            frequencyHz = filteredPitch,
+                            frequencyHz = reportedPitch,
                             noteName = finalNoteName,
                             octave = finalOctave,
                             centsDeviation = smoothedCents,
@@ -268,117 +276,177 @@ class PitchDetector {
         }
     }
 
-    private fun centsDistance(f1: Float, f2: Float): Float {
+    internal fun centsDistance(f1: Float, f2: Float): Float {
         return (1200.0 * log2((f1 / f2).toDouble())).toFloat()
     }
 
-    /**
-     * Resolves the detected pitch against instrument strings with harmonic awareness:
-     * - Checks 1st (fundamental), 2nd, 3rd, and 4th harmonics of strings
-     * - Keeps sticky lock on the current string to prevent hopping
-     * - Requires 5 consecutive frames before switching string in AUTO mode
-     */
-    private fun resolveStringMatch(
+    internal data class MatchResult(
+        val targetString: TunerString,
+        val centsDeviation: Float,
+        val normalizedFrequency: Float
+    )
+
+    private fun getMultipliersFor(freq: Float): List<Float> {
+        return when {
+            freq < 95f -> listOf(1.0f, 2.0f, 3.0f, 4.0f) // Low string E2 (82.4 Hz): fundamental, 2nd (165Hz), 3rd (247Hz), 4th (330Hz)
+            freq < 130f -> listOf(1.0f, 2.0f, 3.0f)      // A2 (110 Hz): fundamental, 2nd (220Hz), 3rd (330Hz)
+            freq < 170f -> listOf(1.0f, 0.5f, 2.0f)      // D3 (146.8 Hz): fundamental, subharmonic (73Hz), 2nd (294Hz)
+            freq < 220f -> listOf(1.0f, 0.5f, 2.0f, 1.5f)// G3 (196 Hz): fundamental, subharmonic (98Hz), 2nd (392Hz), 3rd (294Hz)
+            freq < 280f -> listOf(1.0f, 0.5f, 2.0f, 1.5f)// B3 (246.9 Hz): fundamental, subharmonic (123Hz), 2nd (494Hz), 3rd (370Hz)
+            else -> listOf(1.0f, 0.5f, 2.0f)             // E4 (329.6 Hz) & Ukulele
+        }
+    }
+
+    internal fun matchStringToPitch(
         pitch: Float,
-        activeStrings: List<TunerString>,
-        isAuto: Boolean,
-        manualTarget: TunerString?
-    ): MatchResult? {
-        if (!isAuto) {
-            val target = manualTarget ?: activeStrings.firstOrNull() ?: return null
-            // Check which harmonic of this string is closest
-            var bestDev = Float.MAX_VALUE
-            for (harmonic in 1..4) {
-                val hFreq = target.frequencyHz * harmonic
-                val dev = centsDistance(pitch, hFreq)
-                if (abs(dev) < abs(bestDev)) {
-                    bestDev = dev
-                }
-            }
-            return MatchResult(targetString = target, centsDeviation = bestDev.coerceIn(-50f, 50f))
-        }
-
-        // AUTO MODE:
-        val currentLocked = lockedString
-        if (currentLocked != null) {
-            // Check if pitch matches any harmonic of the locked string (within +-65 cents)
-            var bestLockedDev: Float? = null
-            var minLockedDist = Float.MAX_VALUE
-
-            for (harmonic in 1..4) {
-                val hFreq = currentLocked.frequencyHz * harmonic
-                val dev = centsDistance(pitch, hFreq)
-                if (abs(dev) <= 65f && abs(dev) < minLockedDist) {
-                    minLockedDist = abs(dev)
-                    bestLockedDev = dev
-                }
-            }
-
-            if (bestLockedDev != null) {
-                // Pitch belongs to current string's harmonic series! Stay firmly locked!
-                candidateString = null
-                candidateCount = 0
-                return MatchResult(targetString = currentLocked, centsDeviation = bestLockedDev.coerceIn(-50f, 50f))
-            }
-        }
-
-        // Find the best string candidate across all strings & harmonics
-        var bestString: TunerString? = null
-        var bestDev = Float.MAX_VALUE
+        str: TunerString,
+        maxCentsWindow: Float
+    ): Pair<Float, Float>? { // Pair(centsDeviation, normalizedPitch)
+        val multipliers = getMultipliersFor(str.frequencyHz)
+        var bestDev: Float? = null
+        var bestNormFreq: Float? = null
         var minEffectiveDist = Float.MAX_VALUE
 
-        for (str in activeStrings) {
-            for (harmonic in 1..4) {
-                val hFreq = str.frequencyHz * harmonic
-                val dev = centsDistance(pitch, hFreq)
-                val absDev = abs(dev)
+        for (mult in multipliers) {
+            val refFreq = str.frequencyHz * mult
+            val dev = centsDistance(pitch, refFreq)
+            val absDev = abs(dev)
 
-                if (absDev <= 70f) {
-                    // Slight priority for lower harmonics (fundamental and 2nd harmonic)
-                    val harmonicPenalty = (harmonic - 1) * 8f
-                    val effectiveDist = absDev + harmonicPenalty
-                    if (effectiveDist < minEffectiveDist) {
-                        minEffectiveDist = effectiveDist
-                        bestString = str
-                        bestDev = dev
+            if (absDev <= maxCentsWindow) {
+                // Penalties: fundamental (1.0f) is preferred over harmonics
+                val penalty = when (mult) {
+                    1.0f -> 0f
+                    2.0f -> 8f
+                    0.5f -> 10f
+                    3.0f -> 14f
+                    4.0f -> 18f
+                    1.5f -> 20f
+                    else -> 22f
+                }
+                val effectiveDist = absDev + penalty
+                if (effectiveDist < minEffectiveDist) {
+                    minEffectiveDist = effectiveDist
+                    bestDev = dev
+                    bestNormFreq = when (mult) {
+                        0.5f -> pitch * 2f
+                        2.0f -> pitch / 2f
+                        3.0f -> pitch / 3f
+                        4.0f -> pitch / 4f
+                        1.5f -> pitch / 1.5f
+                        else -> pitch
                     }
                 }
             }
         }
 
-        val candidate = bestString ?: return null
-
-        if (currentLocked == null) {
-            // First string pick after silence: lock immediately
-            lockedString = candidate
-            candidateString = null
-            candidateCount = 0
-            isFilterInitialized = false
-            return MatchResult(targetString = candidate, centsDeviation = bestDev.coerceIn(-50f, 50f))
-        } else {
-            // Switching strings requires 5 consecutive frames (~115ms)
-            if (candidate.stringIndex == candidateString?.stringIndex) {
-                candidateCount++
-                if (candidateCount >= 5) {
-                    lockedString = candidate
-                    candidateString = null
-                    candidateCount = 0
-                    isFilterInitialized = false // Reset filter for new string
-                    return MatchResult(targetString = candidate, centsDeviation = bestDev.coerceIn(-50f, 50f))
-                }
-            } else {
-                candidateString = candidate
-                candidateCount = 1
-            }
-            // While accumulating frames for a new string, hold current lock to avoid flickering
-            return null
-        }
+        return if (bestDev != null && bestNormFreq != null) {
+            Pair(bestDev, bestNormFreq)
+        } else null
     }
 
-    private data class MatchResult(
-        val targetString: TunerString,
-        val centsDeviation: Float
-    )
+    /**
+     * Resolves the detected pitch against instrument strings with harmonic awareness:
+     * - Folds subharmonics (0.5x), 2nd (2.0x), 3rd (3.0x / 1.5x), and 4th (4.0x) into fundamental
+     * - Fixes low E string harmonic confusion (3rd harmonic 247Hz no longer jumps to B string)
+     * - Fixes B string jumping / octave flip anomaly completely
+     * - Keeps sticky lock on the active target string to prevent inter-string hopping
+     * - Smoothly transitions without null-state dropouts
+     */
+    internal fun resolveStringMatch(
+        pitch: Float,
+        activeStrings: List<TunerString>,
+        isAuto: Boolean,
+        manualTarget: TunerString?
+    ): MatchResult? {
+        val target = manualTarget
+
+        // 1. If a target is specified (in sequential Auto mode OR Manual mode):
+        // Prioritize target string with a wide tuning capture window (±180 cents).
+        // This lets the guitarist tune the peg smoothly even if severely detuned (Drop D, flat strings).
+        if (target != null) {
+            val match = matchStringToPitch(pitch, target, maxCentsWindow = 180f)
+            if (match != null) {
+                // Pitch belongs to the target string! Stay 100% locked to target!
+                lockedString = target
+                candidateString = null
+                candidateCount = 0
+                return MatchResult(
+                    targetString = target,
+                    centsDeviation = match.first.coerceIn(-50f, 50f),
+                    normalizedFrequency = match.second
+                )
+            }
+
+            // In manual mode (non-auto): user explicitly selected this string!
+            // Always measure relative to target even if > 180 cents
+            if (!isAuto) {
+                val dev = centsDistance(pitch, target.frequencyHz)
+                return MatchResult(
+                    targetString = target,
+                    centsDeviation = dev.coerceIn(-50f, 50f),
+                    normalizedFrequency = pitch
+                )
+            }
+        }
+
+        // 2. In AUTO mode: Check if pitch matches current locked string within +-140 cents
+        val currentLocked = lockedString
+        if (currentLocked != null && activeStrings.any { it.stringIndex == currentLocked.stringIndex }) {
+            val match = matchStringToPitch(pitch, currentLocked, maxCentsWindow = 140f)
+            if (match != null) {
+                candidateString = null
+                candidateCount = 0
+                return MatchResult(
+                    targetString = currentLocked,
+                    centsDeviation = match.first.coerceIn(-50f, 50f),
+                    normalizedFrequency = match.second
+                )
+            }
+        }
+
+        // 3. Scan active strings to find best string candidate
+        var bestString: TunerString? = null
+        var bestDev = Float.MAX_VALUE
+        var bestNormFreq = pitch
+        var minEffectiveDist = Float.MAX_VALUE
+
+        for (str in activeStrings) {
+            val match = matchStringToPitch(pitch, str, maxCentsWindow = 180f)
+            if (match != null) {
+                val dev = match.first
+                val absDev = abs(dev)
+                if (absDev < minEffectiveDist) {
+                    minEffectiveDist = absDev
+                    bestString = str
+                    bestDev = dev
+                    bestNormFreq = match.second
+                }
+            }
+        }
+
+        if (bestString != null) {
+            lockedString = bestString
+            candidateString = null
+            candidateCount = 0
+            return MatchResult(
+                targetString = bestString,
+                centsDeviation = bestDev.coerceIn(-50f, 50f),
+                normalizedFrequency = bestNormFreq
+            )
+        }
+
+        // 4. Fallback if outside +-180 cents: if target was given, show deviation from target
+        if (target != null) {
+            val dev = centsDistance(pitch, target.frequencyHz)
+            return MatchResult(
+                targetString = target,
+                centsDeviation = dev.coerceIn(-50f, 50f),
+                normalizedFrequency = pitch
+            )
+        }
+
+        return null
+    }
 
     private fun handleSilenceOrHold(now: Long) {
         val last = lastValidReading

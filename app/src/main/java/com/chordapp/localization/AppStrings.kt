@@ -326,4 +326,19 @@ interface AppStrings {
     val downloadStartedToast: String
     val verifyAndContinueBtn: String
     val confirmToWhatsApp: String
+    val dontShowAgain: String
+
+    // Tuner Strings
+    val tunerTitle: String
+    val tunerAutoMode: String
+    val tunerManualMode: String
+    val tunerPluckString: String
+    val tunerAllInTune: String
+    val tunerReset: String
+    val tunerMicPermissionRequired: String
+    val tunerEnableMic: String
+    fun tunerPluckTarget(stringNum: Int, note: String): String
+    fun tunerInTune(stringNum: Int, note: String): String
+    fun tunerTooLow(stringNum: Int, cents: Int): String
+    fun tunerTooHigh(stringNum: Int, cents: Int): String
 }

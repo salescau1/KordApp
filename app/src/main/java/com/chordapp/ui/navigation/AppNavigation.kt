@@ -41,6 +41,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -227,9 +230,9 @@ fun AppNavigation() {
                             .background(
                                 Brush.verticalGradient(
                                     0.0f to Color.Transparent,
-                                    0.30f to Background.copy(alpha = 0.65f),
-                                    0.65f to Background.copy(alpha = 0.90f),
-                                    1.0f to Background
+                                    0.30f to Color.Black.copy(alpha = 0.45f),
+                                    0.65f to Color.Black.copy(alpha = 0.80f),
+                                    1.0f to Color.Black.copy(alpha = 0.95f)
                                 )
                             )
                             .navigationBarsPadding()
@@ -353,6 +356,22 @@ private fun AppNavHost(
                 viewModel(factory = viewModelFactory)
             val promo by promoViewModel.promo.collectAsState()
             val context = androidx.compose.ui.platform.LocalContext.current
+            var pendingUpdateInfo by remember { mutableStateOf<com.chordapp.repositories.AppUpdateInfo?>(null) }
+            val prefs = remember { com.chordapp.settings.PlayerPreferences(context) }
+
+            LaunchedEffect(Unit) {
+                if (!prefs.dontShowUpdateAgain) {
+                    kotlinx.coroutines.delay(1200L)
+                    val result = com.chordapp.repositories.UpdateRepository.checkAppUpdate(context)
+                    val info = result.getOrNull()
+                    if (info != null && info.hasUpdate) {
+                        if (prefs.lastDismissedUpdateVersion != info.latestVersionName) {
+                            pendingUpdateInfo = info
+                        }
+                    }
+                }
+            }
+
             HomeScreen(
                 viewModel = viewModel(factory = viewModelFactory),
                 expanded = expandedHome,
@@ -362,6 +381,14 @@ private fun AppNavHost(
                 },
                 onTunerClick = { navController.navigate(Screen.Tuner.route) }
             )
+
+            val updateInfo = pendingUpdateInfo
+            if (updateInfo != null) {
+                com.chordapp.ui.components.UpdateNotificationDialog(
+                    updateInfo = updateInfo,
+                    onDismiss = { pendingUpdateInfo = null }
+                )
+            }
             promo?.let { active ->
                 com.chordapp.ui.screens.home.PromoDialog(
                     promo = active,
