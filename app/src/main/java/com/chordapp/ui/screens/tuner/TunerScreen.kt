@@ -81,26 +81,18 @@ import com.chordapp.tuner.PitchReading
 import com.chordapp.tuner.TunerInstrumentType
 import com.chordapp.tuner.TunerPresets
 import com.chordapp.tuner.TunerString
-import java.io.File
-import coil.compose.AsyncImage
 import com.chordapp.R
 import com.chordapp.localization.LocalAppStrings
-import com.chordapp.settings.CustomPlayerManager
-import com.chordapp.ui.theme.Background
-import com.chordapp.ui.theme.Border
-import com.chordapp.ui.theme.CardSurface
-import com.chordapp.ui.theme.LocalChordAppColors
-import com.chordapp.ui.theme.MutedText
-import com.chordapp.ui.theme.PrimaryText
-import com.chordapp.ui.theme.ThemeTextureType
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val TunerDarkBg = Color(0xFF0F1115)
 private val TunerCardBg = Color(0xFF181C22)
+private val TunerCardBorder = Color(0xFF262C36)
 private val TunerGold = Color(0xFFFFB74D)
 private val TunerEmerald = Color(0xFF00E676)
 private val TunerMuted = Color(0xFF8895A5)
+private val TunerTextPrimary = Color.White
 
 @Composable
 fun TunerScreen(
@@ -229,237 +221,157 @@ fun TunerScreen(
         TunerInstrumentType.UKULELE -> com.chordapp.R.drawable.ukulele_headstock
     }
 
-    val customConfig by CustomPlayerManager.config.collectAsState()
-    val isCustomActive = customConfig.enabled
-    val colors = LocalChordAppColors.current
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Background)
+            .background(TunerDarkBg)
     ) {
-        // (1) Custom Player Background Photo / Textures
-        if (isCustomActive && customConfig.bgEnabled && customConfig.bgPath != null && File(customConfig.bgPath!!).exists()) {
-            AsyncImage(
-                model = File(customConfig.bgPath!!),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = customConfig.bgDimmer))
-            )
-            if (customConfig.textureEnabled) {
-                when (customConfig.textureType) {
-                    "paper" -> {
-                        Image(
-                            painter = painterResource(id = R.drawable.texture_paper),
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop,
-                            alpha = 0.40f
-                        )
-                    }
-                    "canvas" -> {
-                        Image(
-                            painter = painterResource(id = R.drawable.texture_leather),
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop,
-                            alpha = 0.40f
-                        )
-                    }
-                    "halftone" -> {
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            val dotSpacing = 16f
-                            val dotRadius = 2.2f
-                            var y = 0f
-                            while (y < size.height) {
-                                var x = 0f
-                                while (x < size.width) {
-                                    drawCircle(
-                                        color = Color.Black.copy(alpha = 0.45f),
-                                        radius = dotRadius,
-                                        center = Offset(x, y)
-                                    )
-                                    x += dotSpacing
-                                }
-                                y += dotSpacing
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            // (2) Themed Background Texture (Parchment, Leather, Blackboard, etc.)
-            if (colors.textureType != ThemeTextureType.NONE) {
-                val resId = when (colors.textureType) {
-                    ThemeTextureType.LEATHER -> R.drawable.texture_leather
-                    ThemeTextureType.PARCHMENT -> R.drawable.texture_paper
-                    ThemeTextureType.CHALKBOARD -> R.drawable.texture_blackboard
-                    ThemeTextureType.GREENBOARD -> R.drawable.texture_greenboard
-                    ThemeTextureType.CRIMSON_SHADOW -> R.drawable.texture_crimson_shadow
-                    ThemeTextureType.NONE -> null
-                }
-                resId?.let {
-                    Image(
-                        painter = painterResource(id = it),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            }
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-        // =======================================================================
-        // 1. TOP BAR: (x) KordApp Tuner            Auto (0-0)
-        // =======================================================================
-        TunerTopBar(
-            isAutoMode = isAutoMode,
-            onAutoToggle = { isAutoMode = it },
-            onClose = onClose
-        )
+            // =======================================================================
+            // 1. TOP BAR: (x) KordApp Tuner            Auto (0-0)
+            // =======================================================================
+            TunerTopBar(
+                isAutoMode = isAutoMode,
+                onAutoToggle = { isAutoMode = it },
+                onClose = onClose
+            )
 
-        // =======================================================================
-        // 2. INSTRUMENT SELECTOR: Guitar 6 Strings ▾
-        // =======================================================================
-        InstrumentSelectorRow(
-            currentInstrument = selectedInstrument,
-            isMenuExpanded = instrumentMenuExpanded,
-            onExpandChange = { instrumentMenuExpanded = it },
-            onSelectInstrument = {
-                selectedInstrument = it
-                instrumentMenuExpanded = false
-            }
-        )
-
-        // Mic permission banner if denied
-        AnimatedVisibility(
-            visible = !hasMicPermission,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            MicPermissionBanner(
-                onRequestPermission = {
-                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            // =======================================================================
+            // 2. INSTRUMENT SELECTOR: Guitar 6 Strings ▾
+            // =======================================================================
+            InstrumentSelectorRow(
+                currentInstrument = selectedInstrument,
+                isMenuExpanded = instrumentMenuExpanded,
+                onExpandChange = { instrumentMenuExpanded = it },
+                onSelectInstrument = {
+                    selectedInstrument = it
+                    instrumentMenuExpanded = false
                 }
             )
-        }
 
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // =======================================================================
-        // 3. CENTER DIAGRAM AREA WITH BACKGROUND GUITAR & FADE-OUT GRADIENTS
-        // =======================================================================
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            contentAlignment = Alignment.Center
-        ) {
-            // (a) Background Guitar/Bass/Ukulele Graphic - Centered and subtle (samar-samar)
-            Image(
-                painter = painterResource(id = headstockDrawable),
-                contentDescription = "Instrument Visual",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxHeight(0.92f)
-                    .width(220.dp)
-                    .alpha(0.20f)
-            )
-
-            // (b) Top Fade-Out Gradient Line: Black Vignette Shadow (Blends across all themes)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Black.copy(alpha = 0.65f), Color.Transparent)
-                        )
-                    )
-            )
-
-            // (c) Bottom Fade-Out Gradient Line: Black Vignette Shadow (Blends across all themes)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f))
-                        )
-                    )
-            )
-
-            // (d) Main Tuning Diagram & Meter (Border-free, Centered)
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+            // Mic permission warning banner (if denied)
+            AnimatedVisibility(
+                visible = !hasMicPermission,
+                enter = fadeIn(),
+                exit = fadeOut()
             ) {
-                // Giant Active Note Readout (e.g. E, A, D, G, B)
-                BigNoteDisplay(
-                    reading = reading,
-                    isSilent = reading.isSilent,
-                    targetString = currentTargetString,
-                    isAutoMode = isAutoMode,
-                    allTuned = allTuned
-                )
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // The Tuning Diagram Gauge (Tick marks, needle bubble, flat/sharp)
-                TunerDiagramMeter(
-                    reading = reading,
-                    isSilent = reading.isSilent
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Status message & Frequency
-                TunerStatusReadout(
-                    reading = reading,
-                    isSilent = reading.isSilent,
-                    targetString = currentTargetString,
-                    isAutoMode = isAutoMode,
-                    allTuned = allTuned,
-                    onReset = {
-                        tunedStrings = emptySet()
-                        currentTargetNumber = sortedStrings.firstOrNull()?.stringNumber ?: 6
-                    },
-                    showReset = tunedStrings.isNotEmpty()
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Horizontal String Selector Row (6 -> 5 -> 4 -> 3 -> 2 -> 1)
-                TunerStringsRow(
-                    strings = strings,
-                    currentTargetNumber = currentTargetNumber,
-                    tunedStrings = tunedStrings,
-                    onSelect = { str ->
-                        audioPlayer.playStringNote(selectedInstrument, str.stringNumber)
-                        currentTargetNumber = str.stringNumber
-                        // When tapped, it is NOT green until tuned to perfection:
-                        tunedStrings = tunedStrings - str.stringNumber
+                MicPermissionBanner(
+                    onRequestPermission = {
+                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     }
                 )
             }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // =======================================================================
+            // 3. CENTER DIAGRAM AREA WITH BACKGROUND GUITAR & FADE-OUT GRADIENTS
+            // =======================================================================
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                // (a) Background Guitar/Bass/Ukulele Graphic - Centered and subtle (samar-samar)
+                Image(
+                    painter = painterResource(id = headstockDrawable),
+                    contentDescription = "Instrument Visual",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxHeight(0.92f)
+                        .width(220.dp)
+                        .alpha(0.20f)
+                )
+
+                // (b) Top Fade-Out Gradient Line: seamless into TunerDarkBg
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(TunerDarkBg, Color.Transparent)
+                            )
+                        )
+                )
+
+                // (c) Bottom Fade-Out Gradient Line: seamless into TunerDarkBg
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, TunerDarkBg)
+                            )
+                        )
+                )
+
+                // (d) Main Tuning Diagram & Meter (Border-free, Centered)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // Giant Active Note Readout (e.g. E, A, D, G, B)
+                    BigNoteDisplay(
+                        reading = reading,
+                        isSilent = reading.isSilent,
+                        targetString = currentTargetString,
+                        isAutoMode = isAutoMode,
+                        allTuned = allTuned
+                    )
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    // The Tuning Diagram Gauge (Tick marks, needle bubble, flat/sharp)
+                    TunerDiagramMeter(
+                        reading = reading,
+                        isSilent = reading.isSilent
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Status message & Frequency
+                    TunerStatusReadout(
+                        reading = reading,
+                        isSilent = reading.isSilent,
+                        targetString = currentTargetString,
+                        isAutoMode = isAutoMode,
+                        allTuned = allTuned,
+                        onReset = {
+                            tunedStrings = emptySet()
+                            currentTargetNumber = sortedStrings.firstOrNull()?.stringNumber ?: 6
+                        },
+                        showReset = tunedStrings.isNotEmpty()
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Horizontal String Selector Row (6 -> 5 -> 4 -> 3 -> 2 -> 1)
+                    TunerStringsRow(
+                        strings = strings,
+                        currentTargetNumber = currentTargetNumber,
+                        tunedStrings = tunedStrings,
+                        onSelect = { str ->
+                            audioPlayer.playStringNote(selectedInstrument, str.stringNumber)
+                            currentTargetNumber = str.stringNumber
+                            // When tapped, it is NOT green until tuned to perfection:
+                            tunedStrings = tunedStrings - str.stringNumber
+                        }
+                    )
+                }
+            }
         }
-    }
     }
 }
 
@@ -487,13 +399,13 @@ private fun TunerTopBar(
                 modifier = Modifier
                     .size(38.dp)
                     .clip(CircleShape)
-                    .background(CardSurface.copy(alpha = 0.90f))
-                    .border(1.dp, Border.copy(alpha = 0.70f), CircleShape)
+                    .background(TunerCardBg)
+                    .border(1.dp, TunerCardBorder, CircleShape)
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = strings.close,
-                    tint = PrimaryText
+                    tint = TunerTextPrimary
                 )
             }
 
@@ -502,7 +414,7 @@ private fun TunerTopBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "Kord",
-                    color = PrimaryText,
+                    color = TunerTextPrimary,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold
                 )
@@ -514,7 +426,7 @@ private fun TunerTopBar(
                 )
                 Text(
                     text = " " + strings.tunerTitle.lowercase().replaceFirstChar { it.uppercase() },
-                    color = MutedText,
+                    color = TunerMuted,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -526,13 +438,13 @@ private fun TunerTopBar(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
-                .background(CardSurface.copy(alpha = 0.90f))
-                .border(1.dp, Border.copy(alpha = 0.70f), RoundedCornerShape(20.dp))
+                .background(TunerCardBg)
+                .border(1.dp, TunerCardBorder, RoundedCornerShape(20.dp))
                 .padding(start = 12.dp, end = 6.dp, top = 2.dp, bottom = 2.dp)
         ) {
             Text(
                 text = strings.tunerAutoMode.uppercase(),
-                color = if (isAutoMode) TunerEmerald else MutedText,
+                color = if (isAutoMode) TunerEmerald else TunerMuted,
                 fontSize = 11.5.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
@@ -544,8 +456,8 @@ private fun TunerTopBar(
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
                     checkedTrackColor = TunerEmerald,
-                    uncheckedThumbColor = MutedText,
-                    uncheckedTrackColor = CardSurface,
+                    uncheckedThumbColor = TunerMuted,
+                    uncheckedTrackColor = Color(0xFF1A1F26),
                     uncheckedBorderColor = Color.Transparent
                 )
             )
@@ -571,8 +483,8 @@ private fun InstrumentSelectorRow(
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
-                .background(CardSurface.copy(alpha = 0.90f))
-                .border(1.dp, Border.copy(alpha = 0.70f), RoundedCornerShape(10.dp))
+                .background(TunerCardBg)
+                .border(1.dp, TunerCardBorder, RoundedCornerShape(10.dp))
                 .clickable { onExpandChange(true) }
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -581,7 +493,7 @@ private fun InstrumentSelectorRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = currentInstrument.displayName,
-                        color = PrimaryText,
+                        color = TunerTextPrimary,
                         fontSize = 13.5.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -589,13 +501,13 @@ private fun InstrumentSelectorRow(
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
                         contentDescription = null,
-                        tint = MutedText,
+                        tint = TunerMuted,
                         modifier = Modifier.size(17.dp)
                     )
                 }
                 Text(
                     text = currentInstrument.subtitle,
-                    color = MutedText,
+                    color = TunerMuted,
                     fontSize = 10.5.sp
                 )
             }
@@ -605,8 +517,8 @@ private fun InstrumentSelectorRow(
             expanded = isMenuExpanded,
             onDismissRequest = { onExpandChange(false) },
             modifier = Modifier
-                .background(CardSurface)
-                .border(1.dp, Border, RoundedCornerShape(8.dp))
+                .background(TunerCardBg)
+                .border(1.dp, TunerCardBorder, RoundedCornerShape(8.dp))
         ) {
             TunerInstrumentType.values().forEach { type ->
                 DropdownMenuItem(
@@ -614,12 +526,12 @@ private fun InstrumentSelectorRow(
                         Column {
                             Text(
                                 text = type.displayName,
-                                color = if (type == currentInstrument) TunerGold else PrimaryText,
+                                color = if (type == currentInstrument) TunerGold else TunerTextPrimary,
                                 fontWeight = if (type == currentInstrument) FontWeight.Bold else FontWeight.Normal
                             )
                             Text(
                                 text = type.subtitle,
-                                color = MutedText,
+                                color = TunerMuted,
                                 fontSize = 11.sp
                             )
                         }
@@ -684,9 +596,9 @@ private fun BigNoteDisplay(
     val noteColor by animateColorAsState(
         targetValue = when {
             allTuned -> TunerEmerald
-            isSilent -> MutedText
+            isSilent -> TunerMuted
             isInTune -> TunerEmerald
-            else -> PrimaryText
+            else -> TunerTextPrimary
         },
         label = "noteColor"
     )
@@ -990,7 +902,7 @@ private fun TunerStatusReadout(
 
     val statusColor = when {
         isAutoMode && allTuned -> TunerEmerald
-        isSilent -> if (targetString != null) TunerGold else MutedText
+        isSilent -> if (targetString != null) TunerGold else TunerMuted
         isInTune -> TunerEmerald
         else -> TunerGold
     }
@@ -1008,7 +920,7 @@ private fun TunerStatusReadout(
         if (!isSilent && reading.frequencyHz > 0f) {
             Text(
                 text = " • ${String.format("%.1f", reading.frequencyHz)} Hz",
-                color = MutedText,
+                color = TunerMuted,
                 fontSize = 12.5.sp
             )
         }
@@ -1017,14 +929,14 @@ private fun TunerStatusReadout(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(CardSurface)
-                    .border(1.dp, Border, RoundedCornerShape(6.dp))
+                    .background(TunerCardBg)
+                    .border(1.dp, TunerCardBorder, RoundedCornerShape(6.dp))
                     .clickable { onReset() }
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
                 Text(
                     text = strings.tunerReset,
-                    color = MutedText,
+                    color = TunerMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -1063,7 +975,7 @@ private fun TunerStringsRow(
                 targetValue = when {
                     isTuned -> TunerEmerald.copy(alpha = 0.20f)
                     isCurrent -> TunerGold.copy(alpha = 0.20f)
-                    else -> CardSurface.copy(alpha = 0.85f)
+                    else -> Color(0xFF14171C)
                 },
                 label = "pillBg"
             )
@@ -1072,7 +984,7 @@ private fun TunerStringsRow(
                 targetValue = when {
                     isTuned -> TunerEmerald
                     isCurrent -> TunerGold
-                    else -> Border
+                    else -> TunerCardBorder
                 },
                 label = "pillBorder"
             )
@@ -1081,7 +993,7 @@ private fun TunerStringsRow(
                 targetValue = when {
                     isTuned -> TunerEmerald
                     isCurrent -> TunerGold
-                    else -> PrimaryText
+                    else -> TunerTextPrimary
                 },
                 label = "pillText"
             )
